@@ -54,3 +54,6 @@ let load () =
 
 let eval expr =
   load() |> Eval.eval expr
+
+let evalCps expr =
+  load() |> Eval.evalCps expr

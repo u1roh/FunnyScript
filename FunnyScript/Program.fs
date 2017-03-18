@@ -9,10 +9,15 @@ let test src =
   if expr.IsSome
     then printfn "Parsed Successfully!"
     else printfn "Failed to parse."
+
   let result = expr |> Option.bind Lib.eval
   if result.IsSome
     then printfn "OUTPUT = %A" result.Value
     else printfn "Failed to eval."
+
+  expr |> Option.iter (fun expr ->
+    Lib.evalCps expr (fun result ->
+      printfn "OUTPUT = %A" result))
 
 [<EntryPoint>]
 let main argv = 
