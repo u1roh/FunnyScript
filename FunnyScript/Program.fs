@@ -29,6 +29,7 @@ let main argv =
   test "true"
   test "true ? 1 : 2"
   test "let a = 5; a < 6 ? 1 : 2"
+  test "do trace 10; do trace 20;"
 
   use reader = File.OpenText "test01.txt"
   reader.ReadToEnd() |> test

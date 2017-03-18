@@ -1,2 +1,7 @@
-﻿let f = \a -> \b -> a + 2 * (b + 4);
-f 1 2
+﻿let fib = \n -> n == 0 ? 1 : n * fib (n - 1);
+do fib 4 |> trace;
+do fib 5 |> trace;
+
+let f = \a -> \b -> a + 2 * (b + 4);
+do f 1 2 |> trace;
+

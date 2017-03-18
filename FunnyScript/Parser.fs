@@ -46,22 +46,27 @@ let pExpr =
   opp.AddOperator(InfixOperator("/", spaces, 9, Associativity.Left, fun x y -> BinaryOp (Div,   x, y)))
   opp.AddOperator(InfixOperator("+", spaces, 8, Associativity.Left, fun x y -> BinaryOp (Plus,  x, y)))
   opp.AddOperator(InfixOperator("-", spaces, 8, Associativity.Left, fun x y -> BinaryOp (Minus, x, y)))
-  opp.AddOperator(InfixOperator("|>", spaces, 4, Associativity.Left, fun arg f -> Apply (f, arg)))
-  opp.AddOperator(InfixOperator("<", spaces, 3, Associativity.Left, fun x y -> BinaryOp (Less, x, y)))
-  opp.AddOperator(InfixOperator(">", spaces, 3, Associativity.Left, fun x y -> BinaryOp (Greater, x, y)))
-  opp.AddOperator(InfixOperator("<=", spaces, 3, Associativity.Left, fun x y -> BinaryOp (LessEq, x, y)))
-  opp.AddOperator(InfixOperator(">=", spaces, 3, Associativity.Left, fun x y -> BinaryOp (GreaterEq, x, y)))
-  opp.AddOperator(InfixOperator("==", spaces, 2, Associativity.Left, fun x y -> BinaryOp (Equal, x, y)))
-  opp.AddOperator(TernaryOperator("?", spaces, ":", spaces, 1, Associativity.None, fun cond thenExpr elseExpr -> If (cond, thenExpr, elseExpr)))
+  opp.AddOperator(InfixOperator("|>", spaces, 5, Associativity.Left, fun arg f -> Apply (f, arg)))
+  opp.AddOperator(InfixOperator("<", spaces, 4, Associativity.Left, fun x y -> BinaryOp (Less, x, y)))
+  opp.AddOperator(InfixOperator(">", spaces, 4, Associativity.Left, fun x y -> BinaryOp (Greater, x, y)))
+  opp.AddOperator(InfixOperator("<=", spaces, 4, Associativity.Left, fun x y -> BinaryOp (LessEq, x, y)))
+  opp.AddOperator(InfixOperator(">=", spaces, 4, Associativity.Left, fun x y -> BinaryOp (GreaterEq, x, y)))
+  opp.AddOperator(InfixOperator("==", spaces, 3, Associativity.Left, fun x y -> BinaryOp (Equal, x, y)))
+  opp.AddOperator(InfixOperator("!=", spaces, 3, Associativity.Left, fun x y -> BinaryOp (NotEq, x, y)))
+  opp.AddOperator(TernaryOperator("?", spaces, ":", spaces, 2, Associativity.None, fun cond thenExpr elseExpr -> If (cond, thenExpr, elseExpr)))
   let pLet =
     str_ws "let" >>. pIdentifier .>> spaces .>> char_ws '=' .>>. pExpr .>> char_ws ';' .>>. pExpr 
     |>> (fun ((name, expr1), expr2) -> Let (name, expr1, expr2))
+  let pDo =
+    str_ws "do" >>. pExpr .>> char_ws ';' .>>. opt pExpr
+    |>> (fun (expr1, expr2) -> match expr2 with Some expr2 -> Combine (expr1, expr2) | _ -> expr1)
   let pLambda =
     skipChar '\\' >>. pIdentifier .>> spaces .>> str_ws "->" .>>. pExpr
     |>> (fun (arg, body) -> FuncDef { Arg = arg; Body = body })
   pExprRef :=
     choice [
       pLet
+      pDo
       pLambda
       opp.ExpressionParser
     ]
