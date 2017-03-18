@@ -26,6 +26,8 @@ let main argv =
   test "let a = 1 + 2; let b = 3 + 4; a * b"
   test "3.14 / 2.0 |> sin"
   test "let f = \\a -> a + 1; f 2"
+  test "true"
+  test "true ? 1 : 2"
 
   use reader = File.OpenText "test01.txt"
   reader.ReadToEnd() |> test

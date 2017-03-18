@@ -25,6 +25,8 @@ let pIdentifier =
 
 let pAtom =
   choice [
+    skipString "true"  |>> (fun () -> Obj True)
+    skipString "false" |>> (fun () -> Obj False)
     pLiteralNumber
     pLiteralString
     pIdentifier |>> Ref
@@ -45,6 +47,7 @@ let pExpr =
   opp.AddOperator(InfixOperator("-", spaces, 2, Associativity.Left, fun x y -> BinaryOp (Minus, x, y)))
   opp.AddOperator(InfixOperator("*", spaces, 3, Associativity.Left, fun x y -> BinaryOp (Mul,   x, y)))
   opp.AddOperator(InfixOperator("/", spaces, 3, Associativity.Left, fun x y -> BinaryOp (Div,   x, y)))
+  opp.AddOperator(TernaryOperator("?", spaces, ":", spaces, 1, Associativity.None, fun cond thenExpr elseExpr -> If (cond, thenExpr, elseExpr)))
   let pLet =
     str_ws "let" >>. pIdentifier .>> spaces .>> char_ws '=' .>>. pExpr .>> char_ws ';' .>>. pExpr 
     |>> (fun ((name, expr1), expr2) -> Let (name, expr1, expr2))
