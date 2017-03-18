@@ -23,8 +23,12 @@ and Operator =
   | Mul
   | Div
   | Equal
-  | NotEqual
+  | NotEq
   | Not
+  | Less
+  | LessEq
+  | Greater
+  | GreaterEq
 
 and Obj =
   | Null

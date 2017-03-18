@@ -42,11 +42,16 @@ let pExpr =
     let pTerm = (pAtom <|> between (str_ws "(") (str_ws ")") pExpr) .>> spaces
     let apply terms = (List.head terms, List.tail terms) ||> List.fold (fun f arg -> Apply (f, arg))
     many1 pTerm |>> apply
-  opp.AddOperator(InfixOperator("|>", spaces, 1, Associativity.Left, fun arg f -> Apply (f, arg)))
-  opp.AddOperator(InfixOperator("+", spaces, 2, Associativity.Left, fun x y -> BinaryOp (Plus,  x, y)))
-  opp.AddOperator(InfixOperator("-", spaces, 2, Associativity.Left, fun x y -> BinaryOp (Minus, x, y)))
-  opp.AddOperator(InfixOperator("*", spaces, 3, Associativity.Left, fun x y -> BinaryOp (Mul,   x, y)))
-  opp.AddOperator(InfixOperator("/", spaces, 3, Associativity.Left, fun x y -> BinaryOp (Div,   x, y)))
+  opp.AddOperator(InfixOperator("*", spaces, 9, Associativity.Left, fun x y -> BinaryOp (Mul,   x, y)))
+  opp.AddOperator(InfixOperator("/", spaces, 9, Associativity.Left, fun x y -> BinaryOp (Div,   x, y)))
+  opp.AddOperator(InfixOperator("+", spaces, 8, Associativity.Left, fun x y -> BinaryOp (Plus,  x, y)))
+  opp.AddOperator(InfixOperator("-", spaces, 8, Associativity.Left, fun x y -> BinaryOp (Minus, x, y)))
+  opp.AddOperator(InfixOperator("|>", spaces, 4, Associativity.Left, fun arg f -> Apply (f, arg)))
+  opp.AddOperator(InfixOperator("<", spaces, 3, Associativity.Left, fun x y -> BinaryOp (Less, x, y)))
+  opp.AddOperator(InfixOperator(">", spaces, 3, Associativity.Left, fun x y -> BinaryOp (Greater, x, y)))
+  opp.AddOperator(InfixOperator("<=", spaces, 3, Associativity.Left, fun x y -> BinaryOp (LessEq, x, y)))
+  opp.AddOperator(InfixOperator(">=", spaces, 3, Associativity.Left, fun x y -> BinaryOp (GreaterEq, x, y)))
+  opp.AddOperator(InfixOperator("==", spaces, 2, Associativity.Left, fun x y -> BinaryOp (Equal, x, y)))
   opp.AddOperator(TernaryOperator("?", spaces, ":", spaces, 1, Associativity.None, fun cond thenExpr elseExpr -> If (cond, thenExpr, elseExpr)))
   let pLet =
     str_ws "let" >>. pIdentifier .>> spaces .>> char_ws '=' .>>. pExpr .>> char_ws ';' .>>. pExpr 

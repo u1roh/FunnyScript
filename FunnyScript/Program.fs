@@ -28,6 +28,7 @@ let main argv =
   test "let f = \\a -> a + 1; f 2"
   test "true"
   test "true ? 1 : 2"
+  test "let a = 5; a < 6 ? 1 : 2"
 
   use reader = File.OpenText "test01.txt"
   reader.ReadToEnd() |> test
