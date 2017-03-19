@@ -40,6 +40,7 @@ and Obj =
   | Tuple   of Obj[]
   | Record  of Map<string, Obj>
   | Func    of Func
+  | Lazy    of Lazy<Obj option> // for tail-recursion
 
 and Expr =
   | Obj of Obj

@@ -53,7 +53,7 @@ let load () =
   ] |> Map.ofList
 
 let eval expr =
-  load() |> Eval.eval expr
+  load() |> Eval.eval expr |> Option.bind Eval.force
 
 let evalCps expr =
   load() |> Eval.evalCps expr

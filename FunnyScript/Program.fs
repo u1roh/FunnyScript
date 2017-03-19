@@ -15,9 +15,9 @@ let test src =
     then printfn "OUTPUT = %A" result.Value
     else printfn "Failed to eval."
 
-  expr |> Option.iter (fun expr ->
-    Lib.evalCps expr (fun result ->
-      printfn "OUTPUT = %A" result))
+//  expr |> Option.iter (fun expr ->
+//    Lib.evalCps expr (fun result ->
+//      printfn "OUTPUT = %A" result))
 
 [<EntryPoint>]
 let main argv = 
@@ -35,6 +35,7 @@ let main argv =
   test "true ? 1 : 2"
   test "let a = 5; a < 6 ? 1 : 2"
   test "do trace 10; do trace 20;"
+//  test "let g = \\n -> do trace n; g (n + 1); g 1"
 
   use reader = File.OpenText "test01.txt"
   reader.ReadToEnd() |> test
