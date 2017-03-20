@@ -40,7 +40,7 @@ let pExpr =
   let opp = new OperatorPrecedenceParser<Expr,unit,unit>()
   opp.TermParser <-
     let pTerm =
-      (pAtom <|> between (str_ws "(") (str_ws ")") pExpr) .>>. opt (char_ws '.' >>. pIdentifier)
+      (pAtom <|> between (str_ws "(") (str_ws ")") pExpr) .>>. opt (char_ws '.' >>. pIdentifier .>> spaces)
       |>> function
         | (expr, None) -> expr
         | (expr, Some name) -> RefMember (expr, name)

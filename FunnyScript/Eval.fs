@@ -52,14 +52,9 @@ let rec eval expr env =
   | NewRecord fields ->
     (Some (Map.empty, env), fields) ||> List.fold (fun state (name, expr) ->
       state |> Option.bind (fun (record, env) ->
-      env |> forceEval expr |> Option.map (fun x ->
-        record |> Map.add name x, env |> Map.add (Name name) x
-        )))
+        env |> forceEval expr
+        |> Option.map (fun x -> record |> Map.add name x, env |> Map.add (Name name) x )))
     |> Option.map (fst >> Record)
-//    let fields = fields |> List.map (fun (name, expr) -> env |> forceEval expr |> Option.map (fun x -> name, x))
-//    if fields |> List.forall Option.isSome
-//      then fields |> List.map Option.get |> Map.ofList |> Record |> Some
-//      else None
   | _ -> None
 
 

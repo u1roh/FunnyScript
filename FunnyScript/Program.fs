@@ -37,8 +37,7 @@ let main argv =
   test "do trace 10; do trace 20;"
   test "let r = { let a = 10; let b = 2 + 3; }; r.b"
   test "let r = { let f = \\n -> n * 2; }; r.f 2"
-  test "a.b c"
-//  test "let r = { let f = \\n -> n * 2; let g = \\n -> f (n + 1); }; do trace (r.f 2)"
+  test "let r = { let f = \\n -> n * 2; let g = \\n -> f (n + 1); }; (r.g 2)"
 //  test "let g = \\n -> do trace n; g (n + 1); g 1"
 
 //  use reader = File.OpenText "test01.txt"
