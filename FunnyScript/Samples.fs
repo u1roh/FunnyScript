@@ -40,7 +40,7 @@ let tuple =
   NewTuple ([| a1; a2; a3 |])
 
 let record =
-  NewRecord ([| ("a1", a1); ("a2", a2); ("a3", a3) |])
+  NewRecord ([ ("a1", a1); ("a2", a2); ("a3", a3) ])
 
 let refMember =
   RefMember (record, "a2")

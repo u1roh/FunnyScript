@@ -53,7 +53,7 @@ and Expr =
   | Apply of func:Expr * para:Expr
   | FuncDef of FuncDef
   | NewTuple of Expr[]
-  | NewRecord of (string * Expr)[]
+  | NewRecord of (string * Expr) list
   | If of condition:Expr * thenExpr:Expr * elseExpr:Expr
 
 and ID =

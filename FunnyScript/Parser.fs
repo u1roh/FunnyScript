@@ -30,16 +30,20 @@ let pAtom =
     pLiteralNumber
     pLiteralString
     pIdentifier |>> Ref
-  ]
+  ] .>> spaces
 
 
 let pExpr =
   let pExpr, pExprRef = createParserForwardedToRef<Expr, unit>()
-  let str_ws s = skipString s >>. spaces
-  let char_ws c = skipChar c >>. spaces
+  let str_ws  s = skipString s >>. spaces
+  let char_ws c = skipChar   c >>. spaces
   let opp = new OperatorPrecedenceParser<Expr,unit,unit>()
   opp.TermParser <-
-    let pTerm = (pAtom <|> between (str_ws "(") (str_ws ")") pExpr) .>> spaces
+    let pTerm =
+      (pAtom <|> between (str_ws "(") (str_ws ")") pExpr) .>>. opt (char_ws '.' >>. pIdentifier)
+      |>> function
+        | (expr, None) -> expr
+        | (expr, Some name) -> RefMember (expr, name)
     let apply terms = (List.head terms, List.tail terms) ||> List.fold (fun f arg -> Apply (f, arg))
     many1 pTerm |>> apply
 
@@ -58,8 +62,10 @@ let pExpr =
     binaryOp "!=" 3 NotEq
   ] |> List.iter opp.AddOperator
   opp.AddOperator(TernaryOperator("?", spaces, ":", spaces, 2, Associativity.None, fun cond thenExpr elseExpr -> If (cond, thenExpr, elseExpr)))
+  let pLetPhrase =
+    str_ws "let" >>. pIdentifier .>> spaces .>> char_ws '=' .>>. pExpr .>> char_ws ';'
   let pLet =
-    str_ws "let" >>. pIdentifier .>> spaces .>> char_ws '=' .>>. pExpr .>> char_ws ';' .>>. pExpr 
+    pLetPhrase .>>. pExpr
     |>> (fun ((name, expr1), expr2) -> Let (name, expr1, expr2))
   let pDo =
     str_ws "do" >>. pExpr .>> char_ws ';' .>>. opt pExpr
@@ -67,11 +73,15 @@ let pExpr =
   let pLambda =
     skipChar '\\' >>. pIdentifier .>> spaces .>> str_ws "->" .>>. pExpr
     |>> (fun (arg, body) -> FuncDef { Arg = arg; Body = body })
+  let pRecord =
+    between (str_ws "{") (str_ws "}") (many pLetPhrase)
+    |>> NewRecord
   pExprRef :=
     choice [
       pLet
       pDo
       pLambda
+      pRecord
       opp.ExpressionParser
     ]
   pExpr
