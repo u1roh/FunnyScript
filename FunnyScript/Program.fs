@@ -10,7 +10,7 @@ let test src =
     then printfn "Parsed Successfully!"
     else printfn "Failed to parse."
 
-  let result = expr |> Option.bind Lib.eval
+  let result = expr |> Option.bind Script.eval
   if result.IsSome
     then printfn "OUTPUT = %A" result.Value
     else printfn "Failed to eval."
