@@ -62,8 +62,10 @@ let pExpr =
     binaryOp "!=" 3 NotEq
   ] |> List.iter opp.AddOperator
   opp.AddOperator(TernaryOperator("?", spaces, ":", spaces, 2, Associativity.None, fun cond thenExpr elseExpr -> If (cond, thenExpr, elseExpr)))
+//  let pLetPhrase =
+//    str_ws "let" >>. pIdentifier .>> spaces .>> char_ws '=' .>>. pExpr .>> char_ws ';'
   let pLetPhrase =
-    str_ws "let" >>. pIdentifier .>> spaces .>> char_ws '=' .>>. pExpr .>> char_ws ';'
+    pIdentifier .>> spaces .>> str_ws ":=" .>>. pExpr .>> char_ws ';'
   let pLet =
     pLetPhrase .>>. pExpr
     |>> (fun ((name, expr1), expr2) -> Let (name, expr1, expr2))
@@ -78,9 +80,9 @@ let pExpr =
     |>> NewRecord
   pExprRef :=
     choice [
-      pLet
       pDo
       pRecord
+      attempt pLet
       attempt pLambda
       opp.ExpressionParser
     ]

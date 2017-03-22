@@ -25,7 +25,8 @@
     <DocumentationFile>bin\Debug\FunnyScript.Test.XML</DocumentationFile>
     <StartAction>Program</StartAction>
     <StartProgram>C:\dev\_private_\FunnyScript\packages\Persimmon.Console.1.2.0\tools\Persimmon.Console.exe</StartProgram>
-    <StartArguments>$(TargetPath)</StartArguments>
+    <StartArguments>
+    </StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>

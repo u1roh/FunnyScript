@@ -16,15 +16,15 @@ let testScript = test "scripting test" {
     |> Script.runScriptStr
     |> assertEquals (Some (Int 15))
   do!
-    "let a = 1 + 2; let b = 3 + 4; a * b"
+    "a := 1 + 2; b := 3 + 4; a * b"
     |> Script.runScriptStr
     |> assertEquals (Some (Int 21))
   do!
-    "let f = a -> a + 1; f 2"
+    "f := a -> a + 1; f 2"
     |> Script.runScriptStr
     |> assertEquals (Some (Int 3))
   do!
-    "let f = a -> b -> a * b; f 3 4"
+    "f := a -> b -> a * b; f 3 4"
     |> Script.runScriptStr
     |> assertEquals (Some (Int 12))
   do!
@@ -32,23 +32,27 @@ let testScript = test "scripting test" {
     |> Script.runScriptStr
     |> assertEquals (Some (Int 1))
   do!
-    "let a = 5; a < 6 ? 1 : 2"
+    "a := 5; a < 6 ? 1 : 2"
     |> Script.runScriptStr
     |> assertEquals (Some (Int 1))
   do!
-    "let fac = n -> n == 0 ? 1 : n * fac (n - 1); fac 4"
+    "fac := n -> n == 0 ? 1 : n * fac (n - 1); fac 4"
     |> Script.runScriptStr
     |> assertEquals (Some (Int 24))
   do!
-    "let r = { let a = 10; let b = 2 + 3; }; r.b"
+    "r := { a := 10; b := 2 + 3; }; r.b"
     |> Script.runScriptStr
     |> assertEquals (Some (Int 5))
   do!
-    "let r = { let f = n -> n * 2; }; r.f 2"
+    "r := { f := n -> n * 2; }; r.f 2"
     |> Script.runScriptStr
     |> assertEquals (Some (Int 4))
   do!
-    "let r = { let f = n -> n * 2; let g = n -> f (n + 1); }; (r.g 2)"
+    "r := { f := n -> n * 2; g := n -> f (n + 1); }; (r.g 2)"
     |> Script.runScriptStr
     |> assertEquals (Some (Int 6))
+  do!
+    "f := x -> y -> x + y; 10 |> f 5"
+    |> Script.runScriptStr
+    |> assertEquals (Some (Int 15))
 }
