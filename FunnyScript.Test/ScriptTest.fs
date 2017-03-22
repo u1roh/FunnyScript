@@ -1,7 +1,6 @@
 ﻿module FunnyScript.Test.ScriptTest
 open Persimmon
 open FunnyScript
-open FunnyScript.AST
 
 (*
   test "sin (3.14 / 2.0)"

@@ -1,4 +1,5 @@
-﻿module FunnyScript.AST
+﻿[<AutoOpen>]
+module FunnyScript.AST
 
 type FuncDef = {
     Arg  : string
@@ -36,7 +37,7 @@ and Obj =
   | False
   | Int     of int
   | Float   of float
-  | String  of string
+  | Str     of string
   | Tuple   of Obj[]
   | Record  of Map<string, Obj>
   | Func    of Func

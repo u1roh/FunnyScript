@@ -1,7 +1,6 @@
 ﻿module FunnyScript.Test.AstTest
 open Persimmon
 open FunnyScript
-open FunnyScript.AST
 
 let a1 = BinaryOp (Plus, Obj (Int 1), Obj (Int 2))
 
@@ -46,8 +45,8 @@ let testAST = test "FunnyScript AST test" {
     If (Obj False, Obj (Int 1), Obj (Int 0))
     |> Script.eval |> assertEquals (Some (Int 0))
   do!
-    If (BinaryOp (Equal, Obj (Int 3), a1), Obj (String "equal"), Obj (String "not equal"))
-    |> Script.eval |> assertEquals (Some (String "equal"))
+    If (BinaryOp (Equal, Obj (Int 3), a1), Obj (Str "equal"), Obj (Str "not equal"))
+    |> Script.eval |> assertEquals (Some (Str "equal"))
   do!
     Let ("a", Obj (Int 10),
       Combine (

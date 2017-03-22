@@ -4,7 +4,6 @@ open FParsec
 open FParsec.Primitives
 open FParsec.CharParsers
 open FParsec.Error
-open AST
 
 type Parser = Parser<Expr, unit>
 
@@ -18,7 +17,7 @@ let pLiteralNumber : Parser =
   |>> (fun x -> (if x.IsInteger then Int (int32 x.String) else Float (float x.String)) |> Obj)
 
 let pLiteralString : Parser =
-  between (pstring "\"") (pstring "\"") (manyChars (noneOf "\"")) |>> (String >> Obj)
+  between (pstring "\"") (pstring "\"") (manyChars (noneOf "\"")) |>> (Str >> Obj)
 
 let pIdentifier =
   regex "[a-zA-Z_][0-9a-zA-Z_]*"

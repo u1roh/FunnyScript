@@ -1,5 +1,4 @@
 ﻿module FunnyScript.Eval
-open AST
 
 let rec force obj =
   match obj with

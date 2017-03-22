@@ -1,5 +1,4 @@
 ﻿module FunnyScript.Lib
-open AST
 
 let private toFunc1 f = Func (BuiltinFunc { new IBuiltinFunc with member __.Apply a = f a })
 let private toFunc2 f = toFunc1 (f >> toFunc1 >> Some)
