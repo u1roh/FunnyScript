@@ -71,7 +71,7 @@ let pExpr =
     str_ws "do" >>. pExpr .>> char_ws ';' .>>. opt pExpr
     |>> (fun (expr1, expr2) -> match expr2 with Some expr2 -> Combine (expr1, expr2) | _ -> expr1)
   let pLambda =
-    skipChar '\\' >>. pIdentifier .>> spaces .>> str_ws "->" .>>. pExpr
+    pIdentifier .>> spaces .>> str_ws "->" .>>. pExpr
     |>> (fun (arg, body) -> FuncDef { Arg = arg; Body = body })
   let pRecord =
     between (str_ws "{") (str_ws "}") (many pLetPhrase)
@@ -80,8 +80,8 @@ let pExpr =
     choice [
       pLet
       pDo
-      pLambda
       pRecord
+      attempt pLambda
       opp.ExpressionParser
     ]
   pExpr
