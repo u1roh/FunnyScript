@@ -43,11 +43,11 @@ let rec eval expr env =
     | Some True  -> env |> eval thenExpr
     | Some False -> env |> eval elseExpr
     | _ -> None
-  | NewTuple fields ->
-    let fields = fields |> Array.map (fun expr -> env |> forceEval expr)
-    if fields |> Array.forall Option.isSome
-      then fields |> Array.map Option.get |> Tuple |> Some
-      else None
+//  | NewTuple fields ->
+//    let fields = fields |> Array.map (fun expr -> env |> forceEval expr)
+//    if fields |> Array.forall Option.isSome
+//      then fields |> Array.map Option.get |> Tuple |> Some
+//      else None
   | NewRecord fields ->
     (Some (Map.empty, env), fields) ||> List.fold (fun state (name, expr) ->
       state |> Option.bind (fun (record, env) ->

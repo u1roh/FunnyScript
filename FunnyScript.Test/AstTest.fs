@@ -14,9 +14,6 @@ let a3 =
     Let ("f", FuncDef { Arg = "a"; Body = BinaryOp (Plus, Ref "a", Ref "b") },
       Apply (Ref "f", Obj (Int 3))))
 
-let tuple =
-  NewTuple ([| a1; a2; a3 |])
-
 let record =
   NewRecord ([ ("a1", a1); ("a2", a2); ("a3", a3) ])
 

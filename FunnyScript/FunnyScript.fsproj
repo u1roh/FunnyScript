@@ -56,6 +56,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Cont.fs" />
+    <Compile Include="FunnyList.fs" />
     <Compile Include="AST.fs" />
     <Compile Include="Parser.fs" />
     <Compile Include="Eval.fs" />
