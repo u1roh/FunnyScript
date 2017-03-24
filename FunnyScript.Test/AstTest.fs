@@ -61,4 +61,7 @@ let testAST = test "FunnyScript AST test" {
     Let ("fac", FuncDef ({ Arg = "n"; Body = body }),
       Apply (Ref "fac", Obj (Int 4)))
     |> Script.eval |> assertEquals (Some (Int 24))
+  do!
+    Let ("a", Obj (List (FunnyList.ofArray [| Int 123; Int 321; Int 456 |])), Apply (Ref "a", Obj (Int 1)))
+    |> Script.eval |> assertEquals (Some (Int 321))
 }

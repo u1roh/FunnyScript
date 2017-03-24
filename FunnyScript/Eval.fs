@@ -10,6 +10,7 @@ let rec eval expr env =
     match f with
     | Func (BuiltinFunc f) -> f.Apply arg
     | Func (UserFunc f) -> lazy (f.Env |> Map.add (Name f.Def.Arg) arg |> eval f.Def.Body) |> Lazy |> Some
+    | List list -> match arg with Int i -> Some list.[i] | _ -> None
     | _ -> None
   
   let forceEval expr env =
