@@ -55,6 +55,11 @@ let rec eval expr env =
         env |> forceEval expr
         |> Option.map (fun x -> record |> Map.add name x, env |> Map.add (Name name) x )))
     |> Option.map (fst >> Record)
+  | NewList exprs ->
+    let items = exprs |> Array.choose (fun expr -> env |> forceEval expr)
+    if items.Length = exprs.Length
+      then FunnyList.ofArray items |> List |> Some
+      else None
   | _ -> None
 
 

@@ -34,6 +34,7 @@ module FunnyList =
         member __.Item
           with get i = if i = 0 then head else tail.[i - 1] }
 
+  [<Struct>]
   type private FunnyList<'a> (src : 'a list) =
     interface IFunnyList<'a> with
       member this.Head = src.Head
@@ -42,7 +43,8 @@ module FunnyList =
       member this.Length = Definite src.Length
       member this.Item with get i = src.[i]
 
-  type private FunnyArray<'a> (src : 'a[], k) =
+  [<Struct>]
+  type private FunnyArray<'a> (src : 'a[], k : int) =
     interface IFunnyList<'a> with
       member this.Head = src.[k]
       member this.Tail = if k + 1 = src.Length then nil else FunnyArray (src, k + 1) :> _
@@ -74,13 +76,16 @@ module FunnyList =
         with get i = if i = 0 then head else (this :> IFunnyList<_>).Tail.[i - 1]
 
   let ofList src =
-    FunnyList src :> IFunnyList<_>
+    if List.isEmpty src then nil else FunnyList src :> IFunnyList<_>
 
   let ofArray src =
-    FunnyArray (src, 0) :> IFunnyList<_>
+    if Array.isEmpty src then nil else FunnyArray (src, 0) :> IFunnyList<_>
 
   let ofSeq (src : seq<_>) =
-    FunnySeq (src.GetEnumerator()) :> IFunnyList<_>
+    let it = src.GetEnumerator()
+    if it.MoveNext()
+      then FunnySeq it :> IFunnyList<_>
+      else nil
 
   let unfold generator state =
     match generator state with

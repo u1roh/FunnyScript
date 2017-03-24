@@ -77,10 +77,14 @@ let pExpr =
   let pRecord =
     between (str_ws "{") (str_ws "}") (many pLetPhrase)
     |>> NewRecord
+  let pList =
+    between (str_ws "[") (str_ws "]") (sepBy pExpr (char_ws ','))
+    |>> (List.toArray >> NewList)
   pExprRef :=
     choice [
       pDo
       pRecord
+      pList
       attempt pLet
       attempt pLambda
       opp.ExpressionParser

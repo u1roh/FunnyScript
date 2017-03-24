@@ -54,4 +54,8 @@ let testScript = test "scripting test" {
     "f := x -> y -> x + y; 10 |> f 5"
     |> Script.runScriptStr
     |> assertEquals (Some (Int 15))
+  do!
+    "[1, 2, 3 + 4]"
+    |> Script.runScriptStr
+    |> assertEquals (Some (List (FunnyList.ofArray [| Int 1; Int 2; Int 7 |])))
 }

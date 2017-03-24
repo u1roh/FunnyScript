@@ -43,6 +43,7 @@ and Expr =
   | Apply of func:Expr * para:Expr
   | FuncDef of FuncDef
   | NewRecord of (string * Expr) list
+  | NewList of Expr[]
   | If of condition:Expr * thenExpr:Expr * elseExpr:Expr
 
 and FuncDef = {
