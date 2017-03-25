@@ -36,6 +36,19 @@ let private sin x =
 let private trace arg =
   printfn "%A" arg; Some Null
 
+let private listModule =
+  let init len f =
+    match len with
+    | Int len ->
+      let a = Array.init len (fun i -> Eval.apply f (Int i) |> Option.bind Eval.force)
+      if a |> Array.forall Option.isSome
+        then a |> Array.choose id |> FunnyList.ofArray |> List |> Some
+        else None
+    | _ -> None
+
+  [ "init", toFunc2 init
+  ] |> Map.ofList |> Record
+
 let load () =
   [ Op Plus,  arith (+) (+)
     Op Minus, arith (-) (-)
@@ -61,5 +74,7 @@ let load () =
     Name "function",Type FuncType
     Name "list",    Type ListType
     Name "type",    Type TypeType
+
+    Name "List", listModule
   ] |> Map.ofList
 

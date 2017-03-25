@@ -45,6 +45,7 @@ module FunnyList =
 
   [<Struct>]
   type private FunnyArray<'a> (src : 'a[], k : int) =
+    override __.ToString() = sprintf "%A" src
     interface IFunnyList<'a> with
       member this.Head = src.[k]
       member this.Tail = if k + 1 = src.Length then nil else FunnyArray (src, k + 1) :> _

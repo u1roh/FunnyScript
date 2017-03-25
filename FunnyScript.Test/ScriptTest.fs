@@ -27,7 +27,6 @@ let testScript = test "scripting test" {
   do! "r := { f := n -> n * 2; }; r.f 2" ==> Int 4
   do! "r := { f := n -> n * 2; g := n -> f (n + 1); }; (r.g 2)" ==> Int 6
   do! "f := x -> y -> x + y; 10 |> f 5" ==> Int 15
-  do! "[1, 2, 3 + 4]" ==> List (FunnyList.ofArray [| Int 1; Int 2; Int 7 |])
 }
 
 let typeTest = test "type test" {
@@ -36,4 +35,9 @@ let typeTest = test "type test" {
   do! "typeof (x -> x * x)" ==> Type FuncType
   do! "typeof true" ==> Type BoolType
   do! "typeof true == bool" ==> True
+}
+
+let listTest = test "list test" {
+  do! "[1, 2, 3 + 4]" ==> List (FunnyList.ofArray [| Int 1; Int 2; Int 7 |])
+  do! "List.init 3 (i -> 2 * i)" ==> List (FunnyList.ofArray [| Int 0; Int 2; Int 4 |])
 }

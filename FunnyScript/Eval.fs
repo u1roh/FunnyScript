@@ -5,13 +5,15 @@ let rec force obj =
   | Lazy x -> x.Force() |> Option.bind force
   | _ -> Some obj
 
+let private apply_ eval f arg =
+  match f with
+  | Func (BuiltinFunc f) -> f.Apply arg
+  | Func (UserFunc f) -> lazy (f.Env |> Map.add (Name f.Def.Arg) arg |> eval f.Def.Body) |> Lazy |> Some
+  | List list -> match arg with Int i -> Some list.[i] | _ -> None
+  | _ -> None
+
 let rec eval expr env =
-  let apply f arg =
-    match f with
-    | Func (BuiltinFunc f) -> f.Apply arg
-    | Func (UserFunc f) -> lazy (f.Env |> Map.add (Name f.Def.Arg) arg |> eval f.Def.Body) |> Lazy |> Some
-    | List list -> match arg with Int i -> Some list.[i] | _ -> None
-    | _ -> None
+  let apply = apply_ eval
   
   let forceEval expr env =
     env |> eval expr |> Option.bind force
@@ -108,3 +110,5 @@ let rec evalCps expr env cont =
 //      then fields |> Array.map Option.get |> Map.ofArray |> Record |> Some
 //      else None
   | _ -> ()
+
+let apply = apply_ eval
