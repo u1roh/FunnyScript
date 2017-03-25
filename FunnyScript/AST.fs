@@ -98,3 +98,18 @@ let typeid obj =
   | ClrObj  x -> ClrType (x.GetType())
   | Type    _ -> TypeType
   | Lazy    _ -> LazyType
+
+let typeName id =
+  match id with
+  | NullType    -> "null"
+  | BoolType    -> "bool"
+  | IntType     -> "int"
+  | FloatType   -> "float"
+  | StrType     -> "string"
+  | RecordType  -> "record"
+  | FuncType    -> "function"
+  | ListType    -> "list"
+  | TypeType    -> "type"
+  | LazyType    -> "lazy"
+  | UserType x  -> x
+  | ClrType t   -> t.FullName

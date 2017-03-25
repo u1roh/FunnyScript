@@ -22,9 +22,15 @@ let rec eval expr env =
   | Obj x -> Some x
   | Ref x -> env |> Map.tryFind (Name x) |> function Some x -> Some x | _ -> printfn "'%s' is not found." x; None
   | RefMember (expr, name) ->
-    env |> forceEval expr |> Option.bind (function
-      | Record r -> r |> Map.tryFind name
-      | _ -> None)
+    env |> forceEval expr |> Option.bind (fun x ->
+      let ret =
+        match x with
+        | Record r -> r |> Map.tryFind name
+        | _ -> None
+      if ret.IsSome then ret else
+        env |> Map.tryFind (typeid x |> typeName |> Name)
+        |> Option.bind (function Type t -> t.Members |> Map.tryFind name | _ -> None)
+        |> Option.bind (fun f -> apply (Func f) x))
   | Let (name, value, succ) ->
     env |> forceEval value |> Option.bind (fun value ->
       let env = env |> Map.add (Name name) value

@@ -1,6 +1,7 @@
 ﻿module FunnyScript.Builtin
 
-let private toFunc1 f = Func (BuiltinFunc { new IBuiltinFunc with member __.Apply a = f a })
+let private builtinFunc f = BuiltinFunc { new IBuiltinFunc with member __.Apply a = f a }
+let private toFunc1 f = Func (builtinFunc f)
 let private toFunc2 f = toFunc1 (f >> toFunc1 >> Some)
 let private toFunc3 f = toFunc1 (f >> toFunc2 >> Some)
 
@@ -49,8 +50,12 @@ let private listModule =
   [ "init", toFunc2 init
   ] |> Map.ofList |> Record
 
-let private typeOf id =
-  Type { Id = id; Members = Map.empty }
+let private deftype id members =
+  let members =
+    members
+    |> List.map (fun (name, f) -> name, builtinFunc f)
+    |> Map.ofList
+  Name (typeName id), Type { Id = id; Members = members }
 
 let load () =
   [ Op Plus,  arith (+) (+)
@@ -68,15 +73,17 @@ let load () =
     Name "trace", toFunc1 trace
     Name "sin", toFunc1 sin
 
-    Name "null",    typeOf NullType
-    Name "bool",    typeOf BoolType
-    Name "int",     typeOf IntType
-    Name "float",   typeOf FloatType
-    Name "string",  typeOf StrType
-    Name "record",  typeOf RecordType
-    Name "function",typeOf FuncType
-    Name "list",    typeOf ListType
-    Name "type",    typeOf TypeType
+    deftype NullType   []
+    deftype BoolType   []
+    deftype IntType    []
+    deftype FloatType  []
+    deftype StrType    []
+    deftype RecordType []
+    deftype FuncType   []
+    deftype ListType [
+        "isEmpty", function List x -> Some (if x.IsEmpty then True else False) | _ -> None
+      ]
+    deftype TypeType []
 
     Name "List", listModule
   ] |> Map.ofList

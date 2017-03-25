@@ -36,10 +36,32 @@ let pExpr =
   let pExpr, pExprRef = createParserForwardedToRef<Expr, unit>()
   let str_ws  s = skipString s >>. spaces
   let char_ws c = skipChar   c >>. spaces
+
+//  let pLetPhrase =
+//    str_ws "let" >>. pIdentifier .>> spaces .>> char_ws '=' .>>. pExpr .>> char_ws ';'
+  let pLetPhrase =
+    pIdentifier .>> spaces .>> str_ws ":=" .>>. pExpr .>> char_ws ';'
+  let pLet =
+    pLetPhrase .>>. pExpr
+    |>> (fun ((name, expr1), expr2) -> Let (name, expr1, expr2))
+  let pDo =
+    str_ws "do" >>. pExpr .>> char_ws ';' .>>. opt pExpr
+    |>> (fun (expr1, expr2) -> match expr2 with Some expr2 -> Combine (expr1, expr2) | _ -> expr1)
+  let pLambda =
+    pIdentifier .>> spaces .>> str_ws "->" .>>. pExpr
+    |>> (fun (arg, body) -> FuncDef { Arg = arg; Body = body })
+  let pRecord =
+    between (str_ws "{") (str_ws "}") (many pLetPhrase)
+    |>> NewRecord
+  let pList =
+    between (str_ws "[") (str_ws "]") (sepBy pExpr (char_ws ','))
+    |>> (List.toArray >> NewList)
+
   let opp = new OperatorPrecedenceParser<Expr,unit,unit>()
   opp.TermParser <-
     let pTerm =
-      (pAtom <|> between (str_ws "(") (str_ws ")") pExpr) .>>. opt (char_ws '.' >>. pIdentifier .>> spaces)
+      choice [ pAtom; pList; pRecord; between (str_ws "(") (str_ws ")") pExpr ]
+      .>>. opt (char_ws '.' >>. pIdentifier .>> spaces)
       |>> function
         | (expr, None) -> expr
         | (expr, Some name) -> RefMember (expr, name)
@@ -62,30 +84,9 @@ let pExpr =
     binaryOp ":?" 3 Is
   ] |> List.iter opp.AddOperator
   opp.AddOperator(TernaryOperator("?", spaces, ":", spaces, 2, Associativity.None, fun cond thenExpr elseExpr -> If (cond, thenExpr, elseExpr)))
-//  let pLetPhrase =
-//    str_ws "let" >>. pIdentifier .>> spaces .>> char_ws '=' .>>. pExpr .>> char_ws ';'
-  let pLetPhrase =
-    pIdentifier .>> spaces .>> str_ws ":=" .>>. pExpr .>> char_ws ';'
-  let pLet =
-    pLetPhrase .>>. pExpr
-    |>> (fun ((name, expr1), expr2) -> Let (name, expr1, expr2))
-  let pDo =
-    str_ws "do" >>. pExpr .>> char_ws ';' .>>. opt pExpr
-    |>> (fun (expr1, expr2) -> match expr2 with Some expr2 -> Combine (expr1, expr2) | _ -> expr1)
-  let pLambda =
-    pIdentifier .>> spaces .>> str_ws "->" .>>. pExpr
-    |>> (fun (arg, body) -> FuncDef { Arg = arg; Body = body })
-  let pRecord =
-    between (str_ws "{") (str_ws "}") (many pLetPhrase)
-    |>> NewRecord
-  let pList =
-    between (str_ws "[") (str_ws "]") (sepBy pExpr (char_ws ','))
-    |>> (List.toArray >> NewList)
   pExprRef :=
     choice [
       pDo
-      pRecord
-      pList
       attempt pLet
       attempt pLambda
       opp.ExpressionParser
