@@ -74,6 +74,7 @@ let pExpr =
     binaryOp "/"  9 Div
     binaryOp "+"  8 Plus
     binaryOp "-"  8 Minus
+    binaryOp "::" 7 Cons
     infixOp  "|>" 5 (fun arg f -> Apply (f, arg))
     binaryOp "<"  4 Less
     binaryOp ">"  4 Greater

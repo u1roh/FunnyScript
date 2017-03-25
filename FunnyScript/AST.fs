@@ -14,6 +14,7 @@ type Operator =
   | Greater
   | GreaterEq
   | Is
+  | Cons
 
 type ID =
   | Name of string

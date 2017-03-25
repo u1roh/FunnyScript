@@ -68,7 +68,8 @@ let load () =
     Op LessEq,    compare (<=) (<=)
     Op Greater,   compare (>)  (>)
     Op GreaterEq, compare (>=) (>=)
-    Op Is, toFunc2 (fun o t -> match t with Type t -> Some (if t.Id = typeid o then True else False) | _ -> None)
+    Op Is,   toFunc2 (fun o t  -> match t  with Type t  -> Some (if t.Id = typeid o then True else False) | _ -> None)
+    Op Cons, toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> List |> Some | _ -> None)
 
     Name "trace", toFunc1 trace
     Name "sin", toFunc1 sin
