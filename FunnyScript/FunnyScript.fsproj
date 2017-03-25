@@ -60,7 +60,7 @@
     <Compile Include="AST.fs" />
     <Compile Include="Parser.fs" />
     <Compile Include="Eval.fs" />
-    <Compile Include="Lib.fs" />
+    <Compile Include="Builtin.fs" />
     <Compile Include="Script.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
