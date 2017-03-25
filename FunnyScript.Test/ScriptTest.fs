@@ -39,8 +39,10 @@ let typeTest = test "type test" {
 }
 
 let listTest = test "list test" {
-  do! "[1, 2, 3 + 4]" ==> List (FunnyList.ofArray [| Int 1; Int 2; Int 7 |])
-  do! "List.init 3 (i -> 2 * i)" ==> List (FunnyList.ofArray [| Int 0; Int 2; Int 4 |])
+  do! "[1, 2, 3 + 4]" ==> ofArray [| Int 1; Int 2; Int 7 |]
+  do! "List.init 3 (i -> 2 * i)" ==> ofArray [| Int 0; Int 2; Int 4 |]
   do! "[].isEmpty" ==> True
   do! "[1, 2].isEmpty" ==> False
+  do! "[3, 4].head" ==> Int 3
+  do! "[3, 4, 5].tail" ==> ofList [Int 4; Int 5]
 }

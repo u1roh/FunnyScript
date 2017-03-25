@@ -113,3 +113,6 @@ let typeName id =
   | LazyType    -> "lazy"
   | UserType x  -> x
   | ClrType t   -> t.FullName
+
+let ofArray src = List (FunnyList.ofArray src)
+let ofList  src = List (FunnyList.ofList  src)

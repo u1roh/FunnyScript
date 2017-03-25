@@ -81,7 +81,9 @@ let load () =
     deftype RecordType []
     deftype FuncType   []
     deftype ListType [
-        "isEmpty", function List x -> Some (if x.IsEmpty then True else False) | _ -> None
+        "isEmpty",  function List x -> Some (if x.IsEmpty then True else False) | _ -> None
+        "head",     function List x -> Some x.Head | _ -> None
+        "tail",     function List x -> Some (List x.Tail) | _ -> None
       ]
     deftype TypeType []
 
