@@ -30,11 +30,11 @@ let testScript = test "scripting test" {
 }
 
 let typeTest = test "type test" {
-  do! "typeof 1" ==> Type IntType
-  do! "typeof 1.0" ==> Type FloatType
-  do! "typeof (x -> x * x)" ==> Type FuncType
-  do! "typeof true" ==> Type BoolType
-  do! "typeof true == bool" ==> True
+  do! "1 :? int" ==> True
+  do! "1 :? float" ==> False
+  do! "1.0 :? float" ==> True
+  do! "(x -> x * x) :? function" ==> True
+  do! "true :? bool" ==> True
 }
 
 let listTest = test "list test" {

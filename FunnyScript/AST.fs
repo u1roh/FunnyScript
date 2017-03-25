@@ -13,6 +13,7 @@ type Operator =
   | LessEq
   | Greater
   | GreaterEq
+  | Is
 
 type ID =
   | Name of string
@@ -32,7 +33,6 @@ and Obj =
   | List    of IFunnyList<Obj>
   | ClrObj  of obj
   | Type    of Type
-  | Members of MemberTable
   | Lazy    of Lazy<Obj option> // for tail-recursion
 
 and Expr =
@@ -66,7 +66,7 @@ and Func =
   | UserFunc    of UserFunc
   | BuiltinFunc of IBuiltinFunc
 
-and Type =
+and TypeId =
   | NullType
   | BoolType
   | IntType
@@ -76,14 +76,16 @@ and Type =
   | FuncType
   | ListType
   | TypeType
-  | MemberTableType
   | LazyType
   | UserType of string
   | ClrType  of System.Type
 
-and MemberTable = Map<string, Func>
+and Type = {
+    Id : TypeId
+    Members : Map<string, Func>
+  }
 
-let typeof obj =
+let typeid obj =
   match obj with
   | Null      -> NullType
   | True | False -> BoolType
@@ -95,5 +97,4 @@ let typeof obj =
   | List    _ -> ListType
   | ClrObj  x -> ClrType (x.GetType())
   | Type    _ -> TypeType
-  | Members _ -> MemberTableType
   | Lazy    _ -> LazyType

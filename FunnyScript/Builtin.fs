@@ -49,6 +49,9 @@ let private listModule =
   [ "init", toFunc2 init
   ] |> Map.ofList |> Record
 
+let private typeOf id =
+  Type { Id = id; Members = Map.empty }
+
 let load () =
   [ Op Plus,  arith (+) (+)
     Op Minus, arith (-) (-)
@@ -60,20 +63,20 @@ let load () =
     Op LessEq,    compare (<=) (<=)
     Op Greater,   compare (>)  (>)
     Op GreaterEq, compare (>=) (>=)
+    Op Is, toFunc2 (fun o t -> match t with Type t -> Some (if t.Id = typeid o then True else False) | _ -> None)
 
     Name "trace", toFunc1 trace
     Name "sin", toFunc1 sin
 
-    Name "typeof", toFunc1 (typeof >> Type >> Some)
-    Name "null",    Type NullType
-    Name "bool",    Type BoolType
-    Name "int",     Type IntType
-    Name "float",   Type FloatType
-    Name "string",  Type StrType
-    Name "record",  Type RecordType
-    Name "function",Type FuncType
-    Name "list",    Type ListType
-    Name "type",    Type TypeType
+    Name "null",    typeOf NullType
+    Name "bool",    typeOf BoolType
+    Name "int",     typeOf IntType
+    Name "float",   typeOf FloatType
+    Name "string",  typeOf StrType
+    Name "record",  typeOf RecordType
+    Name "function",typeOf FuncType
+    Name "list",    typeOf ListType
+    Name "type",    typeOf TypeType
 
     Name "List", listModule
   ] |> Map.ofList

@@ -59,6 +59,7 @@ let pExpr =
     binaryOp ">=" 4 GreaterEq
     binaryOp "==" 3 Equal
     binaryOp "!=" 3 NotEq
+    binaryOp ":?" 3 Is
   ] |> List.iter opp.AddOperator
   opp.AddOperator(TernaryOperator("?", spaces, ":", spaces, 2, Associativity.None, fun cond thenExpr elseExpr -> If (cond, thenExpr, elseExpr)))
 //  let pLetPhrase =
