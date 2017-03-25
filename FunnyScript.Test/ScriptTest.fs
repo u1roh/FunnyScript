@@ -45,4 +45,5 @@ let listTest = test "list test" {
   do! "[1, 2].isEmpty" ==> False
   do! "[3, 4].head" ==> Int 3
   do! "[3, 4, 5].tail" ==> ofList [Int 4; Int 5]
+  do! "[3, 4, 5].length" ==> Int 3
 }
