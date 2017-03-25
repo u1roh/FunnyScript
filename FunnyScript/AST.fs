@@ -30,6 +30,9 @@ and Obj =
   | Record  of Map<string, Obj>
   | Func    of Func
   | List    of IFunnyList<Obj>
+  | ClrObj  of obj
+  | Type    of Type
+  | Members of MemberTable
   | Lazy    of Lazy<Obj option> // for tail-recursion
 
 and Expr =
@@ -62,3 +65,35 @@ and UserFunc = {
 and Func =
   | UserFunc    of UserFunc
   | BuiltinFunc of IBuiltinFunc
+
+and Type =
+  | NullType
+  | BoolType
+  | IntType
+  | FloatType
+  | StrType
+  | RecordType
+  | FuncType
+  | ListType
+  | TypeType
+  | MemberTableType
+  | LazyType
+  | UserType of string
+  | ClrType  of System.Type
+
+and MemberTable = Map<string, Func>
+
+let typeof obj =
+  match obj with
+  | Null      -> NullType
+  | True | False -> BoolType
+  | Int     _ -> IntType
+  | Float   _ -> FloatType
+  | Str     _ -> StrType
+  | Record  _ -> RecordType
+  | Func    _ -> FuncType
+  | List    _ -> ListType
+  | ClrObj  x -> ClrType (x.GetType())
+  | Type    _ -> TypeType
+  | Members _ -> MemberTableType
+  | Lazy    _ -> LazyType

@@ -9,6 +9,11 @@ open FunnyScript
   test "do trace 10; do trace 20;"
   *)
 
+let scriptAssertEquals expected script =
+  script
+  |> Script.runScriptStr
+  |> assertEquals (Some expected)
+
 let testScript = test "scripting test" {
   do!
     "1 + 2 * (3 + 4)"
@@ -58,4 +63,18 @@ let testScript = test "scripting test" {
     "[1, 2, 3 + 4]"
     |> Script.runScriptStr
     |> assertEquals (Some (List (FunnyList.ofArray [| Int 1; Int 2; Int 7 |])))
+}
+
+let typeTest = test "type test" {
+  do!
+    "typeof 1" |> Script.runScriptStr
+    |> assertEquals (Some (Type IntType))
+  do!
+    "typeof 1.0" |> Script.runScriptStr
+    |> assertEquals (Some (Type FloatType))
+  do!
+    "typeof (x -> x * x)" |> Script.runScriptStr
+    |> assertEquals (Some (Type FuncType))
+  do! "typeof true" |> scriptAssertEquals (Type BoolType)
+  do! "typeof true == bool" |> scriptAssertEquals True
 }

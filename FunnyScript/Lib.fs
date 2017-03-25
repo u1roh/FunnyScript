@@ -37,8 +37,7 @@ let private trace arg =
   printfn "%A" arg; Some Null
 
 let load () =
-  [ Name "trace", toFunc1 trace
-    Op Plus,  arith (+) (+)
+  [ Op Plus,  arith (+) (+)
     Op Minus, arith (-) (-)
     Op Mul,   arith (*) (*)
     Op Div,   arith (/) (/)
@@ -48,6 +47,19 @@ let load () =
     Op LessEq,    compare (<=) (<=)
     Op Greater,   compare (>)  (>)
     Op GreaterEq, compare (>=) (>=)
+
+    Name "trace", toFunc1 trace
     Name "sin", toFunc1 sin
+
+    Name "typeof", toFunc1 (typeof >> Type >> Some)
+    Name "null",    Type NullType
+    Name "bool",    Type BoolType
+    Name "int",     Type IntType
+    Name "float",   Type FloatType
+    Name "string",  Type StrType
+    Name "record",  Type RecordType
+    Name "function",Type FuncType
+    Name "list",    Type ListType
+    Name "type",    Type TypeType
   ] |> Map.ofList
 
