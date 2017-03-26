@@ -90,5 +90,5 @@ let load () =
     deftype TypeType []
 
     Name "List", listModule
-  ] |> Map.ofList
+  ] |> List.fold (fun env (id, obj) -> env |> Map.add id obj) (Eval.getRootEnv())
 

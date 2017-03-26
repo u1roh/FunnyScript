@@ -28,6 +28,7 @@ let testScript = test "scripting test" {
   do! "r := { f := n -> n * 2; }; r.f 2" ==> Int 4
   do! "r := { f := n -> n * 2; g := n -> f (n + 1); }; (r.g 2)" ==> Int 6
   do! "f := x -> y -> x + y; 10 |> f 5" ==> Int 15
+  //do! "a := { b := 1; c := { d := 2; e := 3; }; }; a.c.e" ==> Int 3
 }
 
 let typeTest = test "type test" {
@@ -48,4 +49,10 @@ let listTest = test "list test" {
   do! "[3, 4, 5].length" ==> Int 3
   do! "a := [1, 3, 5]; b := 10; b :: a" ==> ofList [Int 10; Int 1; Int 3; Int 5]
   do! "a := [1, 3, 5]; b := 10; (b :: a).length" ==> Int 4
+}
+
+let clrTest = test "CLR reflection test" {
+  do! "System :? record" ==> True
+  do! "System.Collections :? record" ==> True
+  //do! "System.Collections.Generic :? record" ==> True
 }

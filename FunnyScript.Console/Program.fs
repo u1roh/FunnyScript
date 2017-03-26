@@ -1,7 +1,10 @@
-﻿// F# の詳細については、http://fsharp.org を参照してください
-// 詳細については、'F# チュートリアル' プロジェクトを参照してください。
+﻿open FunnyScript
 
 [<EntryPoint>]
 let main argv = 
-    printfn "%A" argv
-    0 // 整数の終了コードを返します
+  "fac := n -> n == 0 ? 1 : n * fac (n - 1);" +
+  "do fac 4 |> trace;"
+  |> Script.runScriptStr
+  |> printfn "%A"
+
+  0 // 整数の終了コードを返します
