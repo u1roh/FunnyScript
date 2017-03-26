@@ -26,6 +26,7 @@ let rec eval expr env =
       let ret =
         match x with
         | Record r -> r |> Map.tryFind name
+        | Type { Id = ClrType t } -> t |> CLR.tryGetStaticMethod name
         | _ -> None
       if ret.IsSome then ret else
         env |> Map.tryFind (typeid x |> typeName |> Name)

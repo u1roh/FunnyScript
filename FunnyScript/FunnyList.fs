@@ -142,3 +142,12 @@ module FunnyList =
 
   let init count initializer =
     Array.init count initializer |> ofArray
+
+  let toSeq (list : IFunnyList<_>) =
+    seq {
+      let mutable x = list
+      while not x.IsEmpty do
+        yield x.Head
+        x <- x.Tail
+    }
+    

@@ -56,4 +56,9 @@ let clrTest = test "CLR reflection test" {
   do! "System.Collections :? record" ==> True
   do! "System.Collections.Generic :? record" ==> True
   do! "System.Console :? type" ==> True
+  do! "System.Object.ReferenceEquals :? function" ==> True
+  do! "System.Object.ReferenceEquals [1, 1]" ==> False
+  do! "System.Object.Equals [1, 1]" ==> True
+  do! "zero := System.Math.Sin 3.14; zero < 0.01" ==> True
+  //do! "System.Console.WriteLine \"hello\"" ==> Null
 }
