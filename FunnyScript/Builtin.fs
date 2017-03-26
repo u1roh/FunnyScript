@@ -57,7 +57,7 @@ let private deftype id members =
     |> Map.ofList
   Name (typeName id), Type { Id = id; Members = members }
 
-let load () =
+let load env =
   [ Op Plus,  arith (+) (+)
     Op Minus, arith (-) (-)
     Op Mul,   arith (*) (*)
@@ -90,5 +90,6 @@ let load () =
     deftype TypeType []
 
     Name "List", listModule
-  ] |> List.fold (fun env (id, obj) -> env |> Map.add id obj) (Eval.getRootEnv())
+  ]
+  |> List.fold (fun env (id, obj) -> env |> Map.add id obj) env
 

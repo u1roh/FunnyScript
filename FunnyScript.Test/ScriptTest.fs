@@ -55,4 +55,5 @@ let clrTest = test "CLR reflection test" {
   do! "System :? record" ==> True
   do! "System.Collections :? record" ==> True
   do! "System.Collections.Generic :? record" ==> True
+  do! "System.Console :? type" ==> True
 }

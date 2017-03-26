@@ -1,30 +1,5 @@
 ﻿module FunnyScript.Eval
 
-let rec private namespacesToRecords (namespaces : seq<string list>) =
-  namespaces
-  |> Seq.filter (List.isEmpty >> not)
-  |> Seq.groupBy List.head
-  |> Seq.map (fun (name, items) ->
-    let record =
-      items
-      |> Seq.map List.tail
-      |> Seq.distinct
-      |> namespacesToRecords
-      |> Map.ofSeq
-      |> Record
-    name, record)
-
-let getRootEnv () =
-  let asm = typeof<System.Object>.Assembly
-  asm.GetTypes()
-  |> Seq.map (fun t -> t.Namespace)
-  |> Seq.filter ((<>) null)
-  |> Seq.distinct
-  |> Seq.map (fun ns -> ns.Split '.' |> Array.toList)
-  |> namespacesToRecords
-  |> Seq.fold (fun env (name, record) -> env |> Map.add (Name name) record) Map.empty
-
-
 let rec force obj =
   match obj with
   | Lazy x -> x.Force() |> Option.bind force

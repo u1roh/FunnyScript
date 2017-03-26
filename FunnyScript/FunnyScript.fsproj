@@ -60,6 +60,7 @@
     <Compile Include="FunnyList.fs" />
     <Compile Include="AST.fs" />
     <Compile Include="Parser.fs" />
+    <Compile Include="CLR.fs" />
     <Compile Include="Eval.fs" />
     <Compile Include="Builtin.fs" />
     <Compile Include="Script.fs" />

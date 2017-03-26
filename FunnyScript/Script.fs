@@ -1,10 +1,17 @@
 ﻿module FunnyScript.Script
 
 let eval expr =
-  Builtin.load() |> Eval.eval expr |> Option.bind Eval.force
+  Map.empty
+  |> CLR.loadSystemAssembly
+  |> Builtin.load
+  |> Eval.eval expr
+  |> Option.bind Eval.force
 
 let evalCps expr =
-  Builtin.load() |> Eval.evalCps expr
+  Map.empty
+  |> CLR.loadSystemAssembly
+  |> Builtin.load
+  |> Eval.evalCps expr
 
 let runScriptStr src =
   let expr = Parser.parse src
