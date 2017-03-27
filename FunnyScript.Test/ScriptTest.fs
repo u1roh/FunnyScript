@@ -60,5 +60,7 @@ let clrTest = test "CLR reflection test" {
   do! "System.Object.ReferenceEquals [1, 1]" ==> False
   do! "System.Object.Equals [1, 1]" ==> True
   do! "zero := System.Math.Sin 3.14; zero < 0.01" ==> True
-  //do! "System.Console.WriteLine \"hello\"" ==> Null
+  do! "System.Math.Abs -1" ==> Int 1
+  do! "System.Math.Abs -1.0" ==> Float 1.0
+  do! "System.Console.WriteLine \"CLR reflection test : Hello, System.Console.WriteLine\"" ==> Null
 }
