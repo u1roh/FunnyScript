@@ -51,7 +51,7 @@ and Expr =
   | If of condition:Expr * thenExpr:Expr * elseExpr:Expr
 
 and FuncDef = {
-    Arg  : string
+    Args : string list
     Body : Expr
   }
 

@@ -13,34 +13,36 @@ let pLiteralNumber : Parser =
     NumberLiteralOptions.AllowPlusSign |||
     NumberLiteralOptions.AllowFraction |||
     NumberLiteralOptions.AllowExponent
-  numberLiteral numfmt "number"
+  numberLiteral numfmt "number" .>> spaces
   |>> (fun x -> (if x.IsInteger then Int (int32 x.String) else Float (float x.String)) |> Obj)
 
 let pLiteralString : Parser =
-  between (pstring "\"") (pstring "\"") (manyChars (noneOf "\"")) |>> (Str >> Obj)
+  between (pstring "\"") (pstring "\"") (manyChars (noneOf "\"")) .>> spaces |>> (Str >> Obj)
 
 let pIdentifier =
-  regex "[a-zA-Z_][0-9a-zA-Z_]*"
+  regex "[a-zA-Z_][0-9a-zA-Z_]*" .>> spaces
 
 let pAtom =
   choice [
-    skipString "true"  |>> (fun () -> Obj True)
-    skipString "false" |>> (fun () -> Obj False)
+    skipString "true"  .>> spaces |>> (fun () -> Obj True)
+    skipString "false" .>> spaces |>> (fun () -> Obj False)
     pLiteralNumber
     pLiteralString
     pIdentifier |>> Ref
-  ] .>> spaces
+  ]
 
 
 let pExpr =
   let pExpr, pExprRef = createParserForwardedToRef<Expr, unit>()
   let str_ws  s = skipString s >>. spaces
   let char_ws c = skipChar   c >>. spaces
+  let between_ws c1 c2 p = between (char_ws c1) (char_ws c2) p
+  let sepByComma p = sepBy p (char_ws ',')
 
 //  let pLetPhrase =
-//    str_ws "let" >>. pIdentifier .>> spaces .>> char_ws '=' .>>. pExpr .>> char_ws ';'
+//    str_ws "let" >>. pIdentifier .>> char_ws '=' .>>. pExpr .>> char_ws ';'
   let pLetPhrase =
-    pIdentifier .>> spaces .>> str_ws ":=" .>>. pExpr .>> char_ws ';'
+    pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';'
   let pLet =
     pLetPhrase .>>. pExpr
     |>> (fun ((name, expr1), expr2) -> Let (name, expr1, expr2))
@@ -48,16 +50,20 @@ let pExpr =
     str_ws "do" >>. pExpr .>> char_ws ';' .>>. opt pExpr
     |>> (fun (expr1, expr2) -> match expr2 with Some expr2 -> Combine (expr1, expr2) | _ -> expr1)
   let pLambda =
-    pIdentifier .>> spaces .>> str_ws "->" .>>. pExpr
-    |>> (fun (arg, body) -> FuncDef { Arg = arg; Body = body })
+    choice [
+      pIdentifier |>> (fun x -> [x])
+      between_ws '(' ')' (sepByComma pIdentifier)
+    ]
+    .>> str_ws "->" .>>. pExpr
+    |>> (fun (args, body) -> FuncDef { Args = args; Body = body })
   let pRecord =
-    between (str_ws "{") (str_ws "}") (many pLetPhrase)
+    between_ws '{' '}' (many pLetPhrase)
     |>> NewRecord
   let pList =
-    between (str_ws "[") (str_ws "]") (sepBy pExpr (char_ws ','))
+    between_ws '[' ']' (sepByComma pExpr)
     |>> (List.toArray >> NewList)
   let pTuple =
-    between (str_ws "(") (str_ws ")") (sepBy pExpr (char_ws ','))
+    between_ws '(' ')' (sepByComma pExpr)
     |>> function
       | [] -> Obj Null
       | [expr] -> expr
@@ -67,7 +73,7 @@ let pExpr =
   opp.TermParser <-
     let pTerm =
       choice [ pAtom; pList; pTuple; pRecord ]
-      .>>. many (char_ws '.' >>. pIdentifier .>> spaces)
+      .>>. many (char_ws '.' >>. pIdentifier)
       |>> fun (expr, mems) -> (expr, mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
     let apply terms = (List.head terms, List.tail terms) ||> List.fold (fun f arg -> Apply (f, arg))
     many1 pTerm |>> apply

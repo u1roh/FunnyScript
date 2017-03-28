@@ -5,10 +5,22 @@ let rec force obj =
   | Lazy x -> x.Force() |> Option.bind force
   | _ -> Some obj
 
+let private addTupleToEnv names obj env =
+  match names with
+  | []     -> env
+  | [name] -> env |> Map.add (Name name) obj
+  | _ ->
+    match obj with
+    | List items ->
+      names
+      |> List.mapi (fun i name -> Name name, items.[i])
+      |> List.fold (fun env (name, obj) -> env |> Map.add name obj) env
+    | _ -> env
+
 let private apply_ eval f arg =
   match f with
   | Func (BuiltinFunc f) -> f.Apply arg
-  | Func (UserFunc f) -> lazy (f.Env |> Map.add (Name f.Def.Arg) arg |> eval f.Def.Body) |> Lazy |> Some
+  | Func (UserFunc f) -> lazy (f.Env |> addTupleToEnv f.Def.Args arg |> eval f.Def.Body) |> Lazy |> Some
   | List list -> match arg with Int i -> Some list.[i] | _ -> None
   | _ -> None
 
@@ -76,7 +88,7 @@ let rec evalCps expr env cont =
   let apply f arg cont =
     match f with
     | Func (BuiltinFunc f) -> f.Apply arg |> Option.iter cont
-    | Func (UserFunc f) -> let env = f.Env |> Map.add (Name f.Def.Arg) arg in evalCps f.Def.Body env cont
+    | Func (UserFunc f) -> let env = f.Env |> addTupleToEnv f.Def.Args arg in evalCps f.Def.Body env cont
     | _ -> ()
   match expr with
   | Obj x -> cont x

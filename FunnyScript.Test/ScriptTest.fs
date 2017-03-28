@@ -29,6 +29,8 @@ let testScript = test "scripting test" {
   do! "r := { f := n -> n * 2; g := n -> f (n + 1); }; (r.g 2)" ==> Int 6
   do! "f := x -> y -> x + y; 10 |> f 5" ==> Int 15
   do! "a := { b := 1; c := { d := 2; e := 3; }; }; a.c.e" ==> Int 3
+  do! "f := () -> 123; f()" ==> Int 123
+  do! "f := (a, b, c) -> a + b + c; f (1, 2, 3)" ==> Int 6
 }
 
 let typeTest = test "type test" {
