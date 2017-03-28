@@ -56,11 +56,17 @@ let pExpr =
   let pList =
     between (str_ws "[") (str_ws "]") (sepBy pExpr (char_ws ','))
     |>> (List.toArray >> NewList)
+  let pTuple =
+    between (str_ws "(") (str_ws ")") (sepBy pExpr (char_ws ','))
+    |>> function
+      | [] -> Obj Null
+      | [expr] -> expr
+      | tuple  -> tuple |> List.toArray |> NewList
 
   let opp = new OperatorPrecedenceParser<Expr,unit,unit>()
   opp.TermParser <-
     let pTerm =
-      choice [ pAtom; pList; pRecord; between (str_ws "(") (str_ws ")") pExpr ]
+      choice [ pAtom; pList; pTuple; pRecord ]
       .>>. many (char_ws '.' >>. pIdentifier .>> spaces)
       |>> fun (expr, mems) -> (expr, mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
     let apply terms = (List.head terms, List.tail terms) ||> List.fold (fun f arg -> Apply (f, arg))

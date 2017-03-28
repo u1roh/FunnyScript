@@ -49,6 +49,9 @@ let listTest = test "list test" {
   do! "[3, 4, 5].length" ==> Int 3
   do! "a := [1, 3, 5]; b := 10; b :: a" ==> ofList [Int 10; Int 1; Int 3; Int 5]
   do! "a := [1, 3, 5]; b := 10; (b :: a).length" ==> Int 4
+  do! "()" ==> Null
+  do! "(10)" ==> Int 10
+  do! "(10, 20, 30)" ==> ofList [Int 10; Int 20; Int 30]
 }
 
 let clrTest = test "CLR reflection test" {
@@ -58,7 +61,9 @@ let clrTest = test "CLR reflection test" {
   do! "System.Console :? type" ==> True
   do! "System.Object.ReferenceEquals :? function" ==> True
   do! "System.Object.ReferenceEquals [1, 1]" ==> False
+  do! "System.Object.ReferenceEquals (1, 1)" ==> False
   do! "System.Object.Equals [1, 1]" ==> True
+  do! "System.Object.Equals (1, 1)" ==> True
   do! "zero := System.Math.Sin 3.14; zero < 0.01" ==> True
   do! "System.Math.Abs -1" ==> Int 1
   do! "System.Math.Abs -1.0" ==> Float 1.0
