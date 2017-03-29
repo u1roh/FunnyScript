@@ -36,7 +36,7 @@ let rec ofFunnyObj obj =
   | Str s   -> s :> _
   | Record r -> r :> _
   | Func f  -> f :> _
-  | List ls -> ls |> FunnyList.toSeq |> Seq.map ofFunnyObj :> _
+  | List ls -> ls |> FunnyList.toSeq |> Seq.map ofFunnyObj |> Seq.toArray :> _
   | ClrObj x -> x
   | Type { Id = t } ->
     match t with
@@ -68,20 +68,6 @@ let toFunnyObj (obj : obj) =
 
 let private builtinFunc f = BuiltinFunc { new IBuiltinFunc with member __.Apply a = f a }
 let private toFunc1 f = Func (builtinFunc f)
-let private toFunc2 f = toFunc1 (f >> toFunc1 >> Some)
-
-//let invoke f args =
-//  let args =
-//    match args with
-//    | Null -> [||]
-//    | List args -> args |> FunnyList.toSeq |> Seq.map ofFunnyObj |> Seq.toArray
-//    | _ -> [| ofFunnyObj args |]
-//  f args |> toFunnyObj
-//
-//let methodToFunnyObj (m : MethodInfo) =
-//  if m.IsStatic
-//    then toFunc1 (invoke (fun args -> m.Invoke (null, args)) >> Some)
-//    else toFunc2 (fun self args -> args |> invoke (fun args -> m.Invoke (ofFunnyObj self, args)) |> Some)
 
 type private Method = {
     Invoke : obj[] -> obj
@@ -99,12 +85,14 @@ let private invokeMethod (overloadMethods : Method[]) args =
     let invoke args = m.Invoke args |> toFunnyObj |> Some
     if m.Params.Length = 1 && m.Params.[0].ParameterType = typeof<Obj> then invoke [|args|] else
     match args with
-    | Null when m.Params.Length = 0 -> invoke [||]
-    | List args when args.Length = Definite m.Params.Length ->
-      let args = args |> FunnyList.toSeq |> Seq.map ofFunnyObj |> Seq.toArray
-      if args |> Array.mapi (fun i arg -> m.Params.[i].ParameterType.IsAssignableFrom (arg.GetType())) |> Array.forall id
-        then invoke args
-        else None
+    | Null -> if m.Params.Length = 0 then invoke [||] else None
+    | List args ->
+      if args.Length = Definite m.Params.Length then
+        let args = args |> FunnyList.toSeq |> Seq.map ofFunnyObj |> Seq.toArray
+        if args |> Array.mapi (fun i arg -> m.Params.[i].ParameterType.IsAssignableFrom (arg.GetType())) |> Array.forall id
+          then invoke args
+          else None
+      else None
     | _ when m.Params.Length = 1 ->
       let a = ofFunnyObj args
       if m.Params.[0].ParameterType.IsAssignableFrom (a.GetType())

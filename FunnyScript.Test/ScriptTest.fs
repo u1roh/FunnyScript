@@ -69,8 +69,10 @@ let clrTest = test "CLR reflection test" {
   do! "zero := System.Math.Sin 3.14; zero < 0.01" ==> True
   do! "System.Math.Abs -1" ==> Int 1
   do! "System.Math.Abs -1.0" ==> Float 1.0
-  do! "System.Console.WriteLine \"CLR reflection test : Hello, System.Console.WriteLine\"" ==> Null
+  do! "System.Console.WriteLine \"[test] Hello, System.Console.WriteLine\"" ==> Null
+  do! "System.Console.WriteLine (\"[test] int = {0}, float = {1}\", 123, 3.14)" ==> Null
   do! "s := Stack(); do s.Push 123; s.Peek ()" ==> Int 123
   do! "s := Stack(); do s.Push 123; s.Count" ==> Int 1
   do! "s := System.Collections.Stack.new(); s.Count" ==> Int 0
+  do! "System.String.Format (\"int val = {0}\", 987)" ==> Str "int val = 987"
 }
