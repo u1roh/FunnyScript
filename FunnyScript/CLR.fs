@@ -102,16 +102,21 @@ let private invokeMethod (overloadMethods : MethodInfo[]) (self : obj) args =
         else None
     | _ -> None)
 
-let private tryGetMethod name self (t : Type) =
-  let methods =
-    t.GetMethods (BindingFlags.Public ||| (if Option.isNone self then BindingFlags.Static else BindingFlags.Instance))
+let private tryGetMember name self (t : Type) =
+  let members =
+    t.GetMembers (BindingFlags.Public ||| (if Option.isNone self then BindingFlags.Static else BindingFlags.Instance))
     |> Array.filter (fun m -> m.Name = name)
-  if methods.Length = 0
-    then None
-    else Some <| toFunc1 (invokeMethod methods (Option.toObj self))
+  if members.Length = 0 then None else
+    members |> Array.tryPick (function
+      | :? PropertyInfo as x -> x.GetValue (Option.toObj self) |> toFunnyObj |> Some
+      | :? FieldInfo    as x -> x.GetValue (Option.toObj self) |> toFunnyObj |> Some
+      | _ -> None)
+    |> Option.orElseWith (fun () ->
+      let methods = members |> Array.choose (function :? MethodInfo as x -> Some x | _ -> None)
+      if methods.Length = 0 then None else Some <| toFunc1 (invokeMethod methods (Option.toObj self)))
 
-let tryGetStaticMethod name t =
-  tryGetMethod name None t
+let tryGetStaticMember name t =
+  tryGetMember name None t
 
-let tryGetInstanceMethod name self =
-  tryGetMethod name (Some self) (self.GetType())
+let tryGetInstanceMember name self =
+  tryGetMember name (Some self) (self.GetType())
