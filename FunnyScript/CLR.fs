@@ -83,21 +83,31 @@ let private toFunc2 f = toFunc1 (f >> toFunc1 >> Some)
 //    then toFunc1 (invoke (fun args -> m.Invoke (null, args)) >> Some)
 //    else toFunc2 (fun self args -> args |> invoke (fun args -> m.Invoke (ofFunnyObj self, args)) |> Some)
 
-let private invokeMethod (overloadMethods : MethodInfo[]) (self : obj) args =
+type private Method = {
+    Invoke : obj[] -> obj
+    Params : ParameterInfo[]
+  } with
+  static member OfMethod (m : MethodInfo, self) =
+    { Invoke = fun args -> m.Invoke (self, args)
+      Params = m.GetParameters() }
+  static member OfConstructor (c : ConstructorInfo) =
+    { Invoke = fun args -> c.Invoke args
+      Params = c.GetParameters() }
+
+let private invokeMethod (overloadMethods : Method[]) args =
   overloadMethods |> Array.tryPick (fun m ->
-    let invoke args = m.Invoke (self, args) |> toFunnyObj |> Some
-    let prms = m.GetParameters()
-    if prms.Length = 1 && prms.[0].ParameterType = typeof<Obj> then invoke [|args|] else
+    let invoke args = m.Invoke args |> toFunnyObj |> Some
+    if m.Params.Length = 1 && m.Params.[0].ParameterType = typeof<Obj> then invoke [|args|] else
     match args with
-    | Null when prms.Length = 0 -> invoke [||]
-    | List args when args.Length = Definite prms.Length ->
+    | Null when m.Params.Length = 0 -> invoke [||]
+    | List args when args.Length = Definite m.Params.Length ->
       let args = args |> FunnyList.toSeq |> Seq.map ofFunnyObj |> Seq.toArray
-      if args |> Array.mapi (fun i arg -> prms.[i].ParameterType.IsAssignableFrom (arg.GetType())) |> Array.forall id
+      if args |> Array.mapi (fun i arg -> m.Params.[i].ParameterType.IsAssignableFrom (arg.GetType())) |> Array.forall id
         then invoke args
         else None
-    | _ when prms.Length = 1 ->
+    | _ when m.Params.Length = 1 ->
       let a = ofFunnyObj args
-      if prms.[0].ParameterType.IsAssignableFrom (a.GetType())
+      if m.Params.[0].ParameterType.IsAssignableFrom (a.GetType())
         then invoke [| a |]
         else None
     | _ -> None)
@@ -112,11 +122,21 @@ let private tryGetMember name self (t : Type) =
       | :? FieldInfo    as x -> x.GetValue (Option.toObj self) |> toFunnyObj |> Some
       | _ -> None)
     |> Option.orElseWith (fun () ->
-      let methods = members |> Array.choose (function :? MethodInfo as x -> Some x | _ -> None)
-      if methods.Length = 0 then None else Some <| toFunc1 (invokeMethod methods (Option.toObj self)))
+      members
+      |> Array.choose (function :? MethodInfo as x -> Method.OfMethod (x, Option.toObj self) |> Some | _ -> None)
+      |> function
+        | [||]    -> None
+        | methods -> Some <| toFunc1 (invokeMethod methods))
+
+let private tryGetConstructor (t : Type) =
+  t.GetConstructors() |> Array.map Method.OfConstructor |> function
+    | [||]  -> None
+    | ctors -> Some <| toFunc1 (invokeMethod ctors)
 
 let tryGetStaticMember name t =
-  tryGetMember name None t
+  if name = "new"
+    then tryGetConstructor t
+    else tryGetMember name None t
 
 let tryGetInstanceMember name self =
   tryGetMember name (Some self) (self.GetType())
