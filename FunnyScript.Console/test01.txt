@@ -1,0 +1,22 @@
+﻿fac := n -> n == 0 ? 1 : n * fac (n - 1);
+do fac 4 |> trace;
+do fac 5 |> trace;
+
+f := a -> b -> a + 2 * (b + 4);
+do f 1 2 |> trace;
+
+fac := n -> n == 0 ? 1 : (m := n; m * fac (n - 1));
+do fac 3 |> trace;
+
+iter := f -> ls -> f ls.head;
+do [1, 2] |> iter trace;
+
+iter := f -> ls ->
+	ls.isEmpty ? () : (do f ls.head; iter f ls.tail);
+do [1, 2] |> iter trace;
+do iter trace [3, 1, 5, 2];
+
+s := System.Console.ReadLine();
+do System.Console.WriteLine s;
+
+trace "end"
