@@ -74,5 +74,5 @@ let clrTest = test "CLR reflection test" {
   do! "s := Stack(); do s.Push 123; s.Peek ()" ==> Int 123
   do! "s := Stack(); do s.Push 123; s.Count" ==> Int 1
   do! "s := System.Collections.Stack.new(); s.Count" ==> Int 0
-  do! "System.String.Format (\"int val = {0}\", 987)" ==> Str "int val = 987"
+  do! "System.String.Format (\"int val = {0}\", 987)" ==> ClrObj "int val = 987"
 }

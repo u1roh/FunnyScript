@@ -42,8 +42,8 @@ let testAST = test "FunnyScript AST test" {
     If (Obj False, Obj (Int 1), Obj (Int 0))
     |> Script.eval |> assertEquals (Some (Int 0))
   do!
-    If (BinaryOp (Equal, Obj (Int 3), a1), Obj (Str "equal"), Obj (Str "not equal"))
-    |> Script.eval |> assertEquals (Some (Str "equal"))
+    If (BinaryOp (Equal, Obj (Int 3), a1), Obj (ClrObj "equal"), Obj (ClrObj "not equal"))
+    |> Script.eval |> assertEquals (Some (ClrObj "equal"))
   do!
     Let ("a", Obj (Int 10),
       Combine (

@@ -80,7 +80,6 @@ let load env =
     deftype BoolType   []
     deftype IntType    []
     deftype FloatType  []
-    deftype StrType    []
     deftype RecordType []
     deftype FuncType   []
     deftype ListType [

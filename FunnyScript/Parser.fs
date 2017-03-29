@@ -17,7 +17,7 @@ let pLiteralNumber : Parser =
   |>> (fun x -> (if x.IsInteger then Int (int32 x.String) else Float (float x.String)) |> Obj)
 
 let pLiteralString : Parser =
-  between (pstring "\"") (pstring "\"") (manyChars (noneOf "\"")) .>> spaces |>> (Str >> Obj)
+  between (pstring "\"") (pstring "\"") (manyChars (noneOf "\"")) .>> spaces |>> (box >> ClrObj >> Obj)
 
 let pIdentifier =
   regex "[a-zA-Z_][0-9a-zA-Z_]*" .>> spaces

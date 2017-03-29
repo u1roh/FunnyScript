@@ -33,7 +33,6 @@ let rec ofFunnyObj obj =
   | False   -> box false
   | Int i   -> box i
   | Float x -> box x
-  | Str s   -> s :> _
   | Record r -> r :> _
   | Func f  -> f :> _
   | List ls -> ls |> FunnyList.toSeq |> Seq.map ofFunnyObj |> Seq.toArray :> _
@@ -44,7 +43,6 @@ let rec ofFunnyObj obj =
     | BoolType  -> typeof<bool> :> _
     | IntType   -> typeof<int> :> _
     | FloatType -> typeof<float> :> _
-    | StrType   -> typeof<string> :> _
     | RecordType  -> null
     | FuncType  -> null
     | ListType  -> typeof<list<obj>> :> _
@@ -62,7 +60,6 @@ let toFunnyObj (obj : obj) =
   | :? bool   as x -> if x then True else False
   | :? int    as x -> Int x
   | :? float  as x -> Float x
-  | :? string as x -> Str x
   | _ -> ClrObj obj
 
 
@@ -83,7 +80,6 @@ type private Method = {
 let private invokeMethod (overloadMethods : Method[]) args =
   overloadMethods |> Array.tryPick (fun m ->
     let invoke args = m.Invoke args |> toFunnyObj |> Some
-    if m.Params.Length = 1 && m.Params.[0].ParameterType = typeof<Obj> then invoke [|args|] else
     match args with
     | Null -> if m.Params.Length = 0 then invoke [||] else None
     | List args ->

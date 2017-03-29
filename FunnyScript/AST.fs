@@ -28,7 +28,6 @@ and Obj =
   | False
   | Int     of int
   | Float   of float
-  | Str     of string
   | Record  of Map<string, Obj>
   | Func    of Func
   | List    of IFunnyList<Obj>
@@ -72,7 +71,6 @@ and TypeId =
   | BoolType
   | IntType
   | FloatType
-  | StrType
   | RecordType
   | FuncType
   | ListType
@@ -92,7 +90,6 @@ let typeid obj =
   | True | False -> BoolType
   | Int     _ -> IntType
   | Float   _ -> FloatType
-  | Str     _ -> StrType
   | Record  _ -> RecordType
   | Func    _ -> FuncType
   | List    _ -> ListType
@@ -106,7 +103,6 @@ let typeName id =
   | BoolType    -> "bool"
   | IntType     -> "int"
   | FloatType   -> "float"
-  | StrType     -> "string"
   | RecordType  -> "record"
   | FuncType    -> "function"
   | ListType    -> "list"
