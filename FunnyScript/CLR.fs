@@ -58,6 +58,7 @@ let rec ofFunnyObj obj =
 let toFunnyObj (obj : obj) =
   match obj with
   | null -> Null
+  | :? Obj    as x -> x
   | :? bool   as x -> if x then True else False
   | :? int    as x -> Int x
   | :? float  as x -> Float x
@@ -82,36 +83,35 @@ let private toFunc2 f = toFunc1 (f >> toFunc1 >> Some)
 //    then toFunc1 (invoke (fun args -> m.Invoke (null, args)) >> Some)
 //    else toFunc2 (fun self args -> args |> invoke (fun args -> m.Invoke (ofFunnyObj self, args)) |> Some)
 
-let private invokeMethod (overloadMethods : MethodInfo[]) self args =
-    overloadMethods |> Array.tryPick (fun m ->
-      let invoke args = m.Invoke (self, args) |> toFunnyObj |> Some
-      let prms = m.GetParameters()
-      match args with
-      | Null when prms.Length = 0 -> invoke [||]
-      | List args when args.Length = Definite prms.Length ->
-        let args = args |> FunnyList.toSeq |> Seq.map ofFunnyObj |> Seq.toArray
-        if args |> Array.mapi (fun i arg -> prms.[i].ParameterType.IsAssignableFrom (arg.GetType())) |> Array.forall id
-          then invoke args
-          else None
-      | _ when prms.Length = 1 ->
-        let a = ofFunnyObj args
-        if prms.[0].ParameterType.IsAssignableFrom (a.GetType())
-          then invoke [| a |]
-          else None
-      | _ -> None)
+let private invokeMethod (overloadMethods : MethodInfo[]) (self : obj) args =
+  overloadMethods |> Array.tryPick (fun m ->
+    let invoke args = m.Invoke (self, args) |> toFunnyObj |> Some
+    let prms = m.GetParameters()
+    if prms.Length = 1 && prms.[0].ParameterType = typeof<Obj> then invoke [|args|] else
+    match args with
+    | Null when prms.Length = 0 -> invoke [||]
+    | List args when args.Length = Definite prms.Length ->
+      let args = args |> FunnyList.toSeq |> Seq.map ofFunnyObj |> Seq.toArray
+      if args |> Array.mapi (fun i arg -> prms.[i].ParameterType.IsAssignableFrom (arg.GetType())) |> Array.forall id
+        then invoke args
+        else None
+    | _ when prms.Length = 1 ->
+      let a = ofFunnyObj args
+      if prms.[0].ParameterType.IsAssignableFrom (a.GetType())
+        then invoke [| a |]
+        else None
+    | _ -> None)
 
-let private methodsToFunnyObj isStatic (m : MethodInfo[]) =
-  if isStatic
-    then toFunc1 (invokeMethod m null)
-    else toFunc2 (invokeMethod m)
-
-let tryGetStaticMethod name (t : Type) =
+let private tryGetMethod name self (t : Type) =
   let methods =
-    t.GetMethods (BindingFlags.Static ||| BindingFlags.Public)
+    t.GetMethods (BindingFlags.Public ||| (if Option.isNone self then BindingFlags.Static else BindingFlags.Instance))
     |> Array.filter (fun m -> m.Name = name)
   if methods.Length = 0
     then None
-    else Some <| methodsToFunnyObj true methods
+    else Some <| toFunc1 (invokeMethod methods (Option.toObj self))
 
-//  let m = t.GetMethod (name, BindingFlags.Static ||| BindingFlags.Public)
-//  if m = null then None else methodToFunnyObj m |> Some
+let tryGetStaticMethod name t =
+  tryGetMethod name None t
+
+let tryGetInstanceMethod name self =
+  tryGetMethod name (Some self) (self.GetType())

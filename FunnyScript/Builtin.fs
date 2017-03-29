@@ -1,6 +1,8 @@
 ﻿module FunnyScript.Builtin
+open System.Collections
 
 let private builtinFunc f = BuiltinFunc { new IBuiltinFunc with member __.Apply a = f a }
+let private toFunc0 f = Func (builtinFunc (fun _ -> f()))
 let private toFunc1 f = Func (builtinFunc f)
 let private toFunc2 f = toFunc1 (f >> toFunc1 >> Some)
 let private toFunc3 f = toFunc1 (f >> toFunc2 >> Some)
@@ -69,7 +71,7 @@ let load env =
     Op Greater,   compare (>)  (>)
     Op GreaterEq, compare (>=) (>=)
     Op Is,   toFunc2 (fun o t  -> match t  with Type t  -> Some (if t.Id = typeid o then True else False) | _ -> None)
-    Op Cons, toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> List |> Some | _ -> None)
+    Op Cons, toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> AST.List |> Some | _ -> None)
 
     Name "trace", toFunc1 trace
     Name "sin", toFunc1 sin
@@ -90,6 +92,8 @@ let load env =
     deftype TypeType []
 
     Name "List", listModule
+
+    Name "Stack", toFunc0 (fun () -> Stack() :> obj |> ClrObj |> Some)
   ]
   |> List.fold (fun env (id, obj) -> env |> Map.add id obj) env
 
