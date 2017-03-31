@@ -20,11 +20,10 @@ let testScript = test "scripting test" {
   do! "a := 1 + 2; b := 3 + 4; a * b" ==> (Int 21)
   do! "f := a -> a + 1; f 2" ==> (Int 3)
   do! "f := a -> b -> a * b; f 3 4" ==> (Int 12)
-  do! "true ? 1 : 2" ==> (Int 1)
-  do! "a := 5; a < 6 ? 1 : 2" ==> (Int 1)
-  do! "a := 5; ? a < 6 => 1 | 2" ==> (Int 1)
+  do! "? true => 1 | 2" ==> (Int 1)
+  do! "a := 5;  ? a < 6 => 1 | 2" ==> (Int 1)
   do! "a := 5; |? a < 4 => 1 | 2" ==> (Int 2)
-  do! "fac := n -> n == 0 ? 1 : n * fac (n - 1); fac 4" ==> Int 24
+  do! "fac := n -> ? n == 0 => 1 | n * fac (n - 1); fac 4" ==> Int 24
   do! "r := { a := 10; b := 2 + 3; }; r.b" ==> Int 5
   do! "{ a := 10; b := 2 + 3; }.b" ==> Int 5
   do! "r := { f := n -> n * 2; }; r.f 2" ==> Int 4
