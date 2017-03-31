@@ -39,13 +39,11 @@ let pExpr =
   let between_ws c1 c2 p = between (char_ws c1) (char_ws c2) p
   let sepByComma p = sepBy p (char_ws ',')
 
-//  let pLetPhrase =
-//    str_ws "let" >>. pIdentifier .>> char_ws '=' .>>. pExpr .>> char_ws ';'
-  let pLetPhrase =
-    pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';'
   let pLet =
-    pLetPhrase .>>. pExpr
-    |>> (fun ((name, expr1), expr2) -> Let (name, expr1, expr2))
+    opt pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';' .>>. pExpr
+    |>> function
+      | ((Some name, expr1), expr2) -> Let (name, expr1, expr2)
+      | ((_, expr1), expr2)         -> Combine (expr1, expr2)
   let pDo =
     str_ws "do" >>. pExpr .>> char_ws ';' .>>. opt pExpr
     |>> (fun (expr1, expr2) -> match expr2 with Some expr2 -> Combine (expr1, expr2) | _ -> expr1)
@@ -57,7 +55,7 @@ let pExpr =
     .>> str_ws "->" .>>. pExpr
     |>> (fun (args, body) -> FuncDef { Args = args; Body = body })
   let pRecord =
-    between_ws '{' '}' (many pLetPhrase)
+    between_ws '{' '}' (many (pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';'))
     |>> NewRecord
   let pList =
     between_ws '[' ']' (sepByComma pExpr)
