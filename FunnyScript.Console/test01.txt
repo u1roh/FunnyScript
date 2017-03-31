@@ -14,12 +14,23 @@ iter := f -> ls -> f ls.head;
 iter := f -> ls ->
 	ls.isEmpty ? () : (do f ls.head; iter f ls.tail);
 
-//iter := f -> ls ->
-//	|? ls.isEmpty => () 
-//	|  := f ls.head; iter f ls.tail;
+iter2 := f -> ls ->
+	|? ls.isEmpty => () 
+	|  := f ls.head; iter2 f ls.tail;
 
 := [1, 2] |> iter trace;
 := iter trace [3, 1, 5, 2];
+
+:= [9, 8, 7, 6] |> iter trace;
+
+g := x ->
+	|? x < 0 => "negative"
+	|? x > 0 => "positive"
+	| "zero";
+
+:= g -13 |> trace;
+:= g 100 |> trace;
+:= g 0   |> trace;
 
 s := System.Console.ReadLine();
 do System.Console.WriteLine s;

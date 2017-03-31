@@ -47,6 +47,9 @@ let pExpr =
   let pDo =
     str_ws "do" >>. pExpr .>> char_ws ';' .>>. opt pExpr
     |>> (fun (expr1, expr2) -> match expr2 with Some expr2 -> Combine (expr1, expr2) | _ -> expr1)
+  let pIf =
+    (opt (char_ws '|') .>> char_ws '?') >>. pExpr .>> str_ws "=>" .>>. pExpr .>> char_ws '|' .>>. pExpr
+    |>> fun ((cond, expr1), expr2) -> If (cond, expr1, expr2)
   let pLambda =
     choice [
       pIdentifier |>> (fun x -> [x])
@@ -96,6 +99,7 @@ let pExpr =
   pExprRef :=
     choice [
       pDo
+      pIf
       attempt pLet
       attempt pLambda
       opp.ExpressionParser
