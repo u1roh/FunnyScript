@@ -22,6 +22,17 @@ type ID =
 
 type Env = Map<ID, Obj>
 
+and Error =
+  | IdentifierNotFound of ID
+  | NotApplyable of f:Obj * arg:Obj
+  | TypeMismatch of expected:TypeId * actual:TypeId
+  | NotImplemented of string
+  | MiscError of string
+  | ExnError of exn
+  | ErrorList of Error list
+
+and Result = Result<Obj, Error>
+
 and Obj =
   | Null
   | True
@@ -33,7 +44,7 @@ and Obj =
   | List    of IFunnyList<Obj>
   | ClrObj  of obj
   | Type    of Type
-  | Lazy    of Lazy<Obj option> // for tail-recursion
+  | Lazy    of Lazy<Result> // for tail-recursion
 
 and Expr =
   | Obj of Obj
@@ -55,7 +66,7 @@ and FuncDef = {
   }
 
 and IBuiltinFunc =
-  abstract Apply : Obj -> Obj option
+  abstract Apply : Obj -> Result
 
 and UserFunc = {
     Def : FuncDef

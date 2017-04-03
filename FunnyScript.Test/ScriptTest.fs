@@ -12,7 +12,7 @@ open FunnyScript
 let (==>) script expected =
   script
   |> Script.runScriptStr
-  |> assertEquals (Some expected)
+  |> assertEquals (Ok expected)
 
 
 let testScript = test "scripting test" {

@@ -5,6 +5,12 @@ open FParsec.Primitives
 open FParsec.CharParsers
 open FParsec.Error
 
+type Error =
+  | MiscError of string
+  | ExnError  of exn
+
+type Result<'a> = Result<'a, Error>
+
 type Parser = Parser<Expr, unit>
 
 let pLiteralNumber : Parser =

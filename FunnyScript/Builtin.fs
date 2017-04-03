@@ -4,8 +4,8 @@ open System.Collections
 let private builtinFunc f = BuiltinFunc { new IBuiltinFunc with member __.Apply a = f a }
 let private toFunc0 f = Func (builtinFunc (fun _ -> f()))
 let private toFunc1 f = Func (builtinFunc f)
-let private toFunc2 f = toFunc1 (f >> toFunc1 >> Some)
-let private toFunc3 f = toFunc1 (f >> toFunc2 >> Some)
+let private toFunc2 f = toFunc1 (f >> toFunc1 >> Ok)
+let private toFunc3 f = toFunc1 (f >> toFunc2 >> Ok)
 
 let private tryToFloat obj =
   match obj with
@@ -16,11 +16,12 @@ let private tryToFloat obj =
 let private numOp intf floatf =
   let f x y =
     match x, y with
-    | Int x, Int y -> intf x y |> Some
+    | Int x, Int y -> intf x y |> Ok
     | _ ->
       match tryToFloat x, tryToFloat y with
-      | Some x, Some y -> floatf x y |> Some
-      | _ -> None
+      | Some x, Some y -> floatf x y |> Ok
+      | None, _ -> Error (TypeMismatch (FloatType, typeid x))
+      | _, None -> Error (TypeMismatch (FloatType, typeid y))
   toFunc2 f
 
 let private arith intf floatf =
@@ -33,21 +34,24 @@ let private compare intf floatf =
 
 let private sin x =
   match x with
-  | Float x -> Float (sin x) |> Some
-  | _ -> None
+  | Float x -> Float (sin x) |> Ok
+  | _ -> TypeMismatch (FloatType, typeid x) |> Error
 
 let private trace arg =
-  printfn "%A" arg; Some Null
+  printfn "%A" arg; Ok Null
 
 let private listModule =
   let init len f =
     match len with
     | Int len ->
-      let a = Array.init len (fun i -> Eval.apply f (Int i) |> Option.bind Eval.force)
-      if a |> Array.forall Option.isSome
-        then a |> Array.choose id |> FunnyList.ofArray |> List |> Some
-        else None
-    | _ -> None
+      let a = Array.init len (fun i -> Eval.apply f (Int i) |> Result.bind Eval.force)
+      let error =
+        a |> Array.choose Result.toErrorOption |> Array.toList
+        |> function [] -> None | [e] -> Some e | es -> Some (ErrorList es)
+      match error with
+      | Some error -> Error error
+      | _ -> a |> Array.choose Result.toOption |> FunnyList.ofArray |> List |> Ok
+    | _ -> Error (TypeMismatch (IntType, typeid len))
 
   [ "init", toFunc2 init
   ] |> Map.ofList |> Record
@@ -59,19 +63,24 @@ let private deftype id members =
     |> Map.ofList
   Name (typeName id), Type { Id = id; Members = members }
 
+let private asList f arg =
+  match arg with
+  | List x -> Ok (f x)
+  | _ -> Error (TypeMismatch (ListType, typeid arg))
+
 let load env =
   [ Op Plus,  arith (+) (+)
     Op Minus, arith (-) (-)
     Op Mul,   arith (*) (*)
     Op Div,   arith (/) (/)
-    Op Equal, toFunc2 (fun a b -> Some (if a = b then True else False))
-    Op NotEq, toFunc2 (fun a b -> Some (if a = b then False else True))
+    Op Equal, toFunc2 (fun a b -> Ok (if a = b then True else False))
+    Op NotEq, toFunc2 (fun a b -> Ok (if a = b then False else True))
     Op Less,      compare (<)  (<)
     Op LessEq,    compare (<=) (<=)
     Op Greater,   compare (>)  (>)
     Op GreaterEq, compare (>=) (>=)
-    Op Is,   toFunc2 (fun o t  -> match t  with Type t  -> Some (if t.Id = typeid o then True else False) | _ -> None)
-    Op Cons, toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> AST.List |> Some | _ -> None)
+    Op Is,   toFunc2 (fun o t  -> match t  with Type t  -> Ok (if t.Id = typeid o then True else False) | _ -> Error (TypeMismatch (TypeType, typeid t)))
+    Op Cons, toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> AST.List |> Ok | _ -> Error (TypeMismatch (ListType, typeid ls)))
 
     Name "trace", toFunc1 trace
     Name "sin", toFunc1 sin
@@ -83,16 +92,16 @@ let load env =
     deftype RecordType []
     deftype FuncType   []
     deftype ListType [
-        "isEmpty",  function List x -> Some (if x.IsEmpty then True else False) | _ -> None
-        "head",     function List x -> Some x.Head | _ -> None
-        "tail",     function List x -> Some (List x.Tail) | _ -> None
-        "length",   function List x -> Some (match x.Length with Definite n -> Int n | _ -> Null) | _ -> None
+        "isEmpty",  asList (fun x -> if x.IsEmpty then True else False)
+        "head",     asList (fun x -> x.Head)
+        "tail",     asList (fun x -> List x.Tail)
+        "length",   asList (fun x -> match x.Length with Definite n -> Int n | _ -> Null)
       ]
     deftype TypeType []
 
     Name "List", listModule
 
-    Name "Stack", toFunc0 (fun () -> Stack() :> obj |> ClrObj |> Some)
+    Name "Stack", toFunc0 (fun () -> Stack() :> obj |> ClrObj |> Ok)
   ]
   |> List.fold (fun env (id, obj) -> env |> Map.add id obj) env
 

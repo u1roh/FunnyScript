@@ -1,11 +1,18 @@
 ﻿module FunnyScript.Script
 
+type Error =
+  | AstError    of AST.Error
+  | ParserError of Parser.Error
+
+type Result<'a> = Result<'a, Error>
+
 let eval expr =
   Map.empty
   |> CLR.loadSystemAssembly
   |> Builtin.load
   |> Eval.eval expr
-  |> Option.bind Eval.force
+  |> Result.bind Eval.force
+  |> Result.mapError AstError
 
 let evalCps expr =
   Map.empty
@@ -14,10 +21,7 @@ let evalCps expr =
   |> Eval.evalCps expr
 
 let runScriptStr src =
-  let expr = Parser.parse src
-  if expr.IsNone then printfn "Failed to parse."
-
-  let result = expr |> Option.bind eval
-  if result.IsNone then printfn "Failed to eval."
-
-  result
+  match Parser.parse src with
+    | Some expr -> Ok expr
+    | _ -> Parser.MiscError "Failed to parse" |> ParserError |> Error
+  |> Result.bind eval

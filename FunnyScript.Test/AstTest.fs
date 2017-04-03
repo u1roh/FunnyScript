@@ -26,24 +26,24 @@ let refMember =
 let testAST = test "FunnyScript AST test" {
   do!
     BinaryOp (Plus, Obj (Int 1), Obj (Int 2))
-    |> Script.eval |> assertEquals (Some (Int 3))
+    |> Script.eval |> assertEquals (Ok (Int 3))
   do!
     Let ("a", Obj (Int 123),
       Let ("b", Obj (Int 321),
         BinaryOp (Plus, Ref "a", Ref "b")))
-    |> Script.eval |> assertEquals (Some (Int 444))
+    |> Script.eval |> assertEquals (Ok (Int 444))
   do!
     a3
-    |> Script.eval |> assertEquals (Some (Int 13))
+    |> Script.eval |> assertEquals (Ok (Int 13))
   do!
     If (Obj True,  Obj (Int 1), Obj (Int 0))
-    |> Script.eval |> assertEquals (Some (Int 1))
+    |> Script.eval |> assertEquals (Ok (Int 1))
   do!
     If (Obj False, Obj (Int 1), Obj (Int 0))
-    |> Script.eval |> assertEquals (Some (Int 0))
+    |> Script.eval |> assertEquals (Ok (Int 0))
   do!
     If (BinaryOp (Equal, Obj (Int 3), a1), Obj (ClrObj "equal"), Obj (ClrObj "not equal"))
-    |> Script.eval |> assertEquals (Some (ClrObj "equal"))
+    |> Script.eval |> assertEquals (Ok (ClrObj "equal"))
   do!
     Let ("a", Obj (Int 10),
       Combine (
@@ -51,17 +51,17 @@ let testAST = test "FunnyScript AST test" {
         Combine (
           Let ("a", Obj (Float 3.14), Apply (Ref "trace", Ref "a")),
           Ref "a")))
-    |> Script.eval |> assertEquals (Some (Int 10))
+    |> Script.eval |> assertEquals (Ok (Int 10))
   do!
     Let ("hoge", FuncDef ({ Args = ["a"]; Body = BinaryOp (Plus, Obj (Int 100), Ref "a") }),
       Apply (Ref "hoge", Obj (Int 22)))
-    |> Script.eval |> assertEquals (Some (Int 122))
+    |> Script.eval |> assertEquals (Ok (Int 122))
   do!
     let body = If (BinaryOp (Equal, Ref "n", Obj (Int 0)), Obj (Int 1), BinaryOp (Mul, Ref "n", Apply (Ref "fac", BinaryOp (Minus, Ref "n", Obj(Int 1)))))
     Let ("fac", FuncDef ({ Args = ["n"]; Body = body }),
       Apply (Ref "fac", Obj (Int 4)))
-    |> Script.eval |> assertEquals (Some (Int 24))
+    |> Script.eval |> assertEquals (Ok (Int 24))
   do!
     Let ("a", Obj (List (FunnyList.ofArray [| Int 123; Int 321; Int 456 |])), Apply (Ref "a", Obj (Int 1)))
-    |> Script.eval |> assertEquals (Some (Int 321))
+    |> Script.eval |> assertEquals (Ok (Int 321))
 }

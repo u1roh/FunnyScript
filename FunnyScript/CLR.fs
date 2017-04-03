@@ -79,7 +79,7 @@ type private Method = {
 
 let private invokeMethod (overloadMethods : Method[]) args =
   overloadMethods |> Array.tryPick (fun m ->
-    let invoke args = m.Invoke args |> toFunnyObj |> Some
+    let invoke args = (try m.Invoke args |> toFunnyObj |> Ok with e -> Error (ExnError e)) |> Some
     match args with
     | Null -> if m.Params.Length = 0 then invoke [||] else None
     | List args ->
@@ -95,6 +95,7 @@ let private invokeMethod (overloadMethods : Method[]) args =
         then invoke [| a |]
         else None
     | _ -> None)
+  |> Option.defaultValue (Error (MiscError "Failed to resolve overloaded methods"))
 
 let private tryGetMember name self (t : Type) =
   let members =

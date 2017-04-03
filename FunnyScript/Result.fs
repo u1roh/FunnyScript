@@ -16,3 +16,12 @@ module Result =
 
   [<CompiledName("Bind")>]
   let bind f inp = match inp with Error e -> Error e | Ok x -> f x
+
+
+  // --- 独自追加関数 ---
+
+  let isOk inp = match inp with Ok _ -> true | _ -> false
+
+  let toOption inp = match inp with Ok x -> Some x | _ -> None
+
+  let toErrorOption inp = match inp with Error x -> Some x | _ -> None
