@@ -2,9 +2,7 @@
 
 type Error =
   | AstError    of AST.Error
-  | ParserError of Parser.Error
-
-type Result<'a> = Result<'a, Error>
+  | ParserError of FParsec.Error.ParserError
 
 let eval expr =
   Map.empty
@@ -21,7 +19,6 @@ let evalCps expr =
   |> Eval.evalCps expr
 
 let runScriptStr src =
-  match Parser.parse src with
-    | Some expr -> Ok expr
-    | _ -> Parser.MiscError "Failed to parse" |> ParserError |> Error
+  Parser.parse src
+  |> Result.mapError ParserError
   |> Result.bind eval

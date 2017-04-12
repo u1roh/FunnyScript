@@ -5,12 +5,7 @@ open FParsec.Primitives
 open FParsec.CharParsers
 open FParsec.Error
 
-type Error =
-  | MiscError of string
-  | ExnError  of exn
-
-type Result<'a> = Result<'a, Error>
-
+type Result = Result<Expr, ParserError>
 type Parser = Parser<Expr, unit>
 
 let pLiteralNumber : Parser =
@@ -113,8 +108,8 @@ let pExpr =
 
 let parse program =
   match run pExpr program with
-  | Success (x, _, _)   -> Some x
-  | Failure (msg, _, _) -> None
+  | Success (x, _, _) -> Result.Ok x
+  | Failure (_, e, _) -> Result.Error e
 
 let test() =
   parse "1" |> printfn "%A"
