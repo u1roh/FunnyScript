@@ -108,7 +108,7 @@ let pExpr =
 
 let parse program =
   match run pExpr program with
-  | Success (x, _, _) -> Result.Ok x
+  | Success (x, u, p) -> printfn "UserState = %A, Position = %A" u p; Result.Ok x
   | Failure (_, e, _) -> Result.Error e
 
 let test() =

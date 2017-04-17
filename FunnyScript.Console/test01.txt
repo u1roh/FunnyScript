@@ -1,36 +1,36 @@
 ﻿fac := n -> ? n == 0 => 1 | n * fac (n - 1);
-:= fac 4 |> trace;
-:= fac 5 |> trace;
+do fac 4 |> trace;
+do fac 5 |> trace;
 
 f := a -> b -> a + 2 * (b + 4);
-:= f 1 2 |> trace;
+do f 1 2 |> trace;
 
-fac := n -> ? n == 0 => 1 | (m := n; m * fac (n - 1));
-:= fac 3 |> trace;
+fac := n 1 -> ? n == 0 => 1 | (m := n; m * fac (n - 1));
+do fac 3 |> trace;
 
 iter := f -> ls -> f ls.head;
-:= [1, 2] |> iter trace;
+do [1, 2] |> iter trace;
 
 iter := f -> ls ->
 	? ls.isEmpty => () | do f ls.head; iter f ls.tail;
 
 iter2 := f -> ls ->
 	|? ls.isEmpty => () 
-	|  := f ls.head; iter2 f ls.tail;
+	|  do f ls.head; iter2 f ls.tail;
 
-:= [1, 2] |> iter trace;
-:= iter trace [3, 1, 5, 2];
+do [1, 2] |> iter trace;
+do iter trace [3, 1, 5, 2];
 
-:= [9, 8, 7, 6] |> iter trace;
+do [9, 8, 7, 6] |> iter trace;
 
 g := x ->
 	|? x < 0 => "negative"
 	|? x > 0 => "positive"
 	| "zero";
 
-:= g -13 |> trace;
-:= g 100 |> trace;
-:= g 0   |> trace;
+do g -13 |> trace;
+do g 100 |> trace;
+do g 0   |> trace;
 
 s := System.Console.ReadLine();
 do System.Console.WriteLine s;

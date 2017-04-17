@@ -14,7 +14,7 @@ let main argv =
     let script =
       IO.File.ReadAllLines (IO.Path.Combine (@"..\..\", argv.[0]))
       |> Array.map (fun s -> let i = s.IndexOf "//" in if 0 <= i && i < s.Length then s.Substring (0, i) else s)  // コメントの除去
-      |> String.Concat
+      |> String.concat "\n"
     printfn "%s" script
     printfn "---"
     script

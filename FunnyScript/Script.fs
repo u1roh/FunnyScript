@@ -20,5 +20,6 @@ let evalCps expr =
 
 let runScriptStr src =
   Parser.parse src
+  |> Result.map (fun x -> DebugDump.dump 1 x; x)
   |> Result.mapError ParserError
   |> Result.bind eval

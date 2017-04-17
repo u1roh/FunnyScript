@@ -124,3 +124,38 @@ let typeName id =
 
 let ofArray src = List (FunnyList.ofArray src)
 let ofList  src = List (FunnyList.ofList  src)
+
+module DebugDump =
+
+  let rec dump i expr =
+    let rec forObj obj =
+      match obj with
+      | Null  -> printf "null"
+      | True  -> printf "true"
+      | False -> printf "false"
+      | Int     x -> printf "%d" x
+      | Float   x -> printf "%f" x
+      | Record  x ->
+        printf "{ "
+        x |> Map.toSeq |> Seq.iter (fun (name, obj) -> printf "%s = " name; forObj obj; printf "; ")
+        printf " }"
+      | Func (UserFunc x) -> printf "(%s) -> " (x.Def.Args |> String.concat ", "); dump i x.Def.Body
+      | Func (BuiltinFunc x) -> printf "(builtin-func)"
+      | List    x -> printf "[ "; x |> FunnyList.iter forObj; printf "]"
+      | ClrObj  x -> x.ToString() |> printf "%s"
+      | Type    x -> printf "(Type %s)" (typeName x.Id)
+      | Lazy    x -> printf "(Lazy %A)" x
+
+    match expr with
+    | Obj x -> forObj x
+    | Ref x -> printf "%s" x
+    | RefMember (expr, name) -> dump i expr; printf ".%s " name
+    | BinaryOp (op, x1, x2) -> printf "("; dump i x1; printf " %A " op; dump i x2; printf ")"
+    | UnaryOp  (op, x) -> printf "(%A" op; dump i x; printf ")"
+    | Let (name, x1, x2) -> printf "\n%*s%s := " (2*i) " " name; dump (i + 1) x1; printf ";"; dump i x2
+    | Combine   (x1, x2) -> printf "\n%*sdo " (2*i) " "; dump (i + 1) x1; printf ";"; dump i x2
+    | Apply (f, p) -> printf "("; dump i f; printf " "; dump i p; printf ")";
+    | FuncDef x -> printf "(%s) -> " (x.Args |> String.concat ", "); dump i x.Body
+    | NewRecord x -> printf "{ "; x |> Seq.iter (fun (name, x) -> printf "\n%*s%s := " (2*i) " " name; dump (i + 1) x); printf " }"
+    | NewList x -> printf "[ "; x |> Seq.iteri (fun j x -> (if j <> 0 then printf ", "); dump i x); printf " ]"
+    | If (cond, x1, x2) -> printf "? "; dump i cond; printf " => "; dump i x1; printf " | "; dump i x2;
