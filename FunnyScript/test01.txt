@@ -1,6 +1,0 @@
-﻿let fac = \n -> n == 0 ? 1 : n * fac (n - 1);
-do fac 4 |> trace;
-do fac 5 |> trace;
-
-let f = \a -> \b -> a + 2 * (b + 4);
-do f 1 2 |> trace;

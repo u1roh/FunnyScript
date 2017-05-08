@@ -67,9 +67,6 @@
     <Compile Include="Script.fs" />
     <None Include="App.config" />
     <Content Include="packages.config" />
-    <None Include="test01.txt">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FParsec">
