@@ -9,6 +9,6 @@ let main argv =
     printfn "FunnyScript ver %A" (asm.GetName().Version)
     printfn "usage: %s <filepath>" exename
   else
-    Script.forFile argv.[0]
+    Script.forFile Script.defaultEnv argv.[0]
     |> printfn "%A"
   0
