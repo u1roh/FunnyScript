@@ -84,6 +84,7 @@ let pExpr =
   let binaryOp str precedence op      = infixOp str precedence (fun x y -> BinaryOp (op, x, y))
   [ binaryOp "*"  9 Mul
     binaryOp "/"  9 Div
+    binaryOp "%"  9 Mod
     binaryOp "+"  8 Plus
     binaryOp "-"  8 Minus
     binaryOp "::" 7 Cons

@@ -6,6 +6,7 @@ type Operator =
   | Minus
   | Mul
   | Div
+  | Mod
   | Equal
   | NotEq
   | Not

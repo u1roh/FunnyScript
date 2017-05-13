@@ -73,6 +73,7 @@ let load env =
     Op Minus, arith (-) (-)
     Op Mul,   arith (*) (*)
     Op Div,   arith (/) (/)
+    Op Mod,   toFunc2 (fun a b -> match a, b with Int a, Int b -> Ok (a % b |> Int) | _ -> Error (TypeMismatch (IntType, typeid a)))
     Op Equal, toFunc2 (fun a b -> Ok (if a = b then True else False))
     Op NotEq, toFunc2 (fun a b -> Ok (if a = b then False else True))
     Op Less,      compare (<)  (<)
