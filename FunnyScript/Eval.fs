@@ -64,7 +64,9 @@ let rec eval expr env =
     |> Result.bind (fun f -> env |> forceEval expr1 |> Result.bind (apply f))
     |> Result.bind (fun f -> env |> forceEval expr2 |> Result.bind (apply f))
   | UnaryOp (op, expr) ->
-    Error (NotImplemented "UnaryOp")
+    env |> Map.tryFind (Op op)
+    |> function Some f -> Ok f | _ -> Error (IdentifierNotFound (Op op))
+    |> Result.bind (fun f -> env |> forceEval expr |> Result.bind (apply f))
   | If (cond, thenExpr, elseExpr) ->
     env |> forceEval cond
     |> Result.bind force

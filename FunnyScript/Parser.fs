@@ -80,8 +80,9 @@ let pExpr =
     let apply terms = (List.head terms, List.tail terms) ||> List.fold (fun f arg -> Apply (f, arg))
     many1 pTerm |>> apply
 
-  let infixOp  str precedence mapping = InfixOperator(str, spaces, precedence, Associativity.Left, mapping)
+  let infixOp  str precedence mapping = InfixOperator(str, spaces, precedence, Associativity.Left, mapping) :> Operator<_, _, _>
   let binaryOp str precedence op      = infixOp str precedence (fun x y -> BinaryOp (op, x, y))
+  let prefixOp str precedence op      = PrefixOperator (str, spaces, precedence, true, (fun x -> UnaryOp (op, x))) :> Operator<_, _, _>
   [ binaryOp "*"  9 Mul
     binaryOp "/"  9 Div
     binaryOp "%"  9 Mod
@@ -96,6 +97,9 @@ let pExpr =
     binaryOp "==" 3 Equal
     binaryOp "!=" 3 NotEq
     binaryOp ":?" 3 Is
+    binaryOp "&&" 2 LogicalAnd
+    binaryOp "||" 2 LogicalOr
+    prefixOp "!" 10 LogicalNot
   ] |> List.iter opp.AddOperator
   pExprRef :=
     choice [

@@ -57,6 +57,21 @@ let listTest = test "list test" {
   do! "(10, 20, 30)" ==> ofList [Int 10; Int 20; Int 30]
 }
 
+let operatorTest = test "operator test" {
+  do! "4 % 2" ==> Int 0
+  do! "5 % 2" ==> Int 1
+  do! "true && true" ==> True
+  do! "true && false" ==> False
+  do! "false && true" ==> False
+  do! "4 % 2 == 0 && 6 % 3 == 0" ==> True
+  do! "5 % 2 == 0 && 6 % 3 == 0" ==> False
+  do! "true || false" ==> True
+  do! "false || true" ==> True
+  do! "false || false" ==> False
+  do! "!true" ==> False
+  do! "!false" ==> True
+}
+
 let clrTest = test "CLR reflection test" {
   do! "System :? record" ==> True
   do! "System.Collections :? record" ==> True

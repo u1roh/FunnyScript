@@ -9,11 +9,13 @@ type Operator =
   | Mod
   | Equal
   | NotEq
-  | Not
   | Less
   | LessEq
   | Greater
   | GreaterEq
+  | LogicalNot
+  | LogicalAnd
+  | LogicalOr
   | Is
   | Cons
 

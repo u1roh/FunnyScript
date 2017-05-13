@@ -32,6 +32,16 @@ let private compare intf floatf =
   numOp (fun x y -> if intf   x y then True else False)
         (fun x y -> if floatf x y then True else False)
 
+let private logical op =
+  let f x y =
+    let x = match x with True -> Ok true | False -> Ok false | _ -> Error (TypeMismatch (BoolType, typeid x))
+    let y = match y with True -> Ok true | False -> Ok false | _ -> Error (TypeMismatch (BoolType, typeid y))
+    match x, y with
+    | Ok x, Ok y -> (if op x y then True else False) |> Ok
+    | Error e, _ -> Error e
+    | _, Error e -> Error e
+  toFunc2 f
+
 let private sin x =
   match x with
   | Float x -> Float (sin x) |> Ok
@@ -80,6 +90,9 @@ let load env =
     Op LessEq,    compare (<=) (<=)
     Op Greater,   compare (>)  (>)
     Op GreaterEq, compare (>=) (>=)
+    Op LogicalAnd, logical (&&)
+    Op LogicalOr,  logical (||)
+    Op LogicalNot, toFunc1 (function True -> Ok False | False -> Ok True | x -> Error (TypeMismatch (BoolType, typeid x)))
     Op Is,   toFunc2 (fun o t  -> match t  with Type t  -> Ok (if t.Id = typeid o then True else False) | _ -> Error (TypeMismatch (TypeType, typeid t)))
     Op Cons, toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> AST.List |> Ok | _ -> Error (TypeMismatch (ListType, typeid ls)))
 
