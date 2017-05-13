@@ -107,7 +107,7 @@ let pExpr =
   pExpr
 
 let parse program =
-  match run (pExpr .>> eof) program with
+  match run (spaces >>. pExpr .>> eof) program with
   | Success (x, _, _) -> Result.Ok x
   | Failure (_, e, _) -> Result.Error e
 

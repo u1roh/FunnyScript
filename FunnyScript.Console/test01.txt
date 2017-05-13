@@ -1,4 +1,10 @@
-﻿fac := n -> ? n == 0 => 1 | n * fac (n - 1);
+﻿// コメント
+
+a := 3;
+b := ? a % 2 == 0 => "even" | "odd";
+do trace b;
+
+fac := n -> ? n == 0 => 1 | n * fac (n - 1);	// 階乗計算
 do fac 4 |> trace;
 do fac 5 |> trace;
 

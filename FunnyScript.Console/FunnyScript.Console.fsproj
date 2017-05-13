@@ -8,7 +8,7 @@
     <ProjectGuid>02fd1850-8093-4de5-937b-688b1af28e87</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>FunnyScript.Console</RootNamespace>
-    <AssemblyName>FunnyScript.Console</AssemblyName>
+    <AssemblyName>funny</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
