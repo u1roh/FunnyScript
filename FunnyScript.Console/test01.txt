@@ -4,6 +4,17 @@ a := 3;
 b := ? a % 2 == 0 => "even" | "odd";
 do trace b;
 
+fizzbuzz := n ->
+	|? n % 3 == 0 && n % 5 == 0 => "FizzBuzz"
+	|? n % 3 == 0 => "Fizz"
+	|? n % 5 == 0 => "Buzz"
+	| n;
+
+do System.Console.WriteLine (fizzbuzz 6);
+do System.Console.WriteLine (fizzbuzz 10);
+do System.Console.WriteLine (fizzbuzz 30);
+do System.Console.WriteLine (fizzbuzz 7);
+
 fac := n -> ? n == 0 => 1 | n * fac (n - 1);	// 階乗計算
 do fac 4 |> trace;
 do fac 5 |> trace;
