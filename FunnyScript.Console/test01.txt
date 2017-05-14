@@ -1,5 +1,8 @@
 ﻿// コメント
 
+f := () -> System.Console.WriteLine "hello";
+do f();
+
 a := 3;
 b := ? a % 2 == 0 => "even" | "odd";
 do trace b;
@@ -14,6 +17,20 @@ do System.Console.WriteLine (fizzbuzz 6);
 do System.Console.WriteLine (fizzbuzz 10);
 do System.Console.WriteLine (fizzbuzz 30);
 do System.Console.WriteLine (fizzbuzz 7);
+
+a := { name := "u1roh"; age := 40; };
+do System.Console.WriteLine ("name = {0}, age = {1}", a.name, a.age);
+
+Calc := {
+  add := x -> y -> x + y;
+  sub := x -> y -> x - y;
+};
+do System.Console.WriteLine ("add: {0}", Calc.add 7 9);
+do System.Console.WriteLine ("sub: {0}", Calc.sub 8 2);
+
+add := (x, y) -> x + y;
+a := add (10, 20);
+do trace a;
 
 fac := n -> ? n == 0 => 1 | n * fac (n - 1);	// 階乗計算
 do fac 4 |> trace;
@@ -39,6 +56,7 @@ do [1, 2] |> iter trace;
 do iter trace [3, 1, 5, 2];
 
 do [9, 8, 7, 6] |> iter trace;
+do [9, 8, 7, 6] |> iter System.Console.WriteLine;
 
 g := x ->
 	|? x < 0 => "negative"

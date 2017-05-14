@@ -52,6 +52,8 @@ let listTest = test "list test" {
   do! "[3, 4, 5].length" ==> Int 3
   do! "a := [1, 3, 5]; b := 10; b :: a" ==> ofList [Int 10; Int 1; Int 3; Int 5]
   do! "a := [1, 3, 5]; b := 10; (b :: a).length" ==> Int 4
+  do! "a := [1, 2, 3]; a 0" ==> Int 1
+  do! "a := [1, 2, 3]; a 1" ==> Int 2
   do! "()" ==> Null
   do! "(10)" ==> Int 10
   do! "(10, 20, 30)" ==> ofList [Int 10; Int 20; Int 30]
