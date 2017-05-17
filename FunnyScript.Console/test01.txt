@@ -1,4 +1,9 @@
-﻿// コメント
+﻿
+// 末尾再帰の確認用の無限ループ
+iter := n ->
+	do ? n % 100 == 0 => System.Console.WriteLine n | ();
+	iter (n + 1);
+//do iter 0;
 
 f := () -> System.Console.WriteLine "hello";
 do f();
