@@ -94,3 +94,8 @@ let clrTest = test "CLR reflection test" {
   do! "s := System.Collections.Stack.new(); s.Count" ==> Int 0
   do! "System.String.Format (\"int val = {0}\", 987)" ==> ClrObj "int val = 987"
 }
+
+let mutableTest = test "mutable test" {
+  do! "a := mutable 1; a" ==> Int 1
+  do! "a := mutable 1; do a <- 3; a" ==> Int 3
+}

@@ -116,6 +116,7 @@ let pExpr =
     binaryOp "&&" 2 LogicalAnd
     binaryOp "||" 2 LogicalOr
     prefixOp "!" 10 LogicalNot
+    InfixOperator("<-", spaces, 1, Associativity.Right, fun x y -> Substitute (x, y)) :> Operator<_, _, _>
   ] |> List.iter opp.AddOperator
   pExprRef :=
     choice [

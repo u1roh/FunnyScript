@@ -3,7 +3,20 @@
 let rec force obj =
   match obj with
   | Lazy x -> x.Force() |> Result.bind force
+  | Mutable x -> force !x
   | _ -> Ok obj
+
+// mutable はそのままキープ
+let rec forceLet obj =
+  match obj with
+  | Lazy x -> x.Force() |> Result.bind forceLet
+  | _ -> Ok obj
+
+let rec forceMutable obj =
+  match obj with
+  | Lazy x -> x.Force() |> Result.bind forceMutable
+  | Mutable x -> Ok x
+  | _ -> Error NotMutable
 
 let private addTupleToEnv names obj env =
   match names with
@@ -47,7 +60,7 @@ let rec eval expr env =
         |> function Some x -> Ok x | _ -> Error (IdentifierNotFound (Name name))
         |> Result.bind (fun f -> apply (Func f) x))
   | Let (name, value, succ) ->
-    env |> forceEval value |> Result.bind (fun value ->
+    env |> eval value |> Result.bind forceLet |> Result.bind (fun value ->
       let env = env |> Map.add (Name name) value
       match value with Func (UserFunc f) -> f.Env <- env | _ -> ()  // to enable recursive call
       env |> eval succ)
@@ -69,7 +82,6 @@ let rec eval expr env =
     |> Result.bind (fun f -> env |> forceEval expr |> Result.bind (apply f))
   | If (cond, thenExpr, elseExpr) ->
     env |> forceEval cond
-    |> Result.bind force
     |> Result.bind (function
       | True  -> env |> eval thenExpr
       | False -> env |> eval elseExpr
@@ -88,6 +100,10 @@ let rec eval expr env =
     match error with
     | Some error -> Error error
     | _ -> items |> Array.choose (function Ok x -> Some x | _ -> None) |> FunnyList.ofArray |> List |> Ok
+  | Substitute (expr1, expr2) ->
+    env |> eval expr1 |> Result.bind forceMutable
+    |> Result.bind (fun dst -> env |> eval expr2 |> Result.map (fun newval -> dst, newval))
+    |> Result.map (fun (dst, newval) -> dst := newval; newval)
 
 
 let rec evalCps expr env cont =

@@ -33,6 +33,7 @@ and Error =
   | MiscError of string
   | ExnError of exn
   | ErrorList of Error list
+  | NotMutable
 
 and Result = Result<Obj, Error>
 
@@ -45,6 +46,7 @@ and Obj =
   | Record  of Map<string, Obj>
   | Func    of Func
   | List    of IFunnyList<Obj>
+  | Mutable of Ref<Obj>
   | ClrObj  of obj
   | Type    of Type
   | Lazy    of Lazy<Result> // for tail-recursion
@@ -62,6 +64,7 @@ and Expr =
   | NewRecord of (string * Expr) list
   | NewList of Expr[]
   | If of condition:Expr * thenExpr:Expr * elseExpr:Expr
+  | Substitute of Expr * Expr
 
 and FuncDef = {
     Args : string list
@@ -90,6 +93,7 @@ and TypeId =
   | ListType
   | TypeType
   | LazyType
+  | MutableType of TypeId
   | UserType of string
   | ClrType  of System.Type
 
@@ -98,7 +102,7 @@ and Type = {
     Members : Map<string, Func>
   }
 
-let typeid obj =
+let rec typeid obj =
   match obj with
   | Null      -> NullType
   | True | False -> BoolType
@@ -107,6 +111,7 @@ let typeid obj =
   | Record  _ -> RecordType
   | Func    _ -> FuncType
   | List    _ -> ListType
+  | Mutable x -> MutableType (typeid !x)
   | ClrObj  x -> ClrType (x.GetType())
   | Type    _ -> TypeType
   | Lazy    _ -> LazyType
@@ -145,6 +150,7 @@ module DebugDump =
       | Func (UserFunc x) -> printf "(%s) -> " (x.Def.Args |> String.concat ", "); dump i x.Def.Body
       | Func (BuiltinFunc x) -> printf "(builtin-func)"
       | List    x -> printf "[ "; x |> FunnyList.iter forObj; printf "]"
+      | Mutable x -> printf "mutable "; forObj !x
       | ClrObj  x -> x.ToString() |> printf "%s"
       | Type    x -> printf "(Type %s)" (typeName x.Id)
       | Lazy    x -> printf "(Lazy %A)" x
@@ -162,3 +168,4 @@ module DebugDump =
     | NewRecord x -> printf "{ "; x |> Seq.iter (fun (name, x) -> printf "\n%*s%s := " (2*i) " " name; dump (i + 1) x); printf " }"
     | NewList x -> printf "[ "; x |> Seq.iteri (fun j x -> (if j <> 0 then printf ", "); dump i x); printf " ]"
     | If (cond, x1, x2) -> printf "? "; dump i cond; printf " => "; dump i x1; printf " | "; dump i x2;
+    | Substitute (x1, x2) -> dump i x1; printf " <- "; dump i x2

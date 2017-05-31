@@ -1,4 +1,11 @@
-﻿
+﻿out := System.Console.WriteLine;
+
+a := mutable 1;
+do out ("a = {0}", a);
+
+do a <- 123;
+do out ("a = {0}", a);
+
 // 末尾再帰の確認用の無限ループ
 iter := n ->
 	do ? n % 100 == 0 => System.Console.WriteLine n | ();
