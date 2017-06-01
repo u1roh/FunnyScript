@@ -21,7 +21,7 @@ let pLiteralString : Parser =
   let escapeChars = @"""\nt"
   let escapeChar =
     pchar '\\' >>. anyOf escapeChars
-    |>> function '"' -> "\"" | '\\' -> "\\" | 'n' -> "\n" | 't' -> "\t"
+    |>> function '"' -> "\"" | '\\' -> "\\" | 'n' -> "\n" | 't' -> "\t" | _ -> failwith "escape char error"
   let nonEscapeChars =
     pchar '\\' >>. noneOf escapeChars
     |>> fun ch -> "\\" + string ch

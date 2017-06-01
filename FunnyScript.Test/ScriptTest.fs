@@ -98,4 +98,21 @@ let clrTest = test "CLR reflection test" {
 let mutableTest = test "mutable test" {
   do! "a := mutable 1; a" ==> Int 1
   do! "a := mutable 1; do a <- 3; a" ==> Int 3
-}
+  do! """
+    a := mutable 1;
+    f := () -> a <- 2;
+    do f();
+    a
+    """ ==> Int 2
+  do! """
+    a := mutable 1;
+    get_a := () -> a;
+    do get_a() <- 2;
+    a
+    """ ==> Int 2
+  do! """
+    hoge := { piyo := mutable 1; };
+    do hoge.piyo <- 2;
+    hoge.piyo
+    """ ==> Int 2
+  }

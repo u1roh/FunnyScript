@@ -93,7 +93,6 @@ and TypeId =
   | ListType
   | TypeType
   | LazyType
-  | MutableType of TypeId
   | UserType of string
   | ClrType  of System.Type
 
@@ -111,7 +110,7 @@ let rec typeid obj =
   | Record  _ -> RecordType
   | Func    _ -> FuncType
   | List    _ -> ListType
-  | Mutable x -> MutableType (typeid !x)
+  | Mutable x -> typeid !x
   | ClrObj  x -> ClrType (x.GetType())
   | Type    _ -> TypeType
   | Lazy    _ -> LazyType

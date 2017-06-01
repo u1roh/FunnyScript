@@ -43,6 +43,9 @@ let rec eval expr env =
   let forceEval expr env =
     env |> eval expr |> Result.bind force
 
+  let letEval expr env =
+    env |> eval expr |> Result.bind forceLet
+
   match expr with
   | Obj x -> Ok x
   | Ref x -> env |> Map.tryFind (Name x) |> function Some x -> Ok x | _ -> Error (IdentifierNotFound (Name x))
@@ -60,7 +63,7 @@ let rec eval expr env =
         |> function Some x -> Ok x | _ -> Error (IdentifierNotFound (Name name))
         |> Result.bind (fun f -> apply (Func f) x))
   | Let (name, value, succ) ->
-    env |> eval value |> Result.bind forceLet |> Result.bind (fun value ->
+    env |> letEval value |> Result.bind (fun value ->
       let env = env |> Map.add (Name name) value
       match value with Func (UserFunc f) -> f.Env <- env | _ -> ()  // to enable recursive call
       env |> eval succ)
@@ -89,7 +92,7 @@ let rec eval expr env =
   | NewRecord fields ->
     (Ok (Map.empty, env), fields) ||> List.fold (fun state (name, expr) ->
       state |> Result.bind (fun (record, env) ->
-        env |> forceEval expr
+        env |> letEval expr
         |> Result.map (fun x -> record |> Map.add name x, env |> Map.add (Name name) x )))
     |> Result.map (fst >> Record)
   | NewList exprs ->
