@@ -17,14 +17,25 @@ let rec private typesToFunnyObjs (types : (string list * System.Type)[]) =
     name, record)
   |> Array.append leaves
 
+let rec private mergeRecord (r1 : Map<string, Obj>) (r2 : Map<string, Obj>) =
+  (r1, r2) ||> Seq.fold (fun acc item ->
+    match acc |> Map.tryFind item.Key, item.Value with
+    | Some (Record r1), Record r2 -> acc |> Map.add item.Key (mergeRecord r1 r2 |> Record)
+    | _ -> acc |> Map.add item.Key item.Value)
+
 let loadAssembly (asm : System.Reflection.Assembly) env =
   asm.GetTypes()
   |> Array.map (fun t -> (if t.Namespace = null then [] else t.Namespace.Split '.' |> Array.toList), t)
   |> typesToFunnyObjs
-  |> Array.fold (fun env (name, item) -> env |> Map.add (Name name) item) env
+  |> Array.fold (fun env (name, item) ->
+    match env |> Map.tryFind (Name name), item with
+    | Some (Record r1), Record r2 -> env |> Map.add (Name name) (mergeRecord r1 r2 |> Record)
+    | _ -> env |> Map.add (Name name) item) env
 
 let loadSystemAssembly env =
-  env |> loadAssembly typeof<System.Object>.Assembly
+  env
+  |> loadAssembly typeof<System.Object>.Assembly
+  |> loadAssembly typeof<System.Timers.Timer>.Assembly
 
 
 let rec ofFunnyObj obj =
