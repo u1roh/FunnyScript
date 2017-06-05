@@ -37,6 +37,9 @@ and Error =
 
 and Result = Result<Obj, Error>
 
+and IMutable =
+  abstract Value : Obj with get, set
+
 and Obj =
   | Null
   | True
@@ -46,7 +49,7 @@ and Obj =
   | Record  of Map<string, Obj>
   | Func    of Func
   | List    of IFunnyList<Obj>
-  | Mutable of Ref<Obj>
+  | Mutable of IMutable
   | ClrObj  of obj
   | Type    of Type
   | Lazy    of Lazy<Result> // for tail-recursion
@@ -101,6 +104,10 @@ and Type = {
     Members : Map<string, Func>
   }
 
+let toMutable obj =
+  let mutable obj = obj
+  Mutable { new IMutable with member __.Value with get() = obj and set x = obj <- x }
+
 let rec typeid obj =
   match obj with
   | Null      -> NullType
@@ -110,7 +117,7 @@ let rec typeid obj =
   | Record  _ -> RecordType
   | Func    _ -> FuncType
   | List    _ -> ListType
-  | Mutable x -> typeid !x
+  | Mutable x -> typeid x.Value
   | ClrObj  x -> ClrType (x.GetType())
   | Type    _ -> TypeType
   | Lazy    _ -> LazyType
@@ -149,7 +156,7 @@ module DebugDump =
       | Func (UserFunc x) -> printf "(%s) -> " (x.Def.Args |> String.concat ", "); dump i x.Def.Body
       | Func (BuiltinFunc x) -> printf "(builtin-func)"
       | List    x -> printf "[ "; x |> FunnyList.iter forObj; printf "]"
-      | Mutable x -> printf "mutable "; forObj !x
+      | Mutable x -> printf "mutable "; forObj x.Value
       | ClrObj  x -> x.ToString() |> printf "%s"
       | Type    x -> printf "(Type %s)" (typeName x.Id)
       | Lazy    x -> printf "(Lazy %A)" x

@@ -108,14 +108,32 @@ let private invokeMethod (overloadMethods : Method[]) args =
     | _ -> None)
   |> Option.defaultValue (Error (MiscError "Failed to resolve overloaded methods"))
 
+let private ofProperty self (prop : PropertyInfo) =
+  if prop.SetMethod = null then
+    prop.GetValue (Option.toObj self) |> toFunnyObj
+  else
+    Mutable { new IMutable with
+      member __.Value
+        with get() = prop.GetValue (Option.toObj self) |> toFunnyObj
+        and  set x = prop.SetValue (Option.toObj self, ofFunnyObj x) }
+
+let private ofField self (field : FieldInfo) =
+  if field.IsInitOnly then
+    field.GetValue (Option.toObj self) |> toFunnyObj
+  else
+    Mutable { new IMutable with
+      member __.Value
+        with get() = field.GetValue (Option.toObj self) |> toFunnyObj
+        and  set x = field.SetValue (Option.toObj self, ofFunnyObj x) }
+
 let private tryGetMember name self (t : Type) =
   let members =
     t.GetMembers (BindingFlags.Public ||| (if Option.isNone self then BindingFlags.Static else BindingFlags.Instance))
     |> Array.filter (fun m -> m.Name = name)
   if members.Length = 0 then None else
     members |> Array.tryPick (function
-      | :? PropertyInfo as x -> x.GetValue (Option.toObj self) |> toFunnyObj |> Some
-      | :? FieldInfo    as x -> x.GetValue (Option.toObj self) |> toFunnyObj |> Some
+      | :? PropertyInfo as x -> x |> ofProperty self |> Some
+      | :? FieldInfo    as x -> x |> ofField    self |> Some
       | _ -> None)
     |> Option.orElseWith (fun () ->
       members

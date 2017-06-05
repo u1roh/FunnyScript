@@ -115,9 +115,9 @@ let mutableTest = test "mutable test" {
     do hoge.piyo <- 2;
     hoge.piyo
     """ ==> Int 2
-//  do! """
-//    timer := System.Timers.Timer.new();
-//    do timer.Enabled <- true;
-//    timer.Enabled
-//    """ ==> True
+  do! """
+    timer := System.Timers.Timer.new();
+    do timer.Enabled <- true;
+    timer.Enabled
+    """ ==> True
   }

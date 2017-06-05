@@ -3,7 +3,7 @@
 let rec force obj =
   match obj with
   | Lazy x -> x.Force() |> Result.bind force
-  | Mutable x -> force !x
+  | Mutable x -> force x.Value
   | _ -> Ok obj
 
 // mutable はそのままキープ
@@ -106,7 +106,7 @@ let rec eval expr env =
   | Substitute (expr1, expr2) ->
     env |> eval expr1 |> Result.bind forceMutable
     |> Result.bind (fun dst -> env |> eval expr2 |> Result.map (fun newval -> dst, newval))
-    |> Result.map (fun (dst, newval) -> dst := newval; newval)
+    |> Result.map (fun (dst, newval) -> dst.Value <- newval; newval)
 
 
 let rec evalCps expr env cont =
