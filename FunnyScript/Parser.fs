@@ -86,15 +86,22 @@ let pExpr =
       | [] -> Obj Null
       | [expr] -> expr
       | tuple  -> tuple |> List.toArray |> NewList
-
+  let pTermItem =
+    choice [ attempt pLambda; pAtom; pList; pTuple; pRecord ]
+    .>>. many (char_ws '.' >>. pIdentifier)
+    |>> fun (expr, mems) -> (expr, mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
+  let pTerm =
+    many1 pTermItem |>> fun items -> (List.head items, List.tail items) ||> List.fold (fun f arg -> Apply (f, arg))
+  let pSyntaxSugarLambdaTerm =
+    char_ws '@'
+    >>. many1 (char_ws '.' >>. pIdentifier)
+    .>>. many pTermItem
+    |>> fun (mems, args) ->
+      let self = (Ref "__SELF__", mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
+      let body = (self, args) ||> List.fold (fun f arg -> Apply (f, arg))
+      FuncDef { Args = ["__SELF__"]; Body = body }
   let opp = new OperatorPrecedenceParser<Expr,unit,unit>()
-  opp.TermParser <-
-    let pTerm =
-      choice [ pAtom; pList; pTuple; pRecord ]
-      .>>. many (char_ws '.' >>. pIdentifier)
-      |>> fun (expr, mems) -> (expr, mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
-    let apply terms = (List.head terms, List.tail terms) ||> List.fold (fun f arg -> Apply (f, arg))
-    many1 pTerm |>> apply
+  opp.TermParser <- pSyntaxSugarLambdaTerm <|> pTerm
 
   let infixOp  str precedence mapping = InfixOperator(str, spaces, precedence, Associativity.Left, mapping) :> Operator<_, _, _>
   let binaryOp str precedence op      = infixOp str precedence (fun x y -> BinaryOp (op, x, y))
@@ -123,7 +130,6 @@ let pExpr =
       pDo
       pIf
       attempt pLet
-      attempt pLambda
       opp.ExpressionParser
     ]
   pExpr

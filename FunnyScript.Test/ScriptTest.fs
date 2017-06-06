@@ -120,4 +120,23 @@ let mutableTest = test "mutable test" {
     do timer.Enabled <- true;
     timer.Enabled
     """ ==> True
-  }
+}
+
+let methodChainTest = test "method chain test" {
+  do! "1 :: [2, 3, 4] |> x -> x.isEmpty" ==> False
+  do! "[] |> @.isEmpty" ==> True
+  do! """
+    sb := System.Text.StringBuilder.new();
+    sb.Append "a"
+    |> sb -> sb.Append "b"
+    |> sb -> sb.Append "c"
+    |> sb -> sb.ToString()
+    """ ==> ClrObj "abc"
+  do! """
+    sb := System.Text.StringBuilder.new();
+    sb.Append "x"
+    |> @.Append "y"
+    |> @.Append "z"
+    |> @.ToString()
+    """ ==> ClrObj "xyz"
+}
