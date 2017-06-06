@@ -93,8 +93,10 @@ let pExpr =
   let pTerm =
     many1 pTermItem |>> fun items -> (List.head items, List.tail items) ||> List.fold (fun f arg -> Apply (f, arg))
   let pSyntaxSugarLambdaTerm =
-    char_ws '@'
-    >>. many1 (char_ws '.' >>. pIdentifier)
+    char_ws '#'
+    >>. sepBy1 pIdentifier (char_ws '.')
+//    >>. pIdentifier
+//    .>>. many (char_ws '.' >>. pIdentifier)
     .>>. many pTermItem
     |>> fun (mems, args) ->
       let self = (Ref "__SELF__", mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))

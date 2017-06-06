@@ -8,11 +8,11 @@ do out ("a = {0}", a);
 
 do
   System.Text.StringBuilder.new()
-  |> @.Append "Hello "
-  |> @.Append "World, "
-  |> @.Append "Hello "
-  |> @.Append "FunnyScript!"
-  |> @.ToString()
+  |> #Append "Hello "
+  |> #Append "World, "
+  |> #Append "Hello "
+  |> #Append "FunnyScript!"
+  |> #ToString()
   |> str -> out ("str = {0}", str);
 
 // 末尾再帰の確認用の無限ループ
