@@ -124,7 +124,7 @@ let mutableTest = test "mutable test" {
 
 let methodChainTest = test "method chain test" {
   do! "1 :: [2, 3, 4] |> x -> x.isEmpty" ==> False
-  do! "[] |> #isEmpty" ==> True
+  do! "[] |> .isEmpty" ==> True
   do! """
     sb := System.Text.StringBuilder.new();
     sb.Append "a"
@@ -135,8 +135,8 @@ let methodChainTest = test "method chain test" {
   do! """
     sb := System.Text.StringBuilder.new();
     sb.Append "x"
-    |> #Append "y"
-    |> #Append "z"
-    |> #ToString()
+    |> .Append "y"
+    |> .Append "z"
+    |> .ToString()
     """ ==> ClrObj "xyz"
 }
