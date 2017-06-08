@@ -126,6 +126,10 @@ let methodChainTest = test "method chain test" {
   do! "1 :: [2, 3, 4] |> x -> x.isEmpty" ==> False
   do! "[] |> .isEmpty" ==> True
   do! """
+    f := .isEmpty;
+    f []
+    """ ==> True
+  do! """
     sb := System.Text.StringBuilder.new();
     sb.Append "a"
     |> sb -> sb.Append "b"
