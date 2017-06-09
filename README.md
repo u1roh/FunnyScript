@@ -212,3 +212,16 @@ s :=
   |> .ToString();
 ```
 
+### mutable 変数と代入
+```
+a := mutable 1; // mutable 関数でミュータブル変数を生成
+do a <- 2;      // <- 演算子で代入
+
+// ミュータブルなメンバを持つレコード
+hoge := { piyo := mutable 1; };
+do hoge.piyo <- 2;
+
+// CLRオブジェクトのプロパティの代入も出来ます
+timer := System.Timers.Timer.new();
+do timer.Enabled <- true;
+```
