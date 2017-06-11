@@ -111,10 +111,26 @@ let load env =
         "head",     asList (fun x -> x.Head)
         "tail",     asList (fun x -> List x.Tail)
         "length",   asList (fun x -> match x.Length with Definite n -> Int n | _ -> Null)
+
         "foreach",  asList (fun self -> toFunc1 (fun f ->
           self |> FunnyList.toSeq
           |> Seq.tryPick (Eval.apply f >> Result.bind Eval.force >> Result.toErrorOption)
           |> function Some e -> Error e | _ -> Ok Null))
+
+        "map", asList (fun self -> toFunc1 (fun f ->
+          match self.Length with
+          | Definite n ->
+            let a =
+              self |> FunnyList.toSeq
+              |> Seq.map (Eval.apply f >> Result.bind Eval.force)
+              |> Seq.toArray
+            if a.Length = n
+              then a |> Array.choose Result.toOption |> FunnyList.ofArray |> List |> Ok
+              else a |> Array.pick Result.toErrorOption |> Error
+          | _ ->
+            self |> FunnyList.toSeq
+            |> Seq.map (fun item -> lazy (Eval.apply f item) |> Lazy)
+            |> FunnyList.ofSeq |> List |> Ok))
       ]
     deftype TypeType []
 
