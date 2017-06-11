@@ -15,10 +15,6 @@ let eval env expr =
   |> Result.bind Eval.force
   |> Result.mapError AstError
 
-//let evalCps env expr =
-//  env
-//  |> Eval.evalCps expr
-
 let forStr env src =
   Parser.parse src
   //|> Result.map (fun x -> DebugDump.dump 1 x; x)

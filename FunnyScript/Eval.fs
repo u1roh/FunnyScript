@@ -30,16 +30,7 @@ let private addTupleToEnv names obj env =
       |> List.fold (fun env (name, obj) -> env |> Map.add name obj) env
     | _ -> env
 
-let private apply_ eval f arg =
-  match f with
-  | Func (BuiltinFunc f) -> f.Apply arg
-  | Func (UserFunc f) -> lazy (f.Env |> addTupleToEnv f.Def.Args arg |> eval f.Def.Body) |> Lazy |> Ok
-  | List list -> match arg with Int i -> Ok list.[i] | _ -> TypeMismatch (IntType, typeid arg) |> Error
-  | _ -> NotApplyable (f, arg) |> Error
-
 let rec eval expr env =
-  let apply = apply_ eval
-  
   let forceEval expr env =
     env |> eval expr |> Result.bind force
 
@@ -109,50 +100,9 @@ let rec eval expr env =
     |> Result.map (fun (dst, newval) -> dst.Value <- newval; newval)
 
 
-let rec evalCps expr env cont =
-  let apply f arg cont =
-    match f with
-    | Func (BuiltinFunc f) -> f.Apply arg |> Result.toOption |> Option.iter cont
-    | Func (UserFunc f) -> let env = f.Env |> addTupleToEnv f.Def.Args arg in evalCps f.Def.Body env cont
-    | _ -> ()
-  match expr with
-  | Obj x -> cont x
-  | Ref x -> env |> Map.tryFind (Name x) |> function Some x -> cont x | _ -> printfn "'%s' is not found." x
-  | RefMember (expr, name) ->
-    evalCps expr env (function
-      | Record r -> r |> Map.tryFind name |> Option.iter cont
-      | _ -> ())
-  | Let (name, value, succ) ->
-    evalCps value env (fun value ->
-      let env = env |> Map.add (Name name) value
-      match value with Func (UserFunc f) -> f.Env <- env | _ -> ()  // to enable recursive call
-      evalCps succ env cont)
-  | Combine (expr1, expr2) ->
-    evalCps expr1 env (fun _ ->
-    evalCps expr2 env cont)
-  | FuncDef def -> Func (UserFunc { Def = def; Env = env }) |> cont
-  | Apply (f, arg) ->
-    evalCps f   env (fun f   ->
-    evalCps arg env (fun arg -> apply f arg cont))
-  | BinaryOp (op, expr1, expr2) ->
-    env |> Map.tryFind (Op op) |> Option.iter (fun f ->
-      evalCps expr1 env (fun arg -> apply f arg (fun f ->
-      evalCps expr2 env (fun arg -> apply f arg cont))))
-  | If (cond, thenExpr, elseExpr) ->
-    evalCps cond env (function
-      | True  -> evalCps thenExpr env cont
-      | False -> evalCps elseExpr env cont
-      | _ -> ())
-//  | NewTuple fields ->
-//    let fields = fields |> Array.map (fun expr -> env |> eval expr)
-//    if fields |> Array.forall Option.isSome
-//      then fields |> Array.map Option.get |> Tuple |> Some
-//      else None
-//  | NewRecord fields ->
-//    let fields = fields |> Array.map (fun (name, expr) -> env |> eval expr |> Option.map (fun x -> name, x))
-//    if fields |> Array.forall Option.isSome
-//      then fields |> Array.map Option.get |> Map.ofArray |> Record |> Some
-//      else None
-  | _ -> ()
-
-let apply = apply_ eval
+and apply f arg =
+  match f with
+  | Func (BuiltinFunc f) -> f.Apply arg
+  | Func (UserFunc f) -> lazy (f.Env |> addTupleToEnv f.Def.Args arg |> eval f.Def.Body) |> Lazy |> Ok
+  | List list -> match arg with Int i -> Ok list.[i] | _ -> TypeMismatch (IntType, typeid arg) |> Error
+  | _ -> NotApplyable (f, arg) |> Error
