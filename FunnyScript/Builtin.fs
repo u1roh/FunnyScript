@@ -131,6 +131,21 @@ let load env =
             self |> FunnyList.toSeq
             |> Seq.map (fun item -> lazy (Eval.apply f item) |> Lazy)
             |> FunnyList.ofSeq |> List |> Ok))
+
+        "choose", asList (fun self -> toFunc1 (fun f ->
+          match self.Length with
+          | Definite n ->
+            let a =
+              self |> FunnyList.toSeq
+              |> Seq.map (Eval.apply f >> Result.bind Eval.force)
+              |> Seq.toArray
+            match a |> Array.tryPick Result.toErrorOption with
+            | Some e -> Error e
+            | _ -> a |> Array.choose (function Ok x when x <> Null -> Some x | _ -> None) |> FunnyList.ofArray |> List |> Ok
+          | _ ->
+            self |> FunnyList.toSeq
+            |> Seq.choose (Eval.apply f >> Result.bind Eval.force >> function Ok Null -> None | Ok x -> Some x | x -> Some (Lazy (lazy x)))
+            |> FunnyList.ofSeq |> List |> Ok))
       ]
     deftype TypeType []
 

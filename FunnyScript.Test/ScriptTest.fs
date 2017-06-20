@@ -58,6 +58,7 @@ let listTest = test "list test" {
   do! "(10)" ==> Int 10
   do! "(10, 20, 30)" ==> ofList [Int 10; Int 20; Int 30]
   do! "[1, 2, 3].map (x -> 2 * x)" ==> ofList [Int 2; Int 4; Int 6]
+  do! "[1, 2, 3, 4].choose (x -> ? x % 2 == 0 => () | x)" ==> ofList [Int 1; Int 3]
 }
 
 let operatorTest = test "operator test" {
