@@ -124,9 +124,9 @@ let load env =
               self |> FunnyList.toSeq
               |> Seq.map (Eval.apply f >> Result.bind Eval.force)
               |> Seq.toArray
-            if a.Length = n
-              then a |> Array.choose Result.toOption |> FunnyList.ofArray |> List |> Ok
-              else a |> Array.pick Result.toErrorOption |> Error
+            match a |> Array.tryPick Result.toErrorOption with
+            | Some e -> Error e
+            | _ -> a |> Array.choose Result.toOption |> FunnyList.ofArray |> List |> Ok
           | _ ->
             self |> FunnyList.toSeq
             |> Seq.map (fun item -> lazy (Eval.apply f item) |> Lazy)
