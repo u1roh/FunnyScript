@@ -94,6 +94,15 @@ let rec eval expr env =
     match error with
     | Some error -> Error error
     | _ -> items |> Array.choose (function Ok x -> Some x | _ -> None) |> FunnyList.ofArray |> List |> Ok
+  | ListByRange (expr1, expr2) ->
+    env |> forceEval expr1 |> Result.bind (fun value1 ->
+    env |> forceEval expr2 |> Result.bind (fun value2 ->
+      match value1, value2 with
+      | Int   value1, Int   value2 -> [| value1 .. value2 |] |> Array.map Int   |> FunnyList.ofArray |> List |> Ok
+      | Float value1, Float value2 -> [| value1 .. value2 |] |> Array.map Float |> FunnyList.ofArray |> List |> Ok
+      | Int   value1, Float value2 -> [| float value1 .. value2 |] |> Array.map Float |> FunnyList.ofArray |> List |> Ok
+      | Float value1, Int   value2 -> [| value1 .. float value2 |] |> Array.map Float |> FunnyList.ofArray |> List |> Ok
+      | _ -> Error (MiscError "not numeric type") ))
   | Substitute (expr1, expr2) ->
     env |> eval expr1 |> Result.bind forceMutable
     |> Result.bind (fun dst -> env |> eval expr2 |> Result.map (fun newval -> dst, newval))

@@ -15,6 +15,10 @@ let (==>) script expected =
   |> assertEquals (Ok expected)
 
 
+let literalTest = test "literal test" {
+  do! "1." ==> Float 1.0
+}
+
 let testScript = test "scripting test" {
   do! "1 + 2 * (3 + 4)" ==> (Int 15)
   do! "a := 1 + 2; b := 3 + 4; a * b" ==> (Int 21)
@@ -59,6 +63,8 @@ let listTest = test "list test" {
   do! "(10, 20, 30)" ==> ofList [Int 10; Int 20; Int 30]
   do! "[1, 2, 3].map (x -> 2 * x)" ==> ofList [Int 2; Int 4; Int 6]
   do! "[1, 2, 3, 4].choose (x -> ? x % 2 == 0 => () | x)" ==> ofList [Int 1; Int 3]
+  do! "[1 .. 5]" ==> ofList [Int 1; Int 2; Int 3; Int 4; Int 5]
+  //do! "[1..5]" ==> ofList [Int 1; Int 2; Int 3; Int 4; Int 5]
 }
 
 let operatorTest = test "operator test" {

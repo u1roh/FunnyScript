@@ -78,8 +78,11 @@ let pExpr =
     between_ws '{' '}' (many (pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';'))
     |>> NewRecord
   let pList =
-    between_ws '[' ']' (sepByComma pExpr)
-    |>> (List.toArray >> NewList)
+    between_ws '[' ']'
+      (choice [
+        attempt (pExpr .>> str_ws ".." .>>. pExpr |>> ListByRange)
+        sepByComma pExpr |>> (List.toArray >> NewList)
+      ])
   let pTuple =
     between_ws '(' ')' (sepByComma pExpr)
     |>> function
@@ -88,7 +91,7 @@ let pExpr =
       | tuple  -> tuple |> List.toArray |> NewList
   let pTermItem =
     choice [ attempt pLambda; pAtom; pList; pTuple; pRecord ]
-    .>>. many (char_ws '.' >>. pIdentifier)
+    .>>. many (attempt (char_ws '.' >>. pIdentifier))
     |>> fun (expr, mems) -> (expr, mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
   let pTerm =
     many1 pTermItem |>> fun items -> (List.head items, List.tail items) ||> List.fold (fun f arg -> Apply (f, arg))
