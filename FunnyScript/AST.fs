@@ -4,6 +4,8 @@ module FunnyScript.AST
 type Operator =
   | Plus
   | Minus
+  | UnaryPlus
+  | UnaryMinus
   | Mul
   | Div
   | Mod

@@ -93,6 +93,8 @@ let load env =
     Op LogicalAnd, logical (&&)
     Op LogicalOr,  logical (||)
     Op LogicalNot, toFunc1 (function True -> Ok False | False -> Ok True | x -> Error (TypeMismatch (BoolType, typeid x)))
+    Op UnaryPlus,  toFunc1 (function Int x -> Ok (Int +x) | Float x -> Ok (Float +x) | x -> Error (TypeMismatch (IntType, typeid x)))
+    Op UnaryMinus, toFunc1 (function Int x -> Ok (Int -x) | Float x -> Ok (Float -x) | x -> Error (TypeMismatch (IntType, typeid x)))
     Op Is,   toFunc2 (fun o t  -> match t  with Type t  -> Ok (if t.Id = typeid o then True else False) | _ -> Error (TypeMismatch (TypeType, typeid t)))
     Op Cons, toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> AST.List |> Ok | _ -> Error (TypeMismatch (ListType, typeid ls)))
 

@@ -17,6 +17,9 @@ let (==>) script expected =
 
 let literalTest = test "literal test" {
   do! "1." ==> Float 1.0
+  do! "-1" ==> Int -1
+  do! "- 2" ==> Int -2
+  do! "- -3" ==> Int 3
 }
 
 let testScript = test "scripting test" {
@@ -36,6 +39,7 @@ let testScript = test "scripting test" {
   do! "a := { b := 1; c := { d := 2; e := 3; }; }; a.c.e" ==> Int 3
   do! "f := () -> 123; f()" ==> Int 123
   do! "f := (a, b, c) -> a + b + c; f (1, 2, 3)" ==> Int 6
+  do! "a := 1; -a" ==> Int -1
 }
 
 let typeTest = test "type test" {
@@ -65,6 +69,7 @@ let listTest = test "list test" {
   do! "[1, 2, 3, 4].choose (x -> ? x % 2 == 0 => () | x)" ==> ofList [Int 1; Int 3]
   do! "[1 .. 5]" ==> ofList [Int 1; Int 2; Int 3; Int 4; Int 5]
   //do! "[1..5]" ==> ofList [Int 1; Int 2; Int 3; Int 4; Int 5]
+  do! "[1+2 .. 8-2]" ==> ofList [Int 3; Int 4; Int 5; Int 6]
 }
 
 let operatorTest = test "operator test" {
@@ -93,8 +98,8 @@ let clrTest = test "CLR reflection test" {
   do! "System.Object.Equals [1, 1]" ==> True
   do! "System.Object.Equals (1, 1)" ==> True
   do! "zero := System.Math.Sin 3.14; zero < 0.01" ==> True
-  do! "System.Math.Abs -1" ==> Int 1
-  do! "System.Math.Abs -1.0" ==> Float 1.0
+  do! "System.Math.Abs (-1)" ==> Int 1
+  do! "System.Math.Abs (-1.0)" ==> Float 1.0
   do! "System.Console.WriteLine \"[test] Hello, System.Console.WriteLine\"" ==> Null
   do! "System.Console.WriteLine (\"[test] int = {0}, float = {1}\", 123, 3.14)" ==> Null
   do! "s := Stack(); do s.Push 123; s.Peek ()" ==> Int 123

@@ -10,8 +10,8 @@ type Parser = Parser<Expr, unit>
 
 let pLiteralNumber : Parser =
   let numfmt =
-    NumberLiteralOptions.AllowMinusSign |||
-    NumberLiteralOptions.AllowPlusSign |||
+    //NumberLiteralOptions.AllowMinusSign |||
+    //NumberLiteralOptions.AllowPlusSign |||
     NumberLiteralOptions.AllowFraction |||
     NumberLiteralOptions.AllowExponent
   numberLiteral numfmt "number" .>> spaces
@@ -126,6 +126,8 @@ let pExpr =
     binaryOp "&&" 2 LogicalAnd
     binaryOp "||" 2 LogicalOr
     prefixOp "!" 10 LogicalNot
+    prefixOp "+" 10 UnaryPlus
+    prefixOp "-" 10 UnaryMinus
     InfixOperator("<-", spaces, 1, Associativity.Right, fun x y -> Substitute (x, y)) :> Operator<_, _, _>
   ] |> List.iter opp.AddOperator
   pExprRef :=
