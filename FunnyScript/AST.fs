@@ -36,6 +36,7 @@ and Error =
   | ExnError of exn
   | ErrorList of Error list
   | NotMutable
+  | ClassDefError
 
 and Result = Result<Obj, Error>
 
@@ -52,6 +53,7 @@ and Obj =
   | Func    of Func
   | List    of IFunnyList<Obj>
   | Mutable of IMutable
+  | Instance of Obj * Type
   | ClrObj  of obj
   | Type    of Type
   | Lazy    of Lazy<Result> // for tail-recursion
@@ -99,7 +101,7 @@ and TypeId =
   | ListType
   | TypeType
   | LazyType
-  | UserType of string
+  | UserType of string * Func
   | ClrType  of System.Type
 
 and Type = {
@@ -107,9 +109,19 @@ and Type = {
     Members : Map<string, Func>
   }
 
-let toMutable obj =
-  let mutable obj = obj
-  Mutable { new IMutable with member __.Value with get() = obj and set x = obj <- x }
+let makeClass ctor vtbl =
+  match ctor, vtbl with
+    | Func ctor, Record vtbl -> Ok (ctor, vtbl)
+    | _ -> Error ClassDefError
+  |> Result.bind (fun (ctor, vtbl) ->
+    let members, invalids = vtbl |> Map.partition (fun _ m -> match m with Func _ -> true | _ -> false)
+    if invalids.IsEmpty
+      then Ok (ctor, members)
+      else Error ClassDefError)
+  |> Result.map (fun (ctor, members) ->
+    let members = members |> Map.map (fun _ m -> match m with Func m -> m | _ -> failwith "fatal error")
+    Type { Id = UserType ("", ctor); Members = members })
+
 
 let rec typeid obj =
   match obj with
@@ -121,6 +133,7 @@ let rec typeid obj =
   | Func    _ -> FuncType
   | List    _ -> ListType
   | Mutable x -> typeid x.Value
+  | Instance (_, t) -> t.Id
   | ClrObj  x -> ClrType (x.GetType())
   | Type    _ -> TypeType
   | Lazy    _ -> LazyType
@@ -136,8 +149,12 @@ let typeName id =
   | ListType    -> "list"
   | TypeType    -> "type"
   | LazyType    -> "lazy"
-  | UserType x  -> x
+  | UserType (x, _) -> x
   | ClrType t   -> t.FullName
+
+let toMutable obj =
+  let mutable obj = obj
+  Mutable { new IMutable with member __.Value with get() = obj and set x = obj <- x }
 
 let ofArray src = List (FunnyList.ofArray src)
 let ofList  src = List (FunnyList.ofList  src)
@@ -160,6 +177,7 @@ module DebugDump =
       | Func (BuiltinFunc x) -> printf "(builtin-func)"
       | List    x -> printf "[ "; x |> FunnyList.iter forObj; printf "]"
       | Mutable x -> printf "mutable "; forObj x.Value
+      | Instance (x, t) -> printf "instance of %A" t.Id; forObj x
       | ClrObj  x -> x.ToString() |> printf "%s"
       | Type    x -> printf "(Type %s)" (typeName x.Id)
       | Lazy    x -> printf "(Lazy %A)" x

@@ -157,3 +157,24 @@ let methodChainTest = test "method chain test" {
     |> .ToString()
     """ ==> ClrObj "xyz"
 }
+
+let classTest = test "class test" {
+  do! """
+    Adder := class (n -> n) { add := this -> n -> this + n; };
+    a := Adder.new 8;
+    a.add 2
+  """ ==> Int 10
+
+  do! """
+    Person := class ((first, last) -> { first_name := first; last_name := last; }) {
+      fullname := self ->
+        System.Text.StringBuilder.new()
+        |> .Append self.first_name
+        |> .Append " "
+        |> .Append self.last_name
+        |> .ToString();
+    };
+    charlie := Person.new ("Charlie", "Parker");
+    charlie.fullname
+  """ ==> ClrObj "Charlie Parker"
+}

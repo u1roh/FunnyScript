@@ -45,9 +45,13 @@ do System.Console.WriteLine ("name = {0}, age = {1}", a.name, a.age);
 Calc := {
   add := x -> y -> x + y;
   sub := x -> y -> x - y;
+
+  calc := x -> y -> [add x y, sub x y];
 };
 do System.Console.WriteLine ("add: {0}", Calc.add 7 9);
 do System.Console.WriteLine ("sub: {0}", Calc.sub 8 2);
+do out "Calc.calc";
+do Calc.calc 1 2 |> .foreach (a -> out (" - {0}", a));
 
 add := (x, y) -> x + y;
 a := add (10, 20);
@@ -86,11 +90,18 @@ g := x ->
 	|? x > 0 => "positive"
 	| "zero";
 
-do g -13 |> trace;
+do g (-13) |> trace;
 do g 100 |> trace;
 do g 0   |> trace;
 
 s := System.Console.ReadLine();
 do System.Console.WriteLine s;
+
+Person := class ((name, age) -> { name := name; age := age; }) {
+  hello := this -> () -> out ("Hello, I'm {0}, {1} year-old.", this.name, this.age);
+};
+
+jack := Person.new ("Jack", 40);
+do jack.hello ();
 
 trace "end"

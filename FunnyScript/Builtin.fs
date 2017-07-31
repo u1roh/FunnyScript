@@ -98,6 +98,7 @@ let load env =
     Op Is,   toFunc2 (fun o t  -> match t  with Type t  -> Ok (if t.Id = typeid o then True else False) | _ -> Error (TypeMismatch (TypeType, typeid t)))
     Op Cons, toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> AST.List |> Ok | _ -> Error (TypeMismatch (ListType, typeid ls)))
 
+    Name "class", toFunc2 makeClass
     Name "mutable", toFunc1 (toMutable >> Ok)
     Name "trace", toFunc1 trace
     Name "sin", toFunc1 sin

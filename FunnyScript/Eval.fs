@@ -41,18 +41,34 @@ let rec eval expr env =
   | Obj x -> Ok x
   | Ref x -> env |> Map.tryFind (Name x) |> function Some x -> Ok x | _ -> Error (IdentifierNotFound (Name x))
   | RefMember (expr, name) ->
-    env |> forceEval expr |> Result.bind (fun x ->
-      let ret =
-        match x with
-        | Record r -> r |> Map.tryFind name
-        | ClrObj o -> o |> CLR.tryGetInstanceMember name
-        | Type { Id = ClrType t } -> t |> CLR.tryGetStaticMember name
-        | _ -> None
-      if ret.IsSome then Ok ret.Value else
+    let toResult x = match x with Some x -> Ok x | _ -> Error (IdentifierNotFound (Name name))
+    env |> forceEval expr |> Result.bind (function
+      | Record r -> r |> Map.tryFind name |> toResult
+      | ClrObj o -> o |> CLR.tryGetInstanceMember name |> toResult
+      | Instance (x, t) -> t.Members |> Map.tryFind name |> toResult |> Result.bind (fun f -> apply (Func f) x)
+      | Type { Id = ClrType t } -> t |> CLR.tryGetStaticMember name |> toResult
+      | Type ({ Id = UserType (_, ctor) } as t) when name = "new" ->
+        Func (BuiltinFunc { new IBuiltinFunc with member this.Apply arg = apply (Func ctor) arg |> Result.bind force |> Result.map (fun x -> Instance (x, t)) }) |> Ok
+      | x ->
         env |> Map.tryFind (typeid x |> typeName |> Name)
-        |> Option.bind (function Type t -> t.Members |> Map.tryFind name | _ -> None)
-        |> function Some x -> Ok x | _ -> Error (IdentifierNotFound (Name name))
+        |> Option.bind (function Type t -> t.Members |> Map.tryFind name | _ -> None) |> toResult
         |> Result.bind (fun f -> apply (Func f) x))
+
+//    env |> forceEval expr |> Result.bind (fun x ->
+//      let ret =
+//        match x with
+//        | Record r -> r |> Map.tryFind name
+//        | ClrObj o -> o |> CLR.tryGetInstanceMember name
+//        //| Instance (x, t) -> t.Members |> Map.tryFind name |> Option.map (fun f -> apply (Func f) x)
+//        | Type { Id = ClrType t } -> t |> CLR.tryGetStaticMember name
+//        | Type { Id = UserType (_, ctor) } when name = "new" ->
+//          Func (BuiltinFunc { new IBuiltinFunc with member this.Apply arg = apply (Func ctor) arg }) |> Some
+//        | _ -> None
+//      if ret.IsSome then Ok ret.Value else
+//        env |> Map.tryFind (typeid x |> typeName |> Name)
+//        |> Option.bind (function Type t -> t.Members |> Map.tryFind name | _ -> None)
+//        |> function Some x -> Ok x | _ -> Error (IdentifierNotFound (Name name))
+//        |> Result.bind (fun f -> apply (Func f) x))
   | Let (name, value, succ) ->
     env |> letEval value |> Result.bind (fun value ->
       let env = env |> Map.add (Name name) value
