@@ -159,9 +159,12 @@ a := 10 |> add 5; // 15
 ```
 
 ### 繰り返し
-構文ありません。再帰で書いて下さい m(_ _)m
+リストの `foreach` メソッドで書けます。
+```
+do [1, 3, 5, 7].foreach (x -> System.Console.WriteLine x);
+```
 
-コード例：
+あるいは再帰で書きます。
 ```
 // リストに対して繰り返しを実行する関数
 iter := f -> ls ->
@@ -171,6 +174,7 @@ iter := f -> ls ->
 do [9, 8, 7, 6] |> iter System.Console.WriteLine;
 ```
 
+※ まともに使えるようにするにはこのあたりのリストの機能を強化していく必要がありますね。
 
 ### .NET Framework の呼び出し
 既にサンプル中に `System.Console.WriteLine` の呼び出しは登場しています。
@@ -225,3 +229,29 @@ do hoge.piyo <- 2;
 timer := System.Timers.Timer.new();
 do timer.Enabled <- true;
 ```
+
+### クラス定義
+`class` 関数を使ってクラスを定義することができます。
+```
+Person := class ((first, last) -> { first_name := first; last_name := last; }) {
+  fullname := self ->
+	System.Text.StringBuilder.new()
+	|> .Append self.first_name
+	|> .Append " "
+	|> .Append self.last_name
+	|> .ToString();
+};
+charlie := Person.new ("Charlie", "Parker");
+do System.Console.WriteLine charlie.fullname;
+```
+`class` 関数は引数を2つ取ります。
+
+第1引数はコンストラクタです。
+上のコードではファーストネームとラストネームをタプルで受け取り、レコードオブジェクトを生成するコンストラクタとなっています。
+なお、コンストラクタに取れる引数は1つだけです。複数の引数が必要な場合はタプルで受け取るようにします。
+
+第2引数はメンバーテーブルとなるレコードオブジェクトです。
+メンバーは必ず関数とし、その第1引数には自分自身（コンストラクタで生成したもの）を受け取ります。
+上のコードでは `self` という名前で受け取っていますが、特に `self` は予約語ではなく名前は何でもよいです。
+
+「継承」はできません。実装する予定もありません。
