@@ -2,7 +2,7 @@
 
 type Error =
   | AstError    of AST.Error
-  | ParserError of FParsec.Error.ParserError
+  | ParserError of string
 
 let defaultEnv =
   Map.empty

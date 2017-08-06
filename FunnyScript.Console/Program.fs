@@ -9,6 +9,12 @@ let main argv =
     printfn "FunnyScript ver %A" (asm.GetName().Version)
     printfn "usage: %s <filepath>" exename
   else
-    Script.forFile Script.defaultEnv argv.[0]
-    |> printfn "%A"
+    match Script.forFile Script.defaultEnv argv.[0] with
+    | Ok x -> printfn "%A" x
+    | Error (Script.ParserError msg) ->
+      printfn "FunnyScript: Parser Error !!"
+      printfn "%s" msg
+    | Error (Script.AstError e) ->
+      printfn "FunnyScript: Error !!"
+      printfn "%A" e
   0

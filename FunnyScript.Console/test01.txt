@@ -104,4 +104,12 @@ Person := class ((name, age) -> { name := name; age := age; }) {
 jack := Person.new ("Jack", 40);
 do jack.hello ();
 
+sqrt := x -> ? x >= 0 => System.Math.Sqrt x | ();
+piyopiyo := x -> 2 * (sqrt x);
+do out (sqrt 3.0);
+do out (sqrt (-1.0));
+do out (piyopiyo 2.0);
+//do out (piyopiyo (-2.0));
+
+
 trace "end"
