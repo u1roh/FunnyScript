@@ -11,7 +11,7 @@ open FunnyScript
 
 let (==>) script expected =
   script
-  |> Script.forStr Script.defaultEnv
+  |> Script.forStr "ScriptTest" Script.defaultEnv
   |> assertEquals (Ok expected)
 
 

@@ -16,7 +16,7 @@ let rec forceMutable obj =
   match obj with
   | Lazy x -> x.Force() |> Result.bind forceMutable
   | Mutable x -> Ok x
-  | _ -> Error NotMutable
+  | _ -> Error { Value = NotMutable; Position = None }
 
 let private addTupleToEnv names obj env =
   match names with
@@ -37,38 +37,26 @@ let rec eval expr env =
   let letEval expr env =
     env |> eval expr |> Result.bind forceLet
 
-  match expr with
+  let error e = Error { Value = e; Position = expr.Position }
+  let apply = apply expr.Position
+
+  match expr.Value with
   | Obj x -> Ok x
-  | Ref x -> env |> Map.tryFind (Name x) |> function Some x -> Ok x | _ -> Error (IdentifierNotFound (Name x))
+  | Ref x -> env |> Map.tryFind (Name x) |> function Some x -> Ok x | _ -> error (IdentifierNotFound (Name x))
   | RefMember (expr, name) ->
-    let toResult x = match x with Some x -> Ok x | _ -> Error (IdentifierNotFound (Name name))
+    let toResult x = match x with Some x -> Ok x | _ -> error (IdentifierNotFound (Name name))
     env |> forceEval expr |> Result.bind (function
       | Record r -> r |> Map.tryFind name |> toResult
       | ClrObj o -> o |> CLR.tryGetInstanceMember name |> toResult
       | Instance (x, t) -> t.Members |> Map.tryFind name |> toResult |> Result.bind (fun f -> apply (Func f) x)
       | Type { Id = ClrType t } -> t |> CLR.tryGetStaticMember name |> toResult
       | Type ({ Id = UserType (_, ctor) } as t) when name = "new" ->
-        Func (BuiltinFunc { new IBuiltinFunc with member this.Apply arg = apply (Func ctor) arg |> Result.bind force |> Result.map (fun x -> Instance (x, t)) }) |> Ok
+        let ctor arg = apply (Func ctor) arg |> Result.bind force |> Result.map (fun x -> Instance (x, t)) |> Result.mapError (fun e -> e.Value)
+        Func (BuiltinFunc { new IBuiltinFunc with member this.Apply arg = ctor arg }) |> Ok
       | x ->
         env |> Map.tryFind (typeid x |> typeName |> Name)
         |> Option.bind (function Type t -> t.Members |> Map.tryFind name | _ -> None) |> toResult
         |> Result.bind (fun f -> apply (Func f) x))
-
-//    env |> forceEval expr |> Result.bind (fun x ->
-//      let ret =
-//        match x with
-//        | Record r -> r |> Map.tryFind name
-//        | ClrObj o -> o |> CLR.tryGetInstanceMember name
-//        //| Instance (x, t) -> t.Members |> Map.tryFind name |> Option.map (fun f -> apply (Func f) x)
-//        | Type { Id = ClrType t } -> t |> CLR.tryGetStaticMember name
-//        | Type { Id = UserType (_, ctor) } when name = "new" ->
-//          Func (BuiltinFunc { new IBuiltinFunc with member this.Apply arg = apply (Func ctor) arg }) |> Some
-//        | _ -> None
-//      if ret.IsSome then Ok ret.Value else
-//        env |> Map.tryFind (typeid x |> typeName |> Name)
-//        |> Option.bind (function Type t -> t.Members |> Map.tryFind name | _ -> None)
-//        |> function Some x -> Ok x | _ -> Error (IdentifierNotFound (Name name))
-//        |> Result.bind (fun f -> apply (Func f) x))
   | Let (name, value, succ) ->
     env |> letEval value |> Result.bind (fun value ->
       let env = env |> Map.add (Name name) value
@@ -83,19 +71,19 @@ let rec eval expr env =
     env |> forceEval arg |> Result.bind (apply f))
   | BinaryOp (op, expr1, expr2) ->
     env |> Map.tryFind (Op op)
-    |> function Some f -> Ok f | _ -> Error (IdentifierNotFound (Op op))
+    |> function Some f -> Ok f | _ -> error (IdentifierNotFound (Op op))
     |> Result.bind (fun f -> env |> forceEval expr1 |> Result.bind (apply f))
     |> Result.bind (fun f -> env |> forceEval expr2 |> Result.bind (apply f))
   | UnaryOp (op, expr) ->
     env |> Map.tryFind (Op op)
-    |> function Some f -> Ok f | _ -> Error (IdentifierNotFound (Op op))
+    |> function Some f -> Ok f | _ -> error (IdentifierNotFound (Op op))
     |> Result.bind (fun f -> env |> forceEval expr |> Result.bind (apply f))
   | If (cond, thenExpr, elseExpr) ->
     env |> forceEval cond
     |> Result.bind (function
       | True  -> env |> eval thenExpr
       | False -> env |> eval elseExpr
-      | x -> Error (TypeMismatch (BoolType, typeid x)))
+      | x -> error (TypeMismatch (BoolType, typeid x)))
   | NewRecord fields ->
     (Ok (Map.empty, env), fields) ||> List.fold (fun state (name, expr) ->
       state |> Result.bind (fun (record, env) ->
@@ -106,7 +94,7 @@ let rec eval expr env =
     let items = exprs |> Array.map (fun expr -> env |> forceEval expr)
     let error =
       items |> Array.choose (function Error e -> Some e | _ -> None) |> Array.toList
-      |> function [] -> None | [e] -> Some e | es -> Some (ErrorList es)
+      |> function [] -> None | [e] -> Some e | es -> Some { Value = ErrorList es; Position = expr.Position }
     match error with
     | Some error -> Error error
     | _ -> items |> Array.choose (function Ok x -> Some x | _ -> None) |> FunnyList.ofArray |> List |> Ok
@@ -118,16 +106,15 @@ let rec eval expr env =
       | Float value1, Float value2 -> [| value1 .. value2 |] |> Array.map Float |> FunnyList.ofArray |> List |> Ok
       | Int   value1, Float value2 -> [| float value1 .. value2 |] |> Array.map Float |> FunnyList.ofArray |> List |> Ok
       | Float value1, Int   value2 -> [| value1 .. float value2 |] |> Array.map Float |> FunnyList.ofArray |> List |> Ok
-      | _ -> Error (MiscError "not numeric type") ))
+      | _ -> error (MiscError "not numeric type") ))
   | Substitute (expr1, expr2) ->
     env |> eval expr1 |> Result.bind forceMutable
     |> Result.bind (fun dst -> env |> eval expr2 |> Result.map (fun newval -> dst, newval))
     |> Result.map (fun (dst, newval) -> dst.Value <- newval; newval)
 
-
-and apply f arg =
+and apply pos f arg =
   match f with
-  | Func (BuiltinFunc f) -> f.Apply arg
+  | Func (BuiltinFunc f) -> f.Apply arg |> Result.mapError (fun e -> { Value = e; Position = pos })
   | Func (UserFunc f) -> lazy (f.Env |> addTupleToEnv f.Def.Args arg |> eval f.Def.Body) |> Lazy |> Ok
-  | List list -> match arg with Int i -> Ok list.[i] | _ -> TypeMismatch (IntType, typeid arg) |> Error
-  | _ -> NotApplyable (f, arg) |> Error
+  | List list -> match arg with Int i -> Ok list.[i] | _ -> Error { Value = TypeMismatch (IntType, typeid arg); Position = pos }
+  | _ -> Error { Value = NotApplyable (f, arg); Position = pos }

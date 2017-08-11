@@ -54,10 +54,10 @@ let private listModule =
   let init len f =
     match len with
     | Int len ->
-      let a = Array.init len (fun i -> Eval.apply f (Int i) |> Result.bind Eval.force)
+      let a = Array.init len (fun i -> Eval.apply None f (Int i) |> Result.bind Eval.force)
       let error =
         a |> Array.choose Result.toErrorOption |> Array.toList
-        |> function [] -> None | [e] -> Some e | es -> Some (ErrorList es)
+        |> function [] -> None | [e] -> Some e.Value | es -> Some (ErrorList es)
       match error with
       | Some error -> Error error
       | _ -> a |> Array.choose Result.toOption |> FunnyList.ofArray |> List |> Ok
@@ -117,22 +117,22 @@ let load env =
 
         "foreach",  asList (fun self -> toFunc1 (fun f ->
           self |> FunnyList.toSeq
-          |> Seq.tryPick (Eval.apply f >> Result.bind Eval.force >> Result.toErrorOption)
-          |> function Some e -> Error e | _ -> Ok Null))
+          |> Seq.tryPick (Eval.apply None f >> Result.bind Eval.force >> Result.toErrorOption)
+          |> function Some e -> Error e.Value | _ -> Ok Null))
 
         "map", asList (fun self -> toFunc1 (fun f ->
           match self.Length with
           | Definite n ->
             let a =
               self |> FunnyList.toSeq
-              |> Seq.map (Eval.apply f >> Result.bind Eval.force)
+              |> Seq.map (Eval.apply None f >> Result.bind Eval.force)
               |> Seq.toArray
             match a |> Array.tryPick Result.toErrorOption with
-            | Some e -> Error e
+            | Some e -> Error e.Value
             | _ -> a |> Array.choose Result.toOption |> FunnyList.ofArray |> List |> Ok
           | _ ->
             self |> FunnyList.toSeq
-            |> Seq.map (fun item -> lazy (Eval.apply f item) |> Lazy)
+            |> Seq.map (fun item -> lazy (Eval.apply None f item) |> Lazy)
             |> FunnyList.ofSeq |> List |> Ok))
 
         "choose", asList (fun self -> toFunc1 (fun f ->
@@ -140,14 +140,14 @@ let load env =
           | Definite n ->
             let a =
               self |> FunnyList.toSeq
-              |> Seq.map (Eval.apply f >> Result.bind Eval.force)
+              |> Seq.map (Eval.apply None f >> Result.bind Eval.force)
               |> Seq.toArray
             match a |> Array.tryPick Result.toErrorOption with
-            | Some e -> Error e
+            | Some e -> Error e.Value
             | _ -> a |> Array.choose (function Ok x when x <> Null -> Some x | _ -> None) |> FunnyList.ofArray |> List |> Ok
           | _ ->
             self |> FunnyList.toSeq
-            |> Seq.choose (Eval.apply f >> Result.bind Eval.force >> function Ok Null -> None | Ok x -> Some x | x -> Some (Lazy (lazy x)))
+            |> Seq.choose (Eval.apply None f >> Result.bind Eval.force >> function Ok Null -> None | Ok x -> Some x | x -> Some (Lazy (lazy x)))
             |> FunnyList.ofSeq |> List |> Ok))
       ]
     deftype TypeType []

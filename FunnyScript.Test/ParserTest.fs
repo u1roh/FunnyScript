@@ -13,10 +13,10 @@ let ``string literal`` () =
       match expected with
       | Obj (ClrObj (:? string as str)) -> Obj (ClrObj (replace str))
       | other -> other
-    let result = snipet |> replace |> Parser.parse
+    let result = snipet |> replace |> Parser.parse "ParserTest"
     do!
       match result with
-      | Ok expr -> assertEquals expected expr
+      | Ok expr -> assertEquals expected expr.Value
       | Error err ->
           fail (sprintf "%A" err)
   }

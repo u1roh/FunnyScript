@@ -1,6 +1,18 @@
 ﻿[<AutoOpen>]
 module FunnyScript.AST
 
+type Position = {
+    FilePath  : string
+    Line      : int
+    Column    : int
+  } with
+  override this.ToString () = sprintf "%s(%d, %d)" this.FilePath this.Line this.Column
+
+type Trace<'value> = {
+    Value : 'value
+    Position : Position option
+  }
+
 type Operator =
   | Plus
   | Minus
@@ -34,11 +46,13 @@ and Error =
   | NotImplemented of string
   | MiscError of string
   | ExnError of exn
-  | ErrorList of Error list
+  | ErrorList of Err list
   | NotMutable
   | ClassDefError
 
-and Result = Result<Obj, Error>
+and Err = Trace<Error>
+
+and Result = Result<Obj, Err>
 
 and IMutable =
   abstract Value : Obj with get, set
@@ -58,7 +72,7 @@ and Obj =
   | Type    of Type
   | Lazy    of Lazy<Result> // for tail-recursion
 
-and Expr =
+and Expression =
   | Obj of Obj
   | Ref of name:string
   | RefMember of self:Expr * name:string
@@ -74,13 +88,15 @@ and Expr =
   | If of condition:Expr * thenExpr:Expr * elseExpr:Expr
   | Substitute of Expr * Expr
 
+and Expr = Trace<Expression>
+
 and FuncDef = {
     Args : string list
     Body : Expr
   }
 
 and IBuiltinFunc =
-  abstract Apply : Obj -> Result
+  abstract Apply : Obj -> Result<Obj, Error>
 
 and UserFunc = {
     Def : FuncDef
@@ -182,7 +198,7 @@ module DebugDump =
       | Type    x -> printf "(Type %s)" (typeName x.Id)
       | Lazy    x -> printf "(Lazy %A)" x
 
-    match expr with
+    match expr.Value with
     | Obj x -> forObj x
     | Ref x -> printf "%s" x
     | RefMember (expr, name) -> dump i expr; printf ".%s " name

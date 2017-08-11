@@ -109,7 +109,7 @@ piyopiyo := x -> 2 * (sqrt x);
 do out (sqrt 3.0);
 do out (sqrt (-1.0));
 do out (piyopiyo 2.0);
-//do out (piyopiyo (-2.0));
+do out (piyopiyo (-2.0));
 
 
 trace "end"
