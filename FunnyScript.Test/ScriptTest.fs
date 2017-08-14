@@ -199,4 +199,10 @@ let errorTest = test "error test" {
     sqrt := x -> ? x < 0 => error "x must be positive" | System.Math.Sqrt x;
     sqrt (-1)
   """ ==>! ClrObj "x must be positive"
+
+  do! """
+    f := a -> a + 1;
+    b := f ();  // エラー発生 => 即時終了せずに b にエラー情報が入る。 
+    b |> catch (e -> "caught!")
+  """ ==> ClrObj "caught!"
 }

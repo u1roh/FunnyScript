@@ -101,6 +101,7 @@ let load env =
     Name "class", toFunc2 makeClass
     Name "mutable", toFunc1 (toMutable >> Ok)
     Name "error", toFunc1 (fun x -> Error (UserError x))
+    Name "catch", toFunc1 (fun handler -> { new IBuiltinFunc with member __.Apply err = Eval.apply None handler err |> Result.mapError (fun e -> e.Value) } |> ErrHandler |> Func |> Ok)
     Name "trace", toFunc1 trace
     Name "sin", toFunc1 sin
 
