@@ -37,13 +37,14 @@ type ID =
   | Name of string
   | Op   of Operator
 
-type Env = Map<ID, Obj>
+type Env = Map<ID, Result>
 
 and Error =
   | IdentifierNotFound of ID
   | NotApplyable of f:Obj * arg:Obj
   | TypeMismatch of expected:TypeId * actual:TypeId
   | NotImplemented of string
+  | UserError of Obj
   | MiscError of string
   | ExnError of exn
   | ErrorList of Err list

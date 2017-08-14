@@ -4,7 +4,7 @@ type Error =
   | AstError    of AST.Err
   | ParserError of string
 
-let defaultEnv =
+let defaultEnv : Env =
   Map.empty
   |> CLR.loadSystemAssembly
   |> Builtin.load

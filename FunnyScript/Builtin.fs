@@ -100,6 +100,7 @@ let load env =
 
     Name "class", toFunc2 makeClass
     Name "mutable", toFunc1 (toMutable >> Ok)
+    Name "error", toFunc1 (fun x -> Error (UserError x))
     Name "trace", toFunc1 trace
     Name "sin", toFunc1 sin
 
@@ -156,5 +157,5 @@ let load env =
 
     Name "Stack", toFunc0 (fun () -> Stack() :> obj |> ClrObj |> Ok)
   ]
-  |> List.fold (fun env (id, obj) -> env |> Map.add id obj) env
+  |> List.fold (fun env (id, obj) -> env |> Map.add id (Ok obj)) env
 

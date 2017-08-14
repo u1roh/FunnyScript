@@ -29,8 +29,8 @@ let loadAssembly (asm : System.Reflection.Assembly) env =
   |> typesToFunnyObjs
   |> Array.fold (fun env (name, item) ->
     match env |> Map.tryFind (Name name), item with
-    | Some (Record r1), Record r2 -> env |> Map.add (Name name) (mergeRecord r1 r2 |> Record)
-    | _ -> env |> Map.add (Name name) item) env
+    | Some (Ok (Record r1)), Record r2 -> env |> Map.add (Name name) (mergeRecord r1 r2 |> Record |> Ok)
+    | _ -> env |> Map.add (Name name) (Ok item)) env
 
 let loadSystemAssembly env =
   env

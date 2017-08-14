@@ -21,14 +21,18 @@ let rec forceMutable obj =
 let private addTupleToEnv names obj env =
   match names with
   | []     -> env
-  | [name] -> env |> Map.add (Name name) obj
+  | [name] -> env |> Map.add (Name name) (Ok obj)
   | _ ->
     match obj with
     | List items ->
       names
       |> List.mapi (fun i name -> Name name, items.[i])
-      |> List.fold (fun env (name, obj) -> env |> Map.add name obj) env
+      |> List.fold (fun env (name, obj) -> env |> Map.add name (Ok obj)) env
     | _ -> env
+
+module private Env =
+  let tryGet pos id (env : Env) =
+    env |> Map.tryFind id |> function Some x -> x | _ -> Error { Value = IdentifierNotFound id; Position = pos }
 
 let rec eval expr env =
   let forceEval expr env =
@@ -39,10 +43,11 @@ let rec eval expr env =
 
   let error e = Error { Value = e; Position = expr.Position }
   let apply = apply expr.Position
+  let tryGet id = env |> Env.tryGet expr.Position id
 
   match expr.Value with
   | Obj x -> Ok x
-  | Ref x -> env |> Map.tryFind (Name x) |> function Some x -> Ok x | _ -> error (IdentifierNotFound (Name x))
+  | Ref x -> tryGet (Name x)
   | RefMember (expr, name) ->
     let toResult x = match x with Some x -> Ok x | _ -> error (IdentifierNotFound (Name name))
     env |> forceEval expr |> Result.bind (function
@@ -54,14 +59,14 @@ let rec eval expr env =
         let ctor arg = apply (Func ctor) arg |> Result.bind force |> Result.map (fun x -> Instance (x, t)) |> Result.mapError (fun e -> e.Value)
         Func (BuiltinFunc { new IBuiltinFunc with member this.Apply arg = ctor arg }) |> Ok
       | x ->
-        env |> Map.tryFind (typeid x |> typeName |> Name)
-        |> Option.bind (function Type t -> t.Members |> Map.tryFind name | _ -> None) |> toResult
+        tryGet (typeid x |> typeName |> Name)
+        |> Result.bind (function Type t -> t.Members |> Map.tryFind name |> toResult | x -> error (TypeMismatch (TypeType, typeid x)))
         |> Result.bind (fun f -> apply (Func f) x))
   | Let (name, value, succ) ->
-    env |> letEval value |> Result.bind (fun value ->
-      let env = env |> Map.add (Name name) value
-      match value with Func (UserFunc f) -> f.Env <- env | _ -> ()  // to enable recursive call
-      env |> eval succ)
+    let value = env |> letEval value
+    let env = env |> Map.add (Name name) value
+    match value with Ok (Func (UserFunc f)) -> f.Env <- env | _ -> ()  // to enable recursive call
+    env |> eval succ
   | Combine (expr1, expr2) ->
     env |> forceEval expr1 |> Result.bind (fun _ ->
     env |> eval expr2)
@@ -70,13 +75,11 @@ let rec eval expr env =
     env |> forceEval f   |> Result.bind (fun f ->
     env |> forceEval arg |> Result.bind (apply f))
   | BinaryOp (op, expr1, expr2) ->
-    env |> Map.tryFind (Op op)
-    |> function Some f -> Ok f | _ -> error (IdentifierNotFound (Op op))
+    tryGet (Op op)
     |> Result.bind (fun f -> env |> forceEval expr1 |> Result.bind (apply f))
     |> Result.bind (fun f -> env |> forceEval expr2 |> Result.bind (apply f))
   | UnaryOp (op, expr) ->
-    env |> Map.tryFind (Op op)
-    |> function Some f -> Ok f | _ -> error (IdentifierNotFound (Op op))
+    tryGet (Op op)
     |> Result.bind (fun f -> env |> forceEval expr |> Result.bind (apply f))
   | If (cond, thenExpr, elseExpr) ->
     env |> forceEval cond
@@ -88,7 +91,7 @@ let rec eval expr env =
     (Ok (Map.empty, env), fields) ||> List.fold (fun state (name, expr) ->
       state |> Result.bind (fun (record, env) ->
         env |> letEval expr
-        |> Result.map (fun x -> record |> Map.add name x, env |> Map.add (Name name) x )))
+        |> Result.map (fun x -> record |> Map.add name x, env |> Map.add (Name name) (Ok x))))
     |> Result.map (fst >> Record)
   | NewList exprs ->
     let items = exprs |> Array.map (fun expr -> env |> forceEval expr)

@@ -1,6 +1,7 @@
 ﻿module FunnyScript.Test.ScriptTest
 open Persimmon
 open FunnyScript
+open System
 
 (*
   test "sin (3.14 / 2.0)"
@@ -9,11 +10,19 @@ open FunnyScript
   test "do trace 10; do trace 20;"
   *)
 
-let (==>) script expected =
-  script
-  |> Script.forStr "ScriptTest" Script.defaultEnv
+let (==>) (script : string) expected =
+  script.Split '\n'
+  |> Script.forLines "ScriptTest" Script.defaultEnv
   |> assertEquals (Ok expected)
 
+let (==>!) (script : string) error =
+  let result =
+    script.Split '\n'
+    |> Script.forLines "ScriptTest" Script.defaultEnv
+  match result with
+  | Error (Script.AstError ({ Value = UserError e })) -> e |> assertEquals error
+  | Error e -> fail (sprintf "unexpected error: %A" e)
+  | Ok _ -> fail "Error expected, but succceeded"
 
 let literalTest = test "literal test" {
   do! "1." ==> Float 1.0
@@ -177,4 +186,17 @@ let classTest = test "class test" {
     charlie := Person.new ("Charlie", "Parker");
     charlie.fullname
   """ ==> ClrObj "Charlie Parker"
+}
+
+let errorTest = test "error test" {
+  do! """
+    f := a -> a + 1;
+    b := f ();  // エラー発生 => 即時終了せずに b にエラー情報が入る。 
+    ()  // 全体としては null を返すので b に格納されたエラー情報はスルーされる。
+  """ ==> Null
+
+  do! """
+    sqrt := x -> ? x < 0 => error "x must be positive" | System.Math.Sqrt x;
+    sqrt (-1)
+  """ ==>! ClrObj "x must be positive"
 }
