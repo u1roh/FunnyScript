@@ -96,18 +96,18 @@ and FuncDef = {
     Body : Expr
   }
 
-and IBuiltinFunc =
-  abstract Apply : Obj -> Result<Obj, Error>
-
 and UserFunc = {
     Def : FuncDef
     mutable Env : Env
   }
 
+and IFuncObj =
+  abstract Apply : Obj -> Result
+
 and Func =
   | UserFunc    of UserFunc
-  | BuiltinFunc of IBuiltinFunc
-  | ErrHandler  of IBuiltinFunc
+  | BuiltinFunc of IFuncObj
+  | ErrHandler  of IFuncObj
 
 and TypeId =
   | NullType

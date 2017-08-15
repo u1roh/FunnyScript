@@ -74,7 +74,7 @@ let toFunnyObj (obj : obj) =
   | _ -> ClrObj obj
 
 
-let private builtinFunc f = BuiltinFunc { new IBuiltinFunc with member __.Apply a = f a }
+let private builtinFunc f = BuiltinFunc { new IFuncObj with member __.Apply a = f a |> Result.mapError (fun e -> { Value = e; Position = None }) }
 let private toFunc1 f = Func (builtinFunc f)
 
 type private Method = {

@@ -44,13 +44,12 @@ let rec eval expr env =
   let apply f arg =
     match f, arg with
     | Func (ErrHandler f), Error { Value = e } ->
-      let e =
+      f.Apply <|
         match e with
         | UserError e -> e
         | ExnError  e -> ClrObj e
         | MiscError e -> ClrObj e
         | _ -> ClrObj e
-      f.Apply e |> Result.mapError (fun e -> { Value = e; Position = expr.Position })
     | _ -> arg |> Result.bind (apply expr.Position f)
 
   let error e = Error { Value = e; Position = expr.Position }
@@ -67,8 +66,8 @@ let rec eval expr env =
       | Instance (x, t) -> t.Members |> Map.tryFind name |> toResult |> Result.bind (fun f -> apply (Func f) (Ok x))
       | Type { Id = ClrType t } -> t |> CLR.tryGetStaticMember name |> toResult
       | Type ({ Id = UserType (_, ctor) } as t) when name = "new" ->
-        let ctor arg = apply (Func ctor) (Ok arg) |> Result.bind force |> Result.map (fun x -> Instance (x, t)) |> Result.mapError (fun e -> e.Value)
-        Func (BuiltinFunc { new IBuiltinFunc with member this.Apply arg = ctor arg }) |> Ok
+        let ctor arg = apply (Func ctor) (Ok arg) |> Result.bind force |> Result.map (fun x -> Instance (x, t))
+        Func (BuiltinFunc { new IFuncObj with member this.Apply arg = ctor arg }) |> Ok
       | x ->
         tryGet (typeid x |> typeName |> Name)
         |> Result.bind (function Type t -> t.Members |> Map.tryFind name |> toResult | x -> error (TypeMismatch (TypeType, typeid x)))
@@ -127,7 +126,7 @@ let rec eval expr env =
 
 and apply pos f arg =
   match f with
-  | Func (BuiltinFunc f) -> f.Apply arg |> Result.mapError (fun e -> { Value = e; Position = pos })
+  | Func (BuiltinFunc f) -> f.Apply arg
   | Func (UserFunc f) -> lazy (f.Env |> addTupleToEnv f.Def.Args arg |> eval f.Def.Body) |> Lazy |> Ok
   | List list -> match arg with Int i -> Ok list.[i] | _ -> Error { Value = TypeMismatch (IntType, typeid arg); Position = pos }
   | _ -> Error { Value = NotApplyable (f, arg); Position = pos }

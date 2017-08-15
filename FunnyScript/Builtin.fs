@@ -1,7 +1,8 @@
 ﻿module FunnyScript.Builtin
 open System.Collections
 
-let private builtinFunc f = BuiltinFunc { new IBuiltinFunc with member __.Apply a = f a }
+let private funcObj f = { new IFuncObj with member __.Apply a = f a }
+let private builtinFunc f = BuiltinFunc (funcObj (f >> Result.mapError (fun e -> { Value = e; Position = None })))
 let private toFunc0 f = Func (builtinFunc (fun _ -> f()))
 let private toFunc1 f = Func (builtinFunc f)
 let private toFunc2 f = toFunc1 (f >> toFunc1 >> Ok)
@@ -101,7 +102,7 @@ let load env =
     Name "class", toFunc2 makeClass
     Name "mutable", toFunc1 (toMutable >> Ok)
     Name "error", toFunc1 (fun x -> Error (UserError x))
-    Name "catch", toFunc1 (fun handler -> { new IBuiltinFunc with member __.Apply err = Eval.apply None handler err |> Result.mapError (fun e -> e.Value) } |> ErrHandler |> Func |> Ok)
+    Name "catch", toFunc1 (fun handler -> funcObj (Eval.apply None handler) |> ErrHandler |> Func |> Ok)
     Name "trace", toFunc1 trace
     Name "sin", toFunc1 sin
 
