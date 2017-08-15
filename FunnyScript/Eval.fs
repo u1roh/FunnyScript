@@ -128,5 +128,6 @@ and apply pos f arg =
   match f with
   | Func (BuiltinFunc f) -> f.Apply arg
   | Func (UserFunc f) -> lazy (f.Env |> addTupleToEnv f.Def.Args arg |> eval f.Def.Body) |> Lazy |> Ok
+  | Func (ErrHandler _) -> Ok arg
   | List list -> match arg with Int i -> Ok list.[i] | _ -> Error { Value = TypeMismatch (IntType, typeid arg); Position = pos }
   | _ -> Error { Value = NotApplyable (f, arg); Position = pos }

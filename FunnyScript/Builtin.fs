@@ -2,7 +2,8 @@
 open System.Collections
 
 let private funcObj f = { new IFuncObj with member __.Apply a = f a }
-let private builtinFunc f = BuiltinFunc (funcObj (f >> Result.mapError (fun e -> { Value = e; Position = None })))
+let private toResult r = r |> Result.mapError (fun e -> { Value = e; Position = None })
+let private builtinFunc f = BuiltinFunc (funcObj (f >> toResult))
 let private toFunc0 f = Func (builtinFunc (fun _ -> f()))
 let private toFunc1 f = Func (builtinFunc f)
 let private toFunc2 f = toFunc1 (f >> toFunc1 >> Ok)

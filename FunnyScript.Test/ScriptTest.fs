@@ -205,4 +205,10 @@ let errorTest = test "error test" {
     b := f ();  // エラー発生 => 即時終了せずに b にエラー情報が入る。 
     b |> catch (e -> "caught!")
   """ ==> ClrObj "caught!"
+
+  do! """
+    f := a -> a + 1;
+    b := f 1;  // 正常終了
+    b |> catch (e -> "caught!") // エラー処理は無視される
+  """ ==> Int 2
 }
