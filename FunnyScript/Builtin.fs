@@ -52,6 +52,19 @@ let private sin x =
 let private trace arg =
   printfn "%A" arg; Ok Null
 
+let private castModule =
+  let rec castToInt x =
+    match x with
+    | Int _ -> x |> Ok
+    | Float x -> int x |> Int |> Ok
+    | True  -> Int 1 |> Ok
+    | False -> Int 0 |> Ok
+    | Mutable x -> castToInt x.Value
+    | _ -> Error (MiscError "casting to int failed")
+  [
+    "int", toFunc1 castToInt
+  ] |> Map.ofList |> Record
+
 let private listModule =
   let init len f =
     match len with
@@ -156,6 +169,7 @@ let load env =
       ]
     deftype TypeType []
 
+    Name "Cast", castModule
     Name "List", listModule
 
     Name "Stack", toFunc0 (fun () -> Stack() :> obj |> ClrObj |> Ok)

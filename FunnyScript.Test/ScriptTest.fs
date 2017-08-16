@@ -212,3 +212,7 @@ let errorTest = test "error test" {
     b |> catch (e -> "caught!") // エラー処理は無視される
   """ ==> Int 2
 }
+
+let castTest = test "cast test" {
+  do! "Cast.int 3.14" ==> Int 3
+}
