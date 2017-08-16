@@ -49,6 +49,8 @@ let testScript = test "scripting test" {
   do! "f := () -> 123; f()" ==> Int 123
   do! "f := (a, b, c) -> a + b + c; f (1, 2, 3)" ==> Int 6
   do! "a := 1; -a" ==> Int -1
+  do! "a := b := 100; b + 20; a" ==> Int 120
+  do! "f := a := 100; x -> x + a; f 10" ==> Int 110
 }
 
 let typeTest = test "type test" {

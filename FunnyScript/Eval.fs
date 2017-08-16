@@ -75,7 +75,7 @@ let rec eval expr env =
   | Let (name, value, succ) ->
     let value = env |> letEval value
     let env = env |> Map.add (Name name) value
-    match value with Ok (Func (UserFunc f)) -> f.Env <- env | _ -> ()  // to enable recursive call
+    match value with Ok (Func (UserFunc f)) -> f.Env <- f.Env |> Map.add (Name name) value | _ -> ()  // to enable recursive call
     env |> eval succ
   | Combine (expr1, expr2) ->
     env |> forceEval expr1 |> Result.bind (fun _ ->
