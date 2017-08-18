@@ -71,6 +71,9 @@ let pExpr =
   let pDo =
     str_ws "do" >>. pExpr .>> char_ws ';' .>>. opt pExpr
     |>> (fun (expr1, expr2) -> match expr2 with Some expr2 -> Combine (expr1, expr2) | _ -> Combine (expr1, { Value = Obj Null; Position = None }))
+  let pOpen =
+    str_ws "open" >>. pExpr .>> char_ws ';' .>>. pExpr
+    |>> Open
   let pIf =
     (opt (char_ws '|') .>> char_ws '?') >>. pExpr .>> str_ws "=>" .>>. pExpr .>> char_ws '|' .>>. pExpr
     |>> fun ((cond, expr1), expr2) -> If (cond, expr1, expr2)
@@ -144,6 +147,7 @@ let pExpr =
     choice [
       pDo
       pIf
+      pOpen
       attempt pLet
       opp.ExpressionParser |>> fun x -> x.Value
     ]

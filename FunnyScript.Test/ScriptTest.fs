@@ -215,6 +215,19 @@ let errorTest = test "error test" {
   """ ==> Int 2
 }
 
+let openTest = test "open test" {
+  do! """
+    r := { hoge := 123; piyo := "hello"; };
+    open r;
+    hoge
+  """ ==> Int 123
+
+  do! "open System; Math.Abs (-3.14)" ==> Float 3.14
+
+  // これも出来るようにしたいが、現状ではクラスを open することは出来ない
+  //do! "open System.Math; Abs (-3.14)" ==> Float 3.14
+}
+
 let castTest = test "cast test" {
   do! "Cast.int 3.14" ==> Int 3
 }

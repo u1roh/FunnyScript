@@ -123,6 +123,10 @@ let rec eval expr env =
     env |> eval expr1 |> Result.bind forceMutable
     |> Result.bind (fun dst -> env |> eval expr2 |> Result.map (fun newval -> dst, newval))
     |> Result.map (fun (dst, newval) -> dst.Value <- newval; newval)
+  | Open (record, succ) ->
+    env |> forceEval record |> Result.bind (function
+      | Record r -> (env, r) ||> Seq.fold (fun env x -> env |> Map.add (Name x.Key) (Ok x.Value)) |> eval succ
+      | x -> error (TypeMismatch (RecordType, typeid x)))
 
 and apply pos f arg =
   match f with

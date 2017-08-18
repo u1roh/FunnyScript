@@ -88,6 +88,7 @@ and Expression =
   | ListByRange of Expr * Expr
   | If of condition:Expr * thenExpr:Expr * elseExpr:Expr
   | Substitute of Expr * Expr
+  | Open of value:Expr * succ:Expr
 
 and Expr = Trace<Expression>
 
