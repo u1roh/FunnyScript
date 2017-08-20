@@ -129,9 +129,20 @@ let rec eval expr env =
       | x -> error (TypeMismatch (RecordType, typeid x)))
 
 and apply pos f arg =
+  let err() = Error { Value = NotApplyable (f, arg); Position = pos }
   match f with
   | Func (BuiltinFunc f) -> f.Apply arg
   | Func (UserFunc f) -> lazy (f.Env |> addTupleToEnv f.Def.Args arg |> eval f.Def.Body) |> Lazy |> Ok
   | Func (ErrHandler _) -> Ok arg
   | List list -> match arg with Int i -> Ok list.[i] | _ -> Error { Value = TypeMismatch (IntType, typeid arg); Position = pos }
-  | _ -> Error { Value = NotApplyable (f, arg); Position = pos }
+  | Int a ->
+    match arg with
+    | Int   b -> Ok <| Int (a * b)
+    | Float b -> Ok <| Float (float a * b)
+    | _ -> err()
+  | Float a ->
+    match arg with
+    | Int   b -> Ok <| Float (a * float b)
+    | Float b -> Ok <| Float (a * b)
+    | _ -> err()
+  | _ -> err()
