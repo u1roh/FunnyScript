@@ -11,6 +11,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunnyScript.Test", "FunnySc
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "SampleApp", "SampleApp\SampleApp.fsproj", "{1744A731-150F-48DC-882F-0D6FABABB116}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FunnyScript.Gui", "FunnyScript.Gui\FunnyScript.Gui.csproj", "{F4831E28-74A5-4B00-A2F0-47FCB262AC01}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{1744A731-150F-48DC-882F-0D6FABABB116}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1744A731-150F-48DC-882F-0D6FABABB116}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1744A731-150F-48DC-882F-0D6FABABB116}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F4831E28-74A5-4B00-A2F0-47FCB262AC01}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F4831E28-74A5-4B00-A2F0-47FCB262AC01}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F4831E28-74A5-4B00-A2F0-47FCB262AC01}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F4831E28-74A5-4B00-A2F0-47FCB262AC01}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,41 +1,39 @@
 ﻿module FunnyScript.Script
+open System.IO;
 
 type Error =
-  | AstError    of AST.Err
-  | ParserError of string
+  | RuntimeError  of AST.Err
+  | ParserError   of string
 
-let defaultEnv : Env =
-  Map.empty
-  |> CLR.loadSystemAssembly
-  |> Builtin.load
+type Env private (data : AST.Env) =
+  static member Default =
+    Map.empty
+    |> CLR.loadSystemAssembly
+    |> Builtin.load
+    |> Env
 
-let eval env expr =
-  env
-  |> Eval.eval expr
-  |> Result.bind Eval.force
-  |> Result.mapError AstError
+  member this.LoadAssembly asm =
+    data |> CLR.loadAssembly asm |> Env
 
-let forStr streamName env src =
-  Parser.parse streamName src
-  //|> Result.map (fun x -> DebugDump.dump 1 x; x)
-  |> Result.mapError ParserError
-  |> Result.bind (eval env)
+  member this.Add (name, obj : obj) =
+    data |> Map.add (Name name) (ClrObj obj |> Ok) |> Env
 
-let forLines streamName env (lines : string seq) =
-  lines
-  |> Seq.map (fun s -> let i = s.IndexOf "//" in if 0 <= i && i < s.Length then s.Substring (0, i) else s)  // コメントの除去
-  |> String.concat "\n"
-  |> forStr streamName env
+  member this.Eval expr =
+    data |> Eval.eval expr |> Result.bind Eval.force
 
-let forReader streamName env (reader : System.IO.TextReader) =
-  seq {
-    let mutable line = reader.ReadLine()
-    while line <> null do
-      yield line
-      line <- reader.ReadLine()
-  }
-  |> forLines streamName env
+  member this.Run (streamName, source) =
+    Parser.parse streamName source
+    //|> Result.map (fun x -> DebugDump.dump 1 x; x)
+    |> Result.mapError ParserError
+    |> Result.bind (this.Eval >> Result.mapError RuntimeError)
 
-let forFile env path =
-  use reader = System.IO.File.OpenText path
-  forReader path env reader
+  member this.RunFile path =
+    this.Run (path, File.ReadAllText path)
+
+
+let getResultString result =
+  match result with
+  | Ok (x : Obj) -> sprintf "%A" x
+  | Error (ParserError s) -> sprintf "PARSER ERROR!: %s" s
+  | Error (RuntimeError { Value = e; Position = Some pos }) -> sprintf "RUNTIME ERROR! %A\n at %s (%d, %d)" e pos.FilePath pos.Line pos.Column
+  | Error (RuntimeError { Value = e; Position = None })     -> sprintf "RUNTIME ERROR! %A\n" e

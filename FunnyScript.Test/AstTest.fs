@@ -31,7 +31,8 @@ let refMember =
 
 
 let testAST = test "FunnyScript AST test" {
-  let eval x = expr x |> Script.eval Script.defaultEnv
+  let env = Script.Env.Default;
+  let eval x = env.Eval (expr x)
   do!
     binaryOp (Plus, Obj (Int 1), Obj (Int 2))
     |> eval |> assertEquals (Ok (Int 3))

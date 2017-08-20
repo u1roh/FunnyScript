@@ -10,17 +10,15 @@ open System
   test "do trace 10; do trace 20;"
   *)
 
+let env = Script.Env.Default
+
 let (==>) (script : string) expected =
-  script.Split '\n'
-  |> Script.forLines "ScriptTest" Script.defaultEnv
+  env.Run ("ScriptTest", script)
   |> assertEquals (Ok expected)
 
 let (==>!) (script : string) error =
-  let result =
-    script.Split '\n'
-    |> Script.forLines "ScriptTest" Script.defaultEnv
-  match result with
-  | Error (Script.AstError ({ Value = UserError e })) -> e |> assertEquals error
+  match env.Run ("ScriptTest", script) with
+  | Error (Script.RuntimeError ({ Value = UserError e })) -> e |> assertEquals error
   | Error e -> fail (sprintf "unexpected error: %A" e)
   | Ok _ -> fail "Error expected, but succceeded"
 

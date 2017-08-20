@@ -154,10 +154,17 @@ let pExpr =
     |> toTracable
   pExpr
 
+let private removeComments (program : string) =
+  program.Split '\n'
+  |> Seq.map (fun (s : string) -> let i = s.IndexOf "//" in if 0 <= i && i < s.Length then s.Substring (0, i) else s)  // コメントの除去
+  |> String.concat "\n"
+
 let parse streamName program =
-  match runParserOnString (spaces >>. pExpr .>> eof) () streamName program with
-  | Success (x, _, _) -> Result.Ok x
-  | Failure (s, e, _) -> Result.Error s
+  removeComments program
+  |> runParserOnString (spaces >>. pExpr .>> eof) () streamName
+  |> function
+    | Success (x, _, _) -> Result.Ok x
+    | Failure (s, e, _) -> Result.Error s
 
 let test() =
   parse "1" |> printfn "%A"

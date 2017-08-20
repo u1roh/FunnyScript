@@ -4,9 +4,7 @@ open System.Windows.Forms;
 open FunnyScript;
 
 type ScriptRunner (output : string -> unit) =
-  let env =
-    Script.defaultEnv
-    |> CLR.loadAssembly (typeof<System.Drawing.Graphics>.Assembly)
+  let env = Script.Env.Default.LoadAssembly typeof<System.Drawing.Graphics>.Assembly
   let mutable script = ""
   let mutable program : Expr = { Value = Obj Null; Position = None }
 
@@ -19,8 +17,8 @@ type ScriptRunner (output : string -> unit) =
     | Ok expr -> program <- expr; true
   
   member __.Run (argname, argobj) =
-    let env = env |> Map.add (Name argname) (ClrObj argobj |> Ok)
-    let result = Script.eval env program
+    let env = env.Add (argname, argobj)
+    let result = env.Eval program
     output (sprintf "%A" result)
     Result.isOk result
 
