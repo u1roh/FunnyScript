@@ -23,6 +23,7 @@ namespace FunnyScript.Gui
     public MainWindow()
     {
       InitializeComponent();
+      editor.SourceFilePath = System.IO.Path.Combine( System.IO.Path.GetDirectoryName( typeof( MainWindow ).Assembly.Location ), "default.fny" );
     }
 
     private void MenuItem_Click( object sender, RoutedEventArgs e )

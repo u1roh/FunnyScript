@@ -9,7 +9,9 @@
              d:DesignHeight="300" d:DesignWidth="300">
   <ae:TextEditor
     Name="editor"
-    ShowLineNumbers="True">
+    ShowLineNumbers="True"
+    FontFamily="Consolas"
+    FontSize="14">
     
   </ae:TextEditor>
 </UserControl>
