@@ -24,6 +24,10 @@ namespace FunnyScript.Gui
     {
       InitializeComponent();
       editor.SourceFilePath = System.IO.Path.Combine( System.IO.Path.GetDirectoryName( typeof( MainWindow ).Assembly.Location ), "default.fny" );
+      this.KeyDown += ( sender, e ) =>
+      {
+        if ( e.Key == Key.F5 ) this.MenuItem_Click( sender, e );
+      };
     }
 
     private void MenuItem_Click( object sender, RoutedEventArgs e )
