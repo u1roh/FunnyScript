@@ -16,6 +16,9 @@ using System.Reflection;
 using System.IO;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
+using ICSharpCode.AvalonEdit.CodeCompletion;
+using ICSharpCode.AvalonEdit.Document;
+using ICSharpCode.AvalonEdit.Editing;
 
 namespace FunnyScript.Gui
 {
@@ -34,6 +37,31 @@ namespace FunnyScript.Gui
 
     Script.Env env = Script.Env.Default;
     Result<AST.Trace<AST.Expression>, string> expr;
+    CompletionWindow completionWindow = null;
+    bool keywordCompletion = true;
+
+    class FunnyCompletionData : ICompletionData
+    {
+      public FunnyCompletionData( string text )
+      {
+        this.Text = text;
+      }
+
+      public string Text { get; } = "";
+
+      public object Content { get { return this.Text; } }
+
+      public object Description { get { return "(no description)"; } }
+
+      public ImageSource Image { get; } = null;
+
+      public double Priority { get; } = 0;
+
+      public void Complete( TextArea textArea, ISegment completionSegment, EventArgs insertionRequestEventArgs )
+      {
+        textArea.Document.Replace( completionSegment, this.Text );
+      }
+    }
 
     public FunnyEditor()
     {
@@ -43,6 +71,50 @@ namespace FunnyScript.Gui
           editor.SyntaxHighlighting = HighlightingLoader.Load( reader, ICSharpCode.AvalonEdit.Highlighting.HighlightingManager.Instance );
         }
       }
+
+      // コード補完のテスト
+      editor.TextArea.TextEntered += ( sender, e ) =>
+      {
+        if ( char.IsWhiteSpace( e.Text[0] ) || char.IsSymbol( e.Text[0] ) ) {
+          keywordCompletion = true;
+        }
+        else {
+          var candidates = new List<string>();
+          if ( e.Text == "." ) {
+            candidates.AddRange( new[]
+            {
+              "Item1",
+              "Item2",
+              "Item3",
+            } );
+          }
+          else if( keywordCompletion ) {
+            switch ( e.Text[0] ) {
+              case 'o': candidates.Add( "open" ); break;
+              case 'd': candidates.Add( "do" ); break;
+            }
+          }
+          if ( candidates.Count > 0 ) {
+            completionWindow = new CompletionWindow( editor.TextArea );
+            foreach ( var word in candidates ) completionWindow.CompletionList.CompletionData.Add( new FunnyCompletionData( word ) );
+            completionWindow.Show();
+            completionWindow.Closed += delegate { completionWindow = null; };
+          }
+          keywordCompletion = false;
+        }
+      };
+      editor.TextArea.TextEntering += ( sender, e ) =>
+      {
+        if ( e.Text.Length > 0 && completionWindow != null ) {
+          if ( !char.IsLetterOrDigit( e.Text[0] ) ) {
+            // Whenever a non-letter is typed while the completion window is open,
+            // insert the currently selected element.
+            completionWindow.CompletionList.RequestInsertion( e );
+          }
+        }
+        // Do not set e.Handled=true.
+        // We still want to insert the character that was typed.
+      };
     }
 
     public string SourceFilePath
