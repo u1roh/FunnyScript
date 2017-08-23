@@ -94,6 +94,7 @@ and Expression =
   | If of condition:Expr * thenExpr:Expr * elseExpr:Expr
   | Substitute of Expr * Expr
   | Open of value:Expr * succ:Expr
+  | OnError of target:Expr * handler:Expr
 
 and Expr = Trace<Expression>
 
@@ -113,7 +114,6 @@ and IFuncObj =
 and Func =
   | UserFunc    of UserFunc
   | BuiltinFunc of IFuncObj
-  | ErrHandler  of IFuncObj
 
 and TypeId =
   | NullType
@@ -199,7 +199,6 @@ module DebugDump =
         printf " }"
       | Func (UserFunc x) -> printf "(%s) -> " (x.Def.Args |> String.concat ", "); dump i x.Def.Body
       | Func (BuiltinFunc x) -> printf "(builtin-func)"
-      | Func (ErrHandler  x) -> printf "(error-handler)"
       | List    x -> printf "[ "; x |> FunnyList.iter forObj; printf "]"
       | Mutable x -> printf "mutable "; forObj x.Value
       | Instance (x, t) -> printf "instance of %A" t.Id; forObj x

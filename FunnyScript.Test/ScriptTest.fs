@@ -209,13 +209,13 @@ let errorTest = test "error test" {
   do! """
     f := a -> a + 1;
     b := f ();  // エラー発生 => 即時終了せずに b にエラー情報が入る。 
-    b |> catch (e -> "caught!")
+    b |!> e -> "caught!"
   """ ==> ClrObj "caught!"
 
   do! """
     f := a -> a + 1;
     b := f 1;  // 正常終了
-    b |> catch (e -> "caught!") // エラー処理は無視される
+    b |!> e -> "caught!" // エラー処理は無視される
   """ ==> Int 2
 }
 
@@ -236,6 +236,20 @@ let castTest = test "cast test" {
   do! "Cast.int 3.14" ==> Int 3
 }
 
-let nullPropagationTest = test "null propagation test" {
-  do! "() ?> System.Math.Sqrt" ==> Null
+let pipelineTest = test "pipeline test" {
+  do! "-2 |> System.Math.Abs" ==> Int 2
+  do! "() |?> System.Math.Sqrt" ==> Null
+  do! "() |?> .hoge" ==> Null
+
+  do! """
+    x := mutable 3;
+    do (do x <- x + 1; _ -> ()) (do x <- x * 2; ());  // (3 + 1) * 2 = 8
+    x
+  """ ==> Int 8
+
+  do! """
+    x := mutable 3;
+    do (do x <- x * 2; ()) |> (do x <- x + 1; _ -> ()); // 3 * 2 + 1 = 7
+    x
+  """ ==> Int 7
 }

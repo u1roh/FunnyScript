@@ -128,8 +128,9 @@ let pExpr =
     binaryOp "+"  8 Plus
     binaryOp "-"  8 Minus
     binaryOp "::" 7 Cons
-    infixOp  "|>" 5 (fun arg f -> { arg with Value = Apply (f, arg, Pipeline) })
-    infixOp  "?>" 5 (fun arg f -> { arg with Value = Apply (f, arg, NullPropagationPipeline) })
+    infixOp  "|>"  5 (fun arg f -> { arg with Value = Apply (f, arg, Pipeline) })
+    infixOp  "|?>" 5 (fun arg f -> { arg with Value = Apply (f, arg, NullPropagationPipeline) })
+    infixOp  "|!>" 5 (fun arg handler -> { arg with Value = OnError (arg, handler) })
     binaryOp "<"  4 Less
     binaryOp ">"  4 Greater
     binaryOp "<=" 4 LessEq

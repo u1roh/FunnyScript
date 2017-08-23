@@ -41,17 +41,7 @@ let rec eval expr env =
   let letEval expr env =
     env |> eval expr |> Result.bind forceLet
 
-  let apply f arg =
-    match f, arg with
-    | Func (ErrHandler f), Error { Value = e } ->
-      f.Apply <|
-        match e with
-        | UserError e -> e
-        | ExnError  e -> ClrObj e
-        | MiscError e -> ClrObj e
-        | _ -> ClrObj e
-    | _ -> arg |> Result.bind (apply expr.Position f)
-
+  let apply f arg = apply expr.Position f arg
   let error e = Error { Value = e; Position = expr.Position }
   let tryGet id = env |> Env.tryGet expr.Position id
 
@@ -63,15 +53,15 @@ let rec eval expr env =
     env |> forceEval expr |> Result.bind (function
       | Record r -> r |> Map.tryFind name |> toResult
       | ClrObj o -> o |> CLR.tryGetInstanceMember name |> toResult
-      | Instance (x, t) -> t.Members |> Map.tryFind name |> toResult |> Result.bind (fun f -> apply (Func f) (Ok x))
+      | Instance (x, t) -> t.Members |> Map.tryFind name |> toResult |> Result.bind (fun f -> apply (Func f) x)
       | Type { Id = ClrType t } -> t |> CLR.tryGetStaticMember name |> toResult
       | Type ({ Id = UserType (_, ctor) } as t) when name = "new" ->
-        let ctor arg = apply (Func ctor) (Ok arg) |> Result.bind force |> Result.map (fun x -> Instance (x, t))
+        let ctor arg = apply (Func ctor) arg |> Result.bind force |> Result.map (fun x -> Instance (x, t))
         Func (BuiltinFunc { new IFuncObj with member this.Apply arg = ctor arg }) |> Ok
       | x ->
         tryGet (typeid x |> typeName |> Name)
         |> Result.bind (function Type t -> t.Members |> Map.tryFind name |> toResult | x -> error (TypeMismatch (TypeType, typeid x)))
-        |> Result.bind (fun f -> apply (Func f) (Ok x)))
+        |> Result.bind (fun f -> apply (Func f) x))
   | Let (name, value, succ) ->
     let value = env |> letEval value
     let env = env |> Map.add (Name name) value
@@ -83,18 +73,24 @@ let rec eval expr env =
   | FuncDef def -> Func (UserFunc { Def = def; Env = env }) |> Ok
   | Apply (f, arg, apltype) ->
     match apltype with
+    | NormalApply ->
+      env |> forceEval f   |> Result.bind (fun f ->
+      env |> forceEval arg |> Result.bind (apply f))
+    | Pipeline ->
+      env |> forceEval arg |> Result.bind (fun arg ->
+      env |> forceEval f   |> Result.bind (fun f   -> apply f arg))
     | NullPropagationPipeline ->
       match env |> forceEval arg with
       | Ok Null -> Ok Null
-      | arg -> env |> forceEval f |> Result.bind (fun f -> apply f arg)
-    | _ -> env |> forceEval f |> Result.bind (fun f -> env |> forceEval arg |> apply f)
+      | Ok arg -> env |> forceEval f |> Result.bind (fun f -> apply f arg)
+      | err -> err
   | BinaryOp (op, expr1, expr2) ->
     tryGet (Op op)
-    |> Result.bind (fun f -> env |> forceEval expr1 |> apply f)
-    |> Result.bind (fun f -> env |> forceEval expr2 |> apply f)
+    |> Result.bind (fun f -> env |> forceEval expr1 |> Result.bind (apply f))
+    |> Result.bind (fun f -> env |> forceEval expr2 |> Result.bind (apply f))
   | UnaryOp (op, expr) ->
     tryGet (Op op)
-    |> Result.bind (fun f -> env |> forceEval expr |> apply f)
+    |> Result.bind (fun f -> env |> forceEval expr |> Result.bind (apply f))
   | If (cond, thenExpr, elseExpr) ->
     env |> forceEval cond
     |> Result.bind (function
@@ -132,13 +128,23 @@ let rec eval expr env =
     env |> forceEval record |> Result.bind (function
       | Record r -> (env, r) ||> Seq.fold (fun env x -> env |> Map.add (Name x.Key) (Ok x.Value)) |> eval succ
       | x -> error (TypeMismatch (RecordType, typeid x)))
+  | OnError (target, handler) ->
+    match env |> forceEval target with
+    | Error { Value = e } ->
+      let e =
+        match e with
+        | UserError e -> e
+        | ExnError  e -> ClrObj e
+        | MiscError e -> ClrObj e
+        | _ -> ClrObj e
+      env |> forceEval handler |> Result.bind (fun f -> apply f e)
+    | x -> x
 
 and apply pos f arg =
   let err() = Error { Value = NotApplyable (f, arg); Position = pos }
   match f with
   | Func (BuiltinFunc f) -> f.Apply arg
   | Func (UserFunc f) -> lazy (f.Env |> addTupleToEnv f.Def.Args arg |> eval f.Def.Body) |> Lazy |> Ok
-  | Func (ErrHandler _) -> Ok arg
   | List list -> match arg with Int i -> Ok list.[i] | _ -> Error { Value = TypeMismatch (IntType, typeid arg); Position = pos }
   | Int a ->
     match arg with
