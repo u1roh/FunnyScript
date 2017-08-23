@@ -81,8 +81,13 @@ let rec eval expr env =
     env |> forceEval expr1 |> Result.bind (fun _ ->
     env |> eval expr2)
   | FuncDef def -> Func (UserFunc { Def = def; Env = env }) |> Ok
-  | Apply (f, arg) ->
-    env |> forceEval f |> Result.bind (fun f -> env |> forceEval arg |> apply f)
+  | Apply (f, arg, apltype) ->
+    match apltype with
+    | NullPropagationPipeline ->
+      match env |> forceEval arg with
+      | Ok Null -> Ok Null
+      | arg -> env |> forceEval f |> Result.bind (fun f -> apply f arg)
+    | _ -> env |> forceEval f |> Result.bind (fun f -> env |> forceEval arg |> apply f)
   | BinaryOp (op, expr1, expr2) ->
     tryGet (Op op)
     |> Result.bind (fun f -> env |> forceEval expr1 |> apply f)

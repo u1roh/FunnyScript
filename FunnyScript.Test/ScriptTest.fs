@@ -235,3 +235,7 @@ let openTest = test "open test" {
 let castTest = test "cast test" {
   do! "Cast.int 3.14" ==> Int 3
 }
+
+let nullPropagationTest = test "null propagation test" {
+  do! "() ?> System.Math.Sqrt" ==> Null
+}

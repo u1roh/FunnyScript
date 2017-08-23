@@ -37,6 +37,11 @@ type ID =
   | Name of string
   | Op   of Operator
 
+type ApplType =
+  | NormalApply
+  | Pipeline
+  | NullPropagationPipeline
+
 type Env = Map<ID, Result>
 
 and Error =
@@ -81,7 +86,7 @@ and Expression =
   | UnaryOp  of Operator * Expr
   | Let of name:string * value:Expr * succ:Expr
   | Combine of Expr * Expr
-  | Apply of func:Expr * para:Expr
+  | Apply of func:Expr * para:Expr * ApplType
   | FuncDef of FuncDef
   | NewRecord of (string * Expr) list
   | NewList of Expr[]
@@ -210,7 +215,7 @@ module DebugDump =
     | UnaryOp  (op, x) -> printf "(%A" op; dump i x; printf ")"
     | Let (name, x1, x2) -> printf "\n%*s%s := " (2*i) " " name; dump (i + 1) x1; printf ";"; dump i x2
     | Combine   (x1, x2) -> printf "\n%*sdo " (2*i) " "; dump (i + 1) x1; printf ";"; dump i x2
-    | Apply (f, p) -> printf "("; dump i f; printf " "; dump i p; printf ")";
+    | Apply (f, p, _) -> printf "("; dump i f; printf " "; dump i p; printf ")";
     | FuncDef x -> printf "(%s) -> " (x.Args |> String.concat ", "); dump i x.Body
     | NewRecord x -> printf "{ "; x |> Seq.iter (fun (name, x) -> printf "\n%*s%s := " (2*i) " " name; dump (i + 1) x); printf " }"
     | NewList x -> printf "[ "; x |> Seq.iteri (fun j x -> (if j <> 0 then printf ", "); dump i x); printf " ]"

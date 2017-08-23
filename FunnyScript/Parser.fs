@@ -105,7 +105,7 @@ let pExpr =
     .>>. many (attempt (char_ws '.' >>. pIdentifier))
     |>> fun (expr, mems) -> (expr, mems) ||> List.fold (fun expr mem -> { expr with Value = RefMember (expr, mem) })
   let pTerm =
-    many1 pTermItem |>> fun items -> (List.head items, List.tail items) ||> List.fold (fun f arg -> { arg with Value = Apply (f, arg) })
+    many1 pTermItem |>> fun items -> (List.head items, List.tail items) ||> List.fold (fun f arg -> { arg with Value = Apply (f, arg, NormalApply) })
   let pSyntaxSugarLambdaTerm : Parser =
     char_ws '.'
     >>. sepBy1 pIdentifier (char_ws '.')
@@ -114,7 +114,7 @@ let pExpr =
     |>> fun { Value = (mems, args); Position = pos } ->
       let trace x = { Value = x; Position = pos }
       let self = (Ref "__SELF__", mems) ||> List.fold (fun expr mem -> RefMember (trace expr, mem))
-      let body = (self, args) ||> List.fold (fun f arg -> Apply (trace f, arg))
+      let body = (self, args) ||> List.fold (fun f arg -> Apply (trace f, arg, NormalApply))
       FuncDef { Args = ["__SELF__"]; Body = trace body } |> trace
   let opp = new OperatorPrecedenceParser<Expr,unit,unit>()
   opp.TermParser <- pSyntaxSugarLambdaTerm <|> pTerm
@@ -128,7 +128,8 @@ let pExpr =
     binaryOp "+"  8 Plus
     binaryOp "-"  8 Minus
     binaryOp "::" 7 Cons
-    infixOp  "|>" 5 (fun arg f -> { arg with Value = Apply (f, arg) })
+    infixOp  "|>" 5 (fun arg f -> { arg with Value = Apply (f, arg, Pipeline) })
+    infixOp  "?>" 5 (fun arg f -> { arg with Value = Apply (f, arg, NullPropagationPipeline) })
     binaryOp "<"  4 Less
     binaryOp ">"  4 Greater
     binaryOp "<=" 4 LessEq
