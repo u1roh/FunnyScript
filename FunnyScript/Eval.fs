@@ -63,10 +63,10 @@ let rec eval expr env =
     env |> forceEval expr |> Result.bind (function
       | Record r -> r |> Map.tryFind name |> toResult
       | ClrObj o -> o |> CLR.tryGetInstanceMember name |> toResult
-      | Instance (x, t) -> t.Members |> Map.tryFind name |> toResult |> Result.bind (fun f -> apply (Func f) x)
+      | Instance x -> x.Type.Members |> Map.tryFind name |> toResult |> Result.bind (fun f -> apply (Func f) x.Data)
       | Type { Id = ClrType t } -> t |> CLR.tryGetStaticMember name |> toResult
       | Type ({ Id = UserType (_, ctor) } as t) when name = "new" ->
-        let ctor arg = apply (Func ctor) arg |> Result.bind force |> Result.map (fun x -> Instance (x, t))
+        let ctor arg = apply (Func ctor) arg |> Result.bind force |> Result.map (fun x -> Instance { Data = x; Type = t })
         Func (BuiltinFunc { new IFuncObj with member this.Apply arg = ctor arg }) |> Ok
       | x ->
         tryGet (typeid x |> typeName |> Name)

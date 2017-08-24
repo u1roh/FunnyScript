@@ -63,6 +63,11 @@ and Result = Result<Obj, Err>
 and IMutable =
   abstract Value : Obj with get, set
 
+and Instance = {
+    Data : Obj
+    Type : Type
+  }
+
 and Obj =
   | Null
   | True
@@ -72,7 +77,7 @@ and Obj =
   | Record  of Map<string, Obj>
   | Func    of Func
   | Mutable of IMutable
-  | Instance of Obj * Type
+  | Instance of Instance
   | ClrObj  of obj
   | Type    of Type
   | Lazy    of Lazy<Result> // for tail-recursion
@@ -155,7 +160,7 @@ let rec typeid obj =
   | Record  _ -> RecordType
   | Func    _ -> FuncType
   | Mutable x -> typeid x.Value
-  | Instance (_, t) -> t.Id
+  | Instance x -> x.Type.Id
   | ClrObj  x -> ClrType (x.GetType())
   | Type    _ -> TypeType
   | Lazy    _ -> LazyType
@@ -194,7 +199,7 @@ module DebugDump =
       | Func (UserFunc x) -> printf "(%s) -> " (x.Def.Args |> String.concat ", "); dump i x.Def.Body
       | Func (BuiltinFunc x) -> printf "(builtin-func)"
       | Mutable x -> printf "mutable "; forObj x.Value
-      | Instance (x, t) -> printf "instance of %A" t.Id; forObj x
+      | Instance x -> printf "instance of %A" x.Type.Id; forObj x.Data
       | ClrObj  x -> x.ToString() |> printf "%s"
       | Type    x -> printf "(Type %s)" (typeName x.Id)
       | Lazy    x -> printf "(Lazy %A)" x
