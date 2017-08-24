@@ -44,11 +44,6 @@ let private logical op =
     | _, Error e -> Error e
   toFunc2 f
 
-let private sin x =
-  match x with
-  | Float x -> Float (sin x) |> Ok
-  | _ -> TypeMismatch (FloatType, typeid x) |> Error
-
 let private trace arg =
   printfn "%A" arg; Ok Null
 
@@ -117,7 +112,29 @@ let load env =
     Name "mutable", toFunc1 (toMutable >> Ok)
     Name "error", toFunc1 (fun x -> Error (UserError x))
     Name "trace", toFunc1 trace
-    Name "sin", toFunc1 sin
+
+//    Name "foreach", toFunc2 (fun f src ->
+//      match src with
+//      | ClrObj (:? IEnumerable as src) ->
+//        Seq.cast<obj> src
+//        |> Seq.map CLR.toFunnyObj
+//        |> Seq.tryPick (Eval.apply None f >> Result.bind Eval.force >> Result.toErrorOption)
+//        |> function Some e -> Error e.Value | _ -> Ok Null
+//      | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
+
+    Name "foreach", toFunc2 (fun f src ->
+      let f = CLR.toFunnyObj >> Eval.apply None f >> Result.bind Eval.force >> ignore
+      match src with
+      | ClrObj (:? (obj[]) as src) -> src |> Array.iter f; Ok Null
+      | ClrObj (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.iter f; Ok Null
+      | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
+
+    Name "map", toFunc2 (fun f src ->
+      let f = CLR.toFunnyObj >> Eval.apply None f >> Result.bind Eval.force >> function Ok x -> CLR.ofFunnyObj x | Error e -> failwith (e.ToString())
+      match src with
+      | ClrObj (:? (obj[]) as src) -> src |> Array.map f |> box |> ClrObj |> Ok
+      | ClrObj (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.map f |> box |> ClrObj |> Ok
+      | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     deftype NullType   []
     deftype BoolType   []
