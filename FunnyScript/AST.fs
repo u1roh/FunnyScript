@@ -71,7 +71,6 @@ and Obj =
   | Float   of float
   | Record  of Map<string, Obj>
   | Func    of Func
-  | List    of IFunnyList<Obj>
   | Mutable of IMutable
   | Instance of Obj * Type
   | ClrObj  of obj
@@ -155,7 +154,6 @@ let rec typeid obj =
   | Float   _ -> FloatType
   | Record  _ -> RecordType
   | Func    _ -> FuncType
-  | List    _ -> ListType
   | Mutable x -> typeid x.Value
   | Instance (_, t) -> t.Id
   | ClrObj  x -> ClrType (x.GetType())
@@ -170,7 +168,6 @@ let typeName id =
   | FloatType   -> "float"
   | RecordType  -> "record"
   | FuncType    -> "function"
-  | ListType    -> "list"
   | TypeType    -> "type"
   | LazyType    -> "lazy"
   | UserType (x, _) -> x
@@ -179,9 +176,6 @@ let typeName id =
 let toMutable obj =
   let mutable obj = obj
   Mutable { new IMutable with member __.Value with get() = obj and set x = obj <- x }
-
-let ofArray src = List (FunnyList.ofArray src)
-let ofList  src = List (FunnyList.ofList  src)
 
 module DebugDump =
 
@@ -199,7 +193,6 @@ module DebugDump =
         printf " }"
       | Func (UserFunc x) -> printf "(%s) -> " (x.Def.Args |> String.concat ", "); dump i x.Def.Body
       | Func (BuiltinFunc x) -> printf "(builtin-func)"
-      | List    x -> printf "[ "; x |> FunnyList.iter forObj; printf "]"
       | Mutable x -> printf "mutable "; forObj x.Value
       | Instance (x, t) -> printf "instance of %A" t.Id; forObj x
       | ClrObj  x -> x.ToString() |> printf "%s"

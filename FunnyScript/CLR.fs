@@ -46,7 +46,6 @@ let rec ofFunnyObj obj =
   | Float x -> box x
   | Record r -> r :> _
   | Func f  -> f :> _
-  | List ls -> ls |> FunnyList.toSeq |> Seq.map ofFunnyObj |> Seq.toArray :> _
   | ClrObj x -> x
   | Type { Id = t } ->
     match t with
@@ -93,9 +92,9 @@ let private invokeMethod (overloadMethods : Method[]) args =
     let invoke args = (try m.Invoke args |> toFunnyObj |> Ok with e -> Error (ExnError e)) |> Some
     match args with
     | Null -> if m.Params.Length = 0 then invoke [||] else None
-    | List args ->
-      if args.Length = Definite m.Params.Length then
-        let args = args |> FunnyList.toSeq |> Seq.map ofFunnyObj |> Seq.toArray
+    | ClrObj (:? (Obj[]) as args) ->
+      if args.Length = m.Params.Length then
+        let args = args |> Seq.map ofFunnyObj |> Seq.toArray
         if args |> Array.mapi (fun i arg -> m.Params.[i].ParameterType.IsAssignableFrom (arg.GetType())) |> Array.forall id
           then invoke args
           else None
@@ -154,3 +153,11 @@ let tryGetStaticMember name t =
 
 let tryGetInstanceMember name self =
   tryGetMember name (Some self) (self.GetType())
+
+let tryApplyIndexer index (self : obj) =
+  let indexer = self.GetType().GetProperty (match self with :? string -> "Chars" | _ -> "Item")
+  if indexer = null then None else
+    let index =
+      match index with ClrObj (:? (Obj[]) as index) -> index | _ -> [| index |]
+      |> Array.map ofFunnyObj
+    Some <| try indexer.GetValue (self, index) |> toFunnyObj |> Ok with e -> Error (ExnError e)

@@ -71,6 +71,6 @@ let testAST = test "FunnyScript AST test" {
       apply (Ref "fac", Obj (Int 4)))
     |> eval |> assertEquals (Ok (Int 24))
   do!
-    def ("a", Obj (List (FunnyList.ofArray [| Int 123; Int 321; Int 456 |])), apply (Ref "a", Obj (Int 1)))
+    def ("a", Obj (ClrObj [| Int 123; Int 321; Int 456 |]), apply (Ref "a", Obj (Int 1)))
     |> eval |> assertEquals (Ok (Int 321))
 }

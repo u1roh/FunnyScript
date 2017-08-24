@@ -3,13 +3,6 @@ open Persimmon
 open FunnyScript
 open System
 
-(*
-  test "sin (3.14 / 2.0)"
-  test "2.0 * sin 3.14 + 1.0"
-  test "3.14 / 2.0 |> sin"
-  test "do trace 10; do trace 20;"
-  *)
-
 let env = Script.Env.Default
 
 let (==>) (script : string) expected =
@@ -45,7 +38,7 @@ let testScript = test "scripting test" {
   do! "f := x -> y -> x + y; 10 |> f 5" ==> Int 15
   do! "a := { b := 1; c := { d := 2; e := 3; }; }; a.c.e" ==> Int 3
   do! "f := () -> 123; f()" ==> Int 123
-  do! "f := (a, b, c) -> a + b + c; f (1, 2, 3)" ==> Int 6
+  do! "f := (a, b, c) -> a + b + c; f (1, 2, 4)" ==> Int 7
   do! "a := 1; -a" ==> Int -1
   do! "a := b := 100; b + 20; a" ==> Int 120
   do! "f := a := 100; x -> x + a; f 10" ==> Int 110
@@ -66,25 +59,28 @@ let typeTest = test "type test" {
 }
 
 let listTest = test "list test" {
-  do! "[1, 2, 3 + 4]" ==> ofArray [| Int 1; Int 2; Int 7 |]
-  do! "List.init 3 (i -> 2 * i)" ==> ofArray [| Int 0; Int 2; Int 4 |]
-  do! "[].isEmpty" ==> True
-  do! "[1, 2].isEmpty" ==> False
-  do! "[3, 4].head" ==> Int 3
-  do! "[3, 4, 5].tail" ==> ofList [Int 4; Int 5]
-  do! "[3, 4, 5].length" ==> Int 3
-  do! "a := [1, 3, 5]; b := 10; b :: a" ==> ofList [Int 10; Int 1; Int 3; Int 5]
-  do! "a := [1, 3, 5]; b := 10; (b :: a).length" ==> Int 4
+  do! "[1, 2, 3 + 4]" ==> ClrObj [| Int 1; Int 2; Int 7 |]
+  do! "array 3 (i -> 2 * i)" ==> ClrObj [| Int 0; Int 2; Int 4 |]
+  do! "[] |> isEmpty" ==> True
+  do! "[1, 2] |> isEmpty" ==> False
+//  do! "[3, 4].head" ==> Int 3
+//  do! "[3, 4, 5].tail" ==> ofList [Int 4; Int 5]
+  do! "[3, 4, 5] |> length" ==> Int 3
+//  do! "a := [1, 3, 5]; b := 10; b :: a" ==> ofList [Int 10; Int 1; Int 3; Int 5]
+//  do! "a := [1, 3, 5]; b := 10; (b :: a).length" ==> Int 4
   do! "a := [1, 2, 3]; a 0" ==> Int 1
   do! "a := [1, 2, 3]; a 1" ==> Int 2
   do! "()" ==> Null
   do! "(10)" ==> Int 10
-  do! "(10, 20, 30)" ==> ofList [Int 10; Int 20; Int 30]
-  do! "[1, 2, 3].map (x -> 2 * x)" ==> ofList [Int 2; Int 4; Int 6]
-  do! "[1, 2, 3, 4].choose (x -> ? x % 2 == 0 => () | x)" ==> ofList [Int 1; Int 3]
-  do! "[1 .. 5]" ==> ofList [Int 1; Int 2; Int 3; Int 4; Int 5]
+  do! "(10, 20, 30)" ==> ClrObj [|Int 10; Int 20; Int 30|]
+  do! "[1, 2, 3] |> map (x -> 2 * x)" ==> ClrObj [|Int 2; Int 4; Int 6|]
+  do! "[1, 2, 3, 4] |> choose (x -> ? x % 2 == 0 => () | x)" ==> ClrObj [|Int 1; Int 3|]
+  do! "[1 .. 5]" ==> ClrObj [| Int 1; Int 2; Int 3; Int 4; Int 5 |]
   //do! "[1..5]" ==> ofList [Int 1; Int 2; Int 3; Int 4; Int 5]
-  do! "[1+2 .. 8-2]" ==> ofList [Int 3; Int 4; Int 5; Int 6]
+  do! "[1+2 .. 8-2]" ==> ClrObj [| Int 3; Int 4; Int 5; Int 6 |]
+
+  do! "\"hello\" 1" ==> ClrObj 'e'
+  do! "\"hello\"[2]" ==> ClrObj 'l'
 }
 
 let operatorTest = test "operator test" {
@@ -151,12 +147,6 @@ let mutableTest = test "mutable test" {
 }
 
 let methodChainTest = test "method chain test" {
-  do! "1 :: [2, 3, 4] |> x -> x.isEmpty" ==> False
-  do! "[] |> .isEmpty" ==> True
-  do! """
-    f := .isEmpty;
-    f []
-    """ ==> True
   do! """
     sb := System.Text.StringBuilder.new();
     sb.Append "a"

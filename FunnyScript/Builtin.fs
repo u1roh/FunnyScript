@@ -60,33 +60,12 @@ let private castModule =
     "int", toFunc1 castToInt
   ] |> Map.ofList |> Record
 
-let private listModule =
-  let init len f =
-    match len with
-    | Int len ->
-      let a = Array.init len (fun i -> Eval.apply None f (Int i) |> Result.bind Eval.force)
-      let error =
-        a |> Array.choose Result.toErrorOption |> Array.toList
-        |> function [] -> None | [e] -> Some e.Value | es -> Some (ErrorList es)
-      match error with
-      | Some error -> Error error
-      | _ -> a |> Array.choose Result.toOption |> FunnyList.ofArray |> List |> Ok
-    | _ -> Error (TypeMismatch (IntType, typeid len))
-
-  [ "init", toFunc2 init
-  ] |> Map.ofList |> Record
-
 let private deftype id members =
   let members =
     members
     |> List.map (fun (name, f) -> name, builtinFunc f)
     |> Map.ofList
   Name (typeName id), Type { Id = id; Members = members }
-
-let private asList f arg =
-  match arg with
-  | List x -> Ok (f x)
-  | _ -> Error (TypeMismatch (ListType, typeid arg))
 
 let load env =
   [ Op Plus,  arith (+) (+)
@@ -106,21 +85,28 @@ let load env =
     Op UnaryPlus,  toFunc1 (function Int x -> Ok (Int +x) | Float x -> Ok (Float +x) | x -> Error (TypeMismatch (IntType, typeid x)))
     Op UnaryMinus, toFunc1 (function Int x -> Ok (Int -x) | Float x -> Ok (Float -x) | x -> Error (TypeMismatch (IntType, typeid x)))
     Op Is,   toFunc2 (fun o t  -> match t  with Type t  -> Ok (if t.Id = typeid o then True else False) | _ -> Error (TypeMismatch (TypeType, typeid t)))
-    Op Cons, toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> AST.List |> Ok | _ -> Error (TypeMismatch (ListType, typeid ls)))
+    //Op Cons, toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> AST.List |> Ok | _ -> Error (TypeMismatch (ListType, typeid ls)))
 
     Name "class", toFunc2 makeClass
     Name "mutable", toFunc1 (toMutable >> Ok)
     Name "error", toFunc1 (fun x -> Error (UserError x))
     Name "trace", toFunc1 trace
 
-//    Name "foreach", toFunc2 (fun f src ->
-//      match src with
-//      | ClrObj (:? IEnumerable as src) ->
-//        Seq.cast<obj> src
-//        |> Seq.map CLR.toFunnyObj
-//        |> Seq.tryPick (Eval.apply None f >> Result.bind Eval.force >> Result.toErrorOption)
-//        |> function Some e -> Error e.Value | _ -> Ok Null
-//      | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
+    Name "array", toFunc2 (fun len f ->
+      let f = Int >> Eval.apply None f >> Result.bind Eval.force >> function Ok x -> x | Error e -> failwith (e.ToString())
+      match len with
+      | Int len -> Array.init len f |> box |> ClrObj |> Ok
+      | _ -> Error (TypeMismatch (IntType, typeid len)))
+
+    Name "isEmpty", toFunc1 (function
+      | ClrObj (:? ICollection as a) -> Ok (if a.Count = 0 then True else False)
+      | ClrObj (:? IEnumerable as a) -> Ok (if Seq.cast<obj> a |> Seq.isEmpty then True else False)
+      | a -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid a)))
+
+    Name "length", toFunc1 (function
+      | ClrObj (:? ICollection as a) -> Ok (Int a.Count)
+      | ClrObj (:? IEnumerable as a) -> Ok (Seq.cast<obj> a |> Seq.length |> Int)
+      | a -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid a)))
 
     Name "foreach", toFunc2 (fun f src ->
       let f = CLR.toFunnyObj >> Eval.apply None f >> Result.bind Eval.force >> ignore
@@ -130,10 +116,17 @@ let load env =
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     Name "map", toFunc2 (fun f src ->
-      let f = CLR.toFunnyObj >> Eval.apply None f >> Result.bind Eval.force >> function Ok x -> CLR.ofFunnyObj x | Error e -> failwith (e.ToString())
+      let f = CLR.toFunnyObj >> Eval.apply None f >> Result.bind Eval.force >> function Ok x -> x | Error e -> failwith (e.ToString())
       match src with
       | ClrObj (:? (obj[]) as src) -> src |> Array.map f |> box |> ClrObj |> Ok
       | ClrObj (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.map f |> box |> ClrObj |> Ok
+      | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
+
+    Name "choose", toFunc2 (fun f src ->
+      let f = CLR.toFunnyObj >> Eval.apply None f >> Result.bind Eval.force >> function Ok Null -> None | Ok x -> Some x | Error e -> failwith (e.ToString())
+      match src with
+      | ClrObj (:? (obj[]) as src) -> src |> Array.choose f |> box |> ClrObj |> Ok
+      | ClrObj (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.choose f |> box |> ClrObj |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     deftype NullType   []
@@ -142,51 +135,14 @@ let load env =
     deftype FloatType  []
     deftype RecordType []
     deftype FuncType   []
-    deftype ListType [
-        "isEmpty",  asList (fun x -> if x.IsEmpty then True else False)
-        "head",     asList (fun x -> x.Head)
-        "tail",     asList (fun x -> List x.Tail)
-        "length",   asList (fun x -> match x.Length with Definite n -> Int n | _ -> Null)
-
-        "foreach",  asList (fun self -> toFunc1 (fun f ->
-          self |> FunnyList.toSeq
-          |> Seq.tryPick (Eval.apply None f >> Result.bind Eval.force >> Result.toErrorOption)
-          |> function Some e -> Error e.Value | _ -> Ok Null))
-
-        "map", asList (fun self -> toFunc1 (fun f ->
-          match self.Length with
-          | Definite n ->
-            let a =
-              self |> FunnyList.toSeq
-              |> Seq.map (Eval.apply None f >> Result.bind Eval.force)
-              |> Seq.toArray
-            match a |> Array.tryPick Result.toErrorOption with
-            | Some e -> Error e.Value
-            | _ -> a |> Array.choose Result.toOption |> FunnyList.ofArray |> List |> Ok
-          | _ ->
-            self |> FunnyList.toSeq
-            |> Seq.map (fun item -> lazy (Eval.apply None f item) |> Lazy)
-            |> FunnyList.ofSeq |> List |> Ok))
-
-        "choose", asList (fun self -> toFunc1 (fun f ->
-          match self.Length with
-          | Definite n ->
-            let a =
-              self |> FunnyList.toSeq
-              |> Seq.map (Eval.apply None f >> Result.bind Eval.force)
-              |> Seq.toArray
-            match a |> Array.tryPick Result.toErrorOption with
-            | Some e -> Error e.Value
-            | _ -> a |> Array.choose (function Ok x when x <> Null -> Some x | _ -> None) |> FunnyList.ofArray |> List |> Ok
-          | _ ->
-            self |> FunnyList.toSeq
-            |> Seq.choose (Eval.apply None f >> Result.bind Eval.force >> function Ok Null -> None | Ok x -> Some x | x -> Some (Lazy (lazy x)))
-            |> FunnyList.ofSeq |> List |> Ok))
-      ]
+//    deftype ListType [
+//        "head",     asList (fun x -> x.Head)
+//        "tail",     asList (fun x -> List x.Tail)
+//      ]
     deftype TypeType []
 
     Name "Cast", castModule
-    Name "List", listModule
+//    Name "List", listModule
 
     Name "Stack", toFunc0 (fun () -> Stack() :> obj |> ClrObj |> Ok)
   ]

@@ -1,4 +1,14 @@
 ﻿module FunnyScript.Eval
+open System.Collections
+
+let toFunnyObj (obj : obj) =
+  match obj with
+  | null -> Null
+  | :? Obj    as x -> x
+  | :? bool   as x -> if x then True else False
+  | :? int    as x -> Int x
+  | :? float  as x -> Float x
+  | _ -> ClrObj obj
 
 let rec force obj =
   match obj with
@@ -24,9 +34,9 @@ let private addTupleToEnv names obj env =
   | [name] -> env |> Map.add (Name name) (Ok obj)
   | _ ->
     match obj with
-    | List items ->
+    | ClrObj (:? (obj[]) as items) when items.Length = names.Length ->
       names
-      |> List.mapi (fun i name -> Name name, items.[i])
+      |> List.mapi (fun i name -> Name name, toFunnyObj items.[i])
       |> List.fold (fun env (name, obj) -> env |> Map.add name (Ok obj)) env
     | _ -> env
 
@@ -110,15 +120,15 @@ let rec eval expr env =
       |> function [] -> None | [e] -> Some e | es -> Some { Value = ErrorList es; Position = expr.Position }
     match error with
     | Some error -> Error error
-    | _ -> items |> Array.choose (function Ok x -> Some x | _ -> None) |> FunnyList.ofArray |> List |> Ok
+    | _ -> items |> Array.choose (function Ok x -> Some x | _ -> None) |> box |> ClrObj |> Ok
   | ListByRange (expr1, expr2) ->
     env |> forceEval expr1 |> Result.bind (fun value1 ->
     env |> forceEval expr2 |> Result.bind (fun value2 ->
       match value1, value2 with
-      | Int   value1, Int   value2 -> [| value1 .. value2 |] |> Array.map Int   |> FunnyList.ofArray |> List |> Ok
-      | Float value1, Float value2 -> [| value1 .. value2 |] |> Array.map Float |> FunnyList.ofArray |> List |> Ok
-      | Int   value1, Float value2 -> [| float value1 .. value2 |] |> Array.map Float |> FunnyList.ofArray |> List |> Ok
-      | Float value1, Int   value2 -> [| value1 .. float value2 |] |> Array.map Float |> FunnyList.ofArray |> List |> Ok
+      | Int   value1, Int   value2 -> [| value1 .. value2 |] |> Array.map Int   |> box |> ClrObj |> Ok
+      | Float value1, Float value2 -> [| value1 .. value2 |] |> Array.map Float |> box |> ClrObj |> Ok
+      | Int   value1, Float value2 -> [| float value1 .. value2 |] |> Array.map Float |> box |> ClrObj |> Ok
+      | Float value1, Int   value2 -> [| value1 .. float value2 |] |> Array.map Float |> box |> ClrObj |> Ok
       | _ -> error (MiscError "not numeric type") ))
   | Substitute (expr1, expr2) ->
     env |> eval expr1 |> Result.bind forceMutable
@@ -145,7 +155,11 @@ and apply pos f arg =
   match f with
   | Func (BuiltinFunc f) -> f.Apply arg
   | Func (UserFunc f) -> lazy (f.Env |> addTupleToEnv f.Def.Args arg |> eval f.Def.Body) |> Lazy |> Ok
-  | List list -> match arg with Int i -> Ok list.[i] | _ -> Error { Value = TypeMismatch (IntType, typeid arg); Position = pos }
+  | ClrObj x ->
+    x |> CLR.tryApplyIndexer arg |> Option.map (Result.mapError (fun e -> { Value = e; Position = pos})) |> Option.defaultWith (fun () ->
+      match x, arg with
+      | (:? IEnumerable as x), (Int i) -> Ok (x |> Seq.cast<obj> |> Seq.item i |> toFunnyObj)
+      | _ -> Error { Value = TypeMismatch (IntType, typeid arg); Position = pos })
   | Int a ->
     match arg with
     | Int   b -> Ok <| Int (a * b)
