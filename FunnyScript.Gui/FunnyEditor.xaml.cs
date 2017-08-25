@@ -163,7 +163,7 @@ namespace FunnyScript.Gui
       if ( expr.IsOk ) this.Save( this.SourceFilePath );
     }
 
-    public Result<AST.Obj, Script.Error> Run( params Tuple<string, object>[] args )
+    public Result<object, Script.Error> Run( params Tuple<string, object>[] args )
     {
       var e = env;
       foreach ( var arg in args ) e = e.Add( arg.Item1, arg.Item2 );

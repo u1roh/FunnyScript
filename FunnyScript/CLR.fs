@@ -4,7 +4,7 @@ open System.Reflection
 
 let rec private typesToFunnyObjs (types : (string list * System.Type)[]) =
   let leaves, branches = types |> Array.partition (fst >> List.isEmpty)
-  let leaves = leaves |> Array.map (snd >> fun t -> t.Name, AST.Type { Id = ClrType t; Members = Map.empty })
+  let leaves = leaves |> Array.map (snd >> fun t -> t.Name, box { Id = ClrType t; Members = Map.empty })
   branches
   |> Array.groupBy (fst >> List.head)
   |> Array.map (fun (name, items) ->
@@ -13,23 +13,23 @@ let rec private typesToFunnyObjs (types : (string list * System.Type)[]) =
       |> Array.map (fun (ns, t) -> ns.Tail, t)
       |> typesToFunnyObjs
       |> Map.ofArray
-      |> Record
+      |> box
     name, record)
   |> Array.append leaves
 
-let rec private mergeRecord (r1 : Map<string, Obj>) (r2 : Map<string, Obj>) =
+let rec private mergeRecord (r1 : Record) (r2 : Record) =
   (r1, r2) ||> Seq.fold (fun acc item ->
     match acc |> Map.tryFind item.Key, item.Value with
-    | Some (Record r1), Record r2 -> acc |> Map.add item.Key (mergeRecord r1 r2 |> Record)
+    | Some (:? Record as r1), (:? Record as r2) -> acc |> Map.add item.Key (mergeRecord r1 r2 |> box)
     | _ -> acc |> Map.add item.Key item.Value)
 
-let loadAssembly (asm : System.Reflection.Assembly) env =
+let loadAssembly (asm : System.Reflection.Assembly) (env : Env) =
   asm.GetTypes()
   |> Array.map (fun t -> (if t.Namespace = null then [] else t.Namespace.Split '.' |> Array.toList), t)
   |> typesToFunnyObjs
-  |> Array.fold (fun env (name, item) ->
+  |> Array.fold (fun (env : Env) (name, item) ->
     match env |> Map.tryFind (Name name), item with
-    | Some (Ok (Record r1)), Record r2 -> env |> Map.add (Name name) (mergeRecord r1 r2 |> Record |> Ok)
+    | Some (Ok (:? Record as r1)), (:? Record as r2) -> env |> Map.add (Name name) (mergeRecord r1 r2 |> box |> Ok)
     | _ -> env |> Map.add (Name name) (Ok item)) env
 
 let loadSystemAssembly env =
@@ -38,43 +38,10 @@ let loadSystemAssembly env =
   |> loadAssembly typeof<System.Timers.Timer>.Assembly
 
 
-let rec ofFunnyObj obj =
-  match obj with
-  | True    -> box true
-  | False   -> box false
-  | Int i   -> box i
-  | Float x -> box x
-  | Record r -> r :> _
-  | Func f  -> f :> _
-  | ClrObj x -> x
-  | Type { Id = t } ->
-    match t with
-    | NullType  -> typeof<Unit> :> _
-    | BoolType  -> typeof<bool> :> _
-    | IntType   -> typeof<int> :> _
-    | FloatType -> typeof<float> :> _
-    | RecordType  -> null
-    | FuncType  -> null
-    | ListType  -> typeof<list<obj>> :> _
-    | TypeType  -> typeof<System.Type> :> _
-    | LazyType  -> null
-    | UserType _ -> null
-    | ClrType t -> t :> _
-  | _ -> null
-
-
-let toFunnyObj (obj : obj) =
-  match obj with
-  | null -> Null
-  | :? Obj    as x -> x
-  | :? bool   as x -> if x then True else False
-  | :? int    as x -> Int x
-  | :? float  as x -> Float x
-  | _ -> ClrObj obj
 
 
 let private builtinFunc f = BuiltinFunc { new IFuncObj with member __.Apply a = f a |> Result.mapError (fun e -> { Value = e; Position = None }) }
-let private toFunc1 f = Func (builtinFunc f)
+let private toFunc1 f = box (builtinFunc f)
 
 type private Method = {
     Invoke : obj[] -> obj
@@ -87,43 +54,41 @@ type private Method = {
     { Invoke = fun args -> c.Invoke args
       Params = c.GetParameters() }
 
-let private invokeMethod (overloadMethods : Method[]) args =
+let private invokeMethod (overloadMethods : Method[]) (args : obj) =
   overloadMethods |> Array.tryPick (fun m ->
-    let invoke args = (try m.Invoke args |> toFunnyObj |> Ok with e -> Error (ExnError e)) |> Some
+    let invoke args = (try m.Invoke args |> Ok with e -> Error (ExnError e)) |> Some
     match args with
-    | Null -> if m.Params.Length = 0 then invoke [||] else None
-    | ClrObj (:? (Obj[]) as args) ->
+    | null -> if m.Params.Length = 0 then invoke [||] else None
+    | :? (obj[]) as args ->
       if args.Length = m.Params.Length then
-        let args = args |> Seq.map ofFunnyObj |> Seq.toArray
         if args |> Array.mapi (fun i arg -> m.Params.[i].ParameterType.IsAssignableFrom (arg.GetType())) |> Array.forall id
           then invoke args
           else None
       else None
     | _ when m.Params.Length = 1 ->
-      let a = ofFunnyObj args
-      if m.Params.[0].ParameterType.IsAssignableFrom (a.GetType())
-        then invoke [| a |]
+      if m.Params.[0].ParameterType.IsAssignableFrom (args.GetType())
+        then invoke [| args |]
         else None
     | _ -> None)
   |> Option.defaultValue (Error (MiscError "Failed to resolve overloaded methods"))
 
 let private ofProperty self (prop : PropertyInfo) =
   if prop.SetMethod = null then
-    prop.GetValue (Option.toObj self) |> toFunnyObj
+    prop.GetValue (Option.toObj self)
   else
-    Mutable { new IMutable with
+    box { new IMutable with
       member __.Value
-        with get() = prop.GetValue (Option.toObj self) |> toFunnyObj
-        and  set x = prop.SetValue (Option.toObj self, ofFunnyObj x) }
+        with get() = prop.GetValue (Option.toObj self)
+        and  set x = prop.SetValue (Option.toObj self, x) }
 
 let private ofField self (field : FieldInfo) =
   if field.IsInitOnly then
-    field.GetValue (Option.toObj self) |> toFunnyObj
+    field.GetValue (Option.toObj self)
   else
-    Mutable { new IMutable with
+    box { new IMutable with
       member __.Value
-        with get() = field.GetValue (Option.toObj self) |> toFunnyObj
-        and  set x = field.SetValue (Option.toObj self, ofFunnyObj x) }
+        with get() = field.GetValue (Option.toObj self)
+        and  set x = field.SetValue (Option.toObj self, x) }
 
 let private tryGetMember name self (t : Type) =
   let members =
@@ -154,10 +119,8 @@ let tryGetStaticMember name t =
 let tryGetInstanceMember name self =
   tryGetMember name (Some self) (self.GetType())
 
-let tryApplyIndexer index (self : obj) =
+let tryApplyIndexer (index : obj) (self : obj) =
   let indexer = self.GetType().GetProperty (match self with :? string -> "Chars" | _ -> "Item")
   if indexer = null then None else
-    let index =
-      match index with ClrObj (:? (Obj[]) as index) -> index | _ -> [| index |]
-      |> Array.map ofFunnyObj
-    Some <| try indexer.GetValue (self, index) |> toFunnyObj |> Ok with e -> Error (ExnError e)
+    let index = match index with :? (obj[]) as index -> index | _ -> [| index |]
+    Some <| try indexer.GetValue (self, index) |> Ok with e -> Error (ExnError e)

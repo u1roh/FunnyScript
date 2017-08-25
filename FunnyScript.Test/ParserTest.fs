@@ -11,7 +11,7 @@ let ``string literal`` () =
       str.Replace("`", "\"").Replace("$", "\\")
     let expected =
       match expected with
-      | Obj (ClrObj (:? string as str)) -> Obj (ClrObj (replace str))
+      | Obj (:? string as str) -> Obj (replace str)
       | other -> other
     let result = snipet |> replace |> Parser.parse "ParserTest"
     do!
@@ -25,12 +25,12 @@ let ``string literal`` () =
     // 「"」 -> `
     // 「\」 -> $
     source [
-      ("``", Obj (ClrObj ""))
-      ("`abc`", Obj (ClrObj "abc"))
-      ("`abc$n`", Obj (ClrObj "abc\n"))
-      ("`$$`", Obj (ClrObj "$"))
-      ("`$`abc$``", Obj (ClrObj "`abc`"))
-      ("`$t`", Obj (ClrObj "\t"))
+      ("``", Obj "")
+      ("`abc`", Obj "abc")
+      ("`abc$n`", Obj "abc\n")
+      ("`$$`", Obj "$")
+      ("`$`abc$``", Obj "`abc`")
+      ("`$t`", Obj "\t")
     ]
     run test
   }

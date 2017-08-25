@@ -6,7 +6,7 @@ open FunnyScript;
 type ScriptRunner (output : string -> unit) =
   let env = Script.Env.Default.LoadAssembly typeof<System.Drawing.Graphics>.Assembly
   let mutable script = ""
-  let mutable program : Expr = { Value = Obj Null; Position = None }
+  let mutable program : Expr = { Value = Obj null; Position = None }
 
   member __.Script = script
 
@@ -24,8 +24,8 @@ type ScriptRunner (output : string -> unit) =
 
 [<EntryPoint>]
 let main argv = 
-  let sampleScript = """d := System.Drawing;
-pen := d.Pen.new (d.Color.Black);
+  let sampleScript = """open System.Drawing;
+pen := Pen.new (Color.Black);
 do g.DrawEllipse (pen, 10, 10, 200, 100); """
   let filepath = IO.Path.Combine (IO.Path.GetDirectoryName Application.ExecutablePath, "sample.fny")
   let mainform = new Form (Width = 1000, Height = 600)

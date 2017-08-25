@@ -16,7 +16,7 @@ type Env private (data : AST.Env) =
     data |> CLR.loadAssembly asm |> Env
 
   member this.Add (name, obj : obj) =
-    data |> Map.add (Name name) (ClrObj obj |> Ok) |> Env
+    data |> Map.add (Name name) (Ok obj) |> Env
 
   member this.Eval expr =
     data |> Eval.eval expr |> Result.bind Eval.force
@@ -33,7 +33,7 @@ type Env private (data : AST.Env) =
 
 let getResultString result =
   match result with
-  | Ok (x : Obj) -> sprintf "%A" x
+  | Ok x -> sprintf "%A" x
   | Error (ParserError s) -> sprintf "PARSER ERROR!: %s" s
   | Error (RuntimeError { Value = e; Position = Some pos }) -> sprintf "RUNTIME ERROR! %A\n at %s (%d, %d)" e pos.FilePath pos.Line pos.Column
   | Error (RuntimeError { Value = e; Position = None })     -> sprintf "RUNTIME ERROR! %A\n" e

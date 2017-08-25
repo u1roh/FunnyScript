@@ -46,10 +46,10 @@ type Env = Map<ID, Result>
 
 and Error =
   | IdentifierNotFound of ID
-  | NotApplyable of f:Obj * arg:Obj
+  | NotApplyable of f:obj * arg:obj
   | TypeMismatch of expected:TypeId * actual:TypeId
   | NotImplemented of string
-  | UserError of Obj
+  | UserError of obj
   | MiscError of string
   | ExnError of exn
   | ErrorList of Err list
@@ -58,32 +58,20 @@ and Error =
 
 and Err = Trace<Error>
 
-and Result = Result<Obj, Err>
+and Result = Result<obj, Err>
 
 and IMutable =
-  abstract Value : Obj with get, set
+  abstract Value : obj with get, set
 
 and Instance = {
-    Data : Obj
+    Data : obj
     Type : Type
   }
 
-and Obj =
-  | Null
-  | True
-  | False
-  | Int     of int
-  | Float   of float
-  | Record  of Map<string, Obj>
-  | Func    of Func
-  | Mutable of IMutable
-  | Instance of Instance
-  | ClrObj  of obj
-  | Type    of Type
-  | Lazy    of Lazy<Result> // for tail-recursion
+and Record = Map<string, obj>
 
 and Expression =
-  | Obj of Obj
+  | Obj of obj
   | Ref of name:string
   | RefMember of self:Expr * name:string
   | BinaryOp of Operator * Expr * Expr
@@ -113,22 +101,13 @@ and UserFunc = {
   }
 
 and IFuncObj =
-  abstract Apply : Obj -> Result
+  abstract Apply : obj -> Result
 
 and Func =
   | UserFunc    of UserFunc
   | BuiltinFunc of IFuncObj
 
 and TypeId =
-  | NullType
-  | BoolType
-  | IntType
-  | FloatType
-  | RecordType
-  | FuncType
-  | ListType
-  | TypeType
-  | LazyType
   | UserType of string * Func
   | ClrType  of System.Type
 
@@ -137,84 +116,39 @@ and Type = {
     Members : Map<string, Func>
   }
 
-let makeClass ctor vtbl =
+let makeClass (ctor : obj) (vtbl : obj) =
   match ctor, vtbl with
-    | Func ctor, Record vtbl -> Ok (ctor, vtbl)
+    | (:? Func as ctor), (:? Record as vtbl) -> Ok (ctor, vtbl)
     | _ -> Error ClassDefError
   |> Result.bind (fun (ctor, vtbl) ->
-    let members, invalids = vtbl |> Map.partition (fun _ m -> match m with Func _ -> true | _ -> false)
+    let members, invalids = vtbl |> Map.partition (fun _ m -> match m with :? Func -> true | _ -> false)
     if invalids.IsEmpty
       then Ok (ctor, members)
       else Error ClassDefError)
   |> Result.map (fun (ctor, members) ->
-    let members = members |> Map.map (fun _ m -> match m with Func m -> m | _ -> failwith "fatal error")
-    Type { Id = UserType ("", ctor); Members = members })
+    let members = members |> Map.map (fun _ m -> match m with :? Func as m -> m | _ -> failwith "fatal error")
+    box { Id = UserType ("", ctor); Members = members })
 
 
-let rec typeid obj =
+let rec typeid (obj : obj) =
   match obj with
-  | Null      -> NullType
-  | True | False -> BoolType
-  | Int     _ -> IntType
-  | Float   _ -> FloatType
-  | Record  _ -> RecordType
-  | Func    _ -> FuncType
-  | Mutable x -> typeid x.Value
-  | Instance x -> x.Type.Id
-  | ClrObj  x -> ClrType (x.GetType())
-  | Type    _ -> TypeType
-  | Lazy    _ -> LazyType
+  | :? Instance as obj -> obj.Type.Id
+  | :? Func as f -> ClrType typeof<Func>
+  | null -> ClrType typeof<unit>
+  | _ -> ClrType (obj.GetType())
 
 let typeName id =
   match id with
-  | NullType    -> "null"
-  | BoolType    -> "bool"
-  | IntType     -> "int"
-  | FloatType   -> "float"
-  | RecordType  -> "record"
-  | FuncType    -> "function"
-  | TypeType    -> "type"
-  | LazyType    -> "lazy"
   | UserType (x, _) -> x
-  | ClrType t   -> t.FullName
+  | ClrType t ->
+    if t = typeof<int>    then "int"      else
+    if t = typeof<float>  then "float"    else
+    if t = typeof<bool>   then "bool"     else
+    if t = typeof<Func>   then "function" else
+    if t = typeof<Record> then "record"   else
+    if t = typeof<Type>   then "type"     else
+    t.FullName
 
 let toMutable obj =
   let mutable obj = obj
-  Mutable { new IMutable with member __.Value with get() = obj and set x = obj <- x }
-
-module DebugDump =
-
-  let rec dump i expr =
-    let rec forObj obj =
-      match obj with
-      | Null  -> printf "null"
-      | True  -> printf "true"
-      | False -> printf "false"
-      | Int     x -> printf "%d" x
-      | Float   x -> printf "%f" x
-      | Record  x ->
-        printf "{ "
-        x |> Map.toSeq |> Seq.iter (fun (name, obj) -> printf "%s = " name; forObj obj; printf "; ")
-        printf " }"
-      | Func (UserFunc x) -> printf "(%s) -> " (x.Def.Args |> String.concat ", "); dump i x.Def.Body
-      | Func (BuiltinFunc x) -> printf "(builtin-func)"
-      | Mutable x -> printf "mutable "; forObj x.Value
-      | Instance x -> printf "instance of %A" x.Type.Id; forObj x.Data
-      | ClrObj  x -> x.ToString() |> printf "%s"
-      | Type    x -> printf "(Type %s)" (typeName x.Id)
-      | Lazy    x -> printf "(Lazy %A)" x
-
-    match expr.Value with
-    | Obj x -> forObj x
-    | Ref x -> printf "%s" x
-    | RefMember (expr, name) -> dump i expr; printf ".%s " name
-    | BinaryOp (op, x1, x2) -> printf "("; dump i x1; printf " %A " op; dump i x2; printf ")"
-    | UnaryOp  (op, x) -> printf "(%A" op; dump i x; printf ")"
-    | Let (name, x1, x2) -> printf "\n%*s%s := " (2*i) " " name; dump (i + 1) x1; printf ";"; dump i x2
-    | Combine   (x1, x2) -> printf "\n%*sdo " (2*i) " "; dump (i + 1) x1; printf ";"; dump i x2
-    | Apply (f, p, _) -> printf "("; dump i f; printf " "; dump i p; printf ")";
-    | FuncDef x -> printf "(%s) -> " (x.Args |> String.concat ", "); dump i x.Body
-    | NewRecord x -> printf "{ "; x |> Seq.iter (fun (name, x) -> printf "\n%*s%s := " (2*i) " " name; dump (i + 1) x); printf " }"
-    | NewList x -> printf "[ "; x |> Seq.iteri (fun j x -> (if j <> 0 then printf ", "); dump i x); printf " ]"
-    | If (cond, x1, x2) -> printf "? "; dump i cond; printf " => "; dump i x1; printf " | "; dump i x2;
-    | Substitute (x1, x2) -> dump i x1; printf " <- "; dump i x2
+  { new IMutable with member __.Value with get() = obj and set x = obj <- x }

@@ -22,7 +22,7 @@ let pLiteralNumber =
     NumberLiteralOptions.AllowFraction |||
     NumberLiteralOptions.AllowExponent
   numberLiteral numfmt "number" .>> spaces
-  |>> (fun x -> (if x.IsInteger then Int (int32 x.String) else Float (float x.String)) |> Obj)
+  |>> (fun x -> (if x.IsInteger then box (int32 x.String) else box (float x.String)) |> Obj)
 
 let pLiteralString =
   let escapeChars = @"""\nt"
@@ -41,15 +41,15 @@ let pLiteralString =
   many stringChar
   |> between (pchar '"') (pchar '"')
   .>> spaces
-  |>> (String.concat "" >> box >> ClrObj >> Obj)
+  |>> (String.concat "" >> box >> Obj)
 
 let pIdentifier =
   regex "[a-zA-Z_][0-9a-zA-Z_]*" .>> spaces
 
 let pAtom =
   choice [
-    skipString "true"  .>> spaces |>> (fun () -> Obj True)
-    skipString "false" .>> spaces |>> (fun () -> Obj False)
+    skipString "true"  .>> spaces |>> (fun () -> box true  |> Obj)
+    skipString "false" .>> spaces |>> (fun () -> box false |> Obj)
     pLiteralNumber
     pLiteralString
     pIdentifier |>> Ref
@@ -70,7 +70,7 @@ let pExpr =
       | ((_, expr1), expr2)         -> Combine (expr1, expr2)
   let pDo =
     str_ws "do" >>. pExpr .>> char_ws ';' .>>. opt pExpr
-    |>> (fun (expr1, expr2) -> match expr2 with Some expr2 -> Combine (expr1, expr2) | _ -> Combine (expr1, { Value = Obj Null; Position = None }))
+    |>> (fun (expr1, expr2) -> match expr2 with Some expr2 -> Combine (expr1, expr2) | _ -> Combine (expr1, { Value = Obj null; Position = None }))
   let pOpen =
     str_ws "open" >>. pExpr .>> char_ws ';' .>>. pExpr
     |>> Open
@@ -96,7 +96,7 @@ let pExpr =
   let pTuple =
     between_ws '(' ')' (sepByComma pExpr)
     |>> function
-      | [] -> Obj Null
+      | [] -> Obj null
       | [expr] -> expr.Value
       | tuple  -> tuple |> List.toArray |> NewList
   let pTermItem =
