@@ -3,22 +3,23 @@ open Persimmon
 open FunnyScript
 
 let expr x = { Value = x; Position = None }
-let binaryOp (op, x1, x2) = BinaryOp (op, expr x1, expr x2)
+let invoke arg f = Apply (expr f, expr arg, NormalApply)
+let binaryOp (op, x1, x2) = Ref op |> invoke x1 |> invoke x2
 let def (name, x1, x2) = Let (name, expr x1, expr x2)
 let apply (x1, x2) = Apply (expr x1, expr x2, NormalApply)
 let ifexpr (x1, x2, x3) = If (expr x1, expr x2, expr x3)
 let combine (x1, x2) = Combine (expr x1, expr x2)
 
-let a1 = binaryOp (Plus, Obj (box 1), Obj (box 2))
+let a1 = binaryOp ("+", Obj (box 1), Obj (box 2))
 
 let a2 =
   def ("a", Obj (box 1.23),
     def ("b", Obj (box 3.21),
-      binaryOp (Plus, Ref "a", Ref "b")))
+      binaryOp ("+", Ref "a", Ref "b")))
 
 let a3 =
   def ("b", Obj (box 10),
-    def ("f", FuncDef { Args = ["a"]; Body = binaryOp (Plus, Ref "a", Ref "b") |> expr },
+    def ("f", FuncDef { Args = ["a"]; Body = binaryOp ("+", Ref "a", Ref "b") |> expr },
       apply (Ref "f", Obj (box 3))))
 
 let record =
@@ -34,12 +35,12 @@ let testAST = test "FunnyScript AST test" {
   let env = Script.Env.Default;
   let eval x = env.Eval (expr x)
   do!
-    binaryOp (Plus, Obj (box 1), Obj (box 2))
+    binaryOp ("+", Obj (box 1), Obj (box 2))
     |> eval |> assertEquals (Ok (box 3))
   do!
     def ("a", Obj (box 123),
       def ("b", Obj (box 321),
-        binaryOp (Plus, Ref "a", Ref "b")))
+        binaryOp ("+", Ref "a", Ref "b")))
     |> eval |> assertEquals (Ok (box 444))
   do!
     a3
@@ -51,7 +52,7 @@ let testAST = test "FunnyScript AST test" {
     ifexpr (Obj (box false), Obj (box 1), Obj (box 0))
     |> eval |> assertEquals (Ok (box 0))
   do!
-    ifexpr (binaryOp (Equal, Obj (box 3), a1), Obj "equal", Obj "not equal")
+    ifexpr (binaryOp ("==", Obj (box 3), a1), Obj "equal", Obj "not equal")
     |> eval |> assertEquals (Ok (box "equal"))
   do!
     def ("a", Obj (box 10),
@@ -62,11 +63,11 @@ let testAST = test "FunnyScript AST test" {
           Ref "a")))
     |> eval |> assertEquals (Ok (box 10))
   do!
-    def ("hoge", FuncDef ({ Args = ["a"]; Body = binaryOp (Plus, Obj (box 100), Ref "a") |> expr }),
+    def ("hoge", FuncDef ({ Args = ["a"]; Body = binaryOp ("+", Obj (box 100), Ref "a") |> expr }),
       apply (Ref "hoge", Obj (box 22)))
     |> eval |> assertEquals (Ok (box 122))
   do!
-    let body = ifexpr (binaryOp (Equal, Ref "n", Obj (box 0)), Obj (box 1), binaryOp (Mul, Ref "n", apply (Ref "fac", binaryOp (Minus, Ref "n", Obj(box 1)))))
+    let body = ifexpr (binaryOp ("==", Ref "n", Obj (box 0)), Obj (box 1), binaryOp ("*", Ref "n", apply (Ref "fac", binaryOp ("-", Ref "n", Obj(box 1)))))
     def ("fac", FuncDef ({ Args = ["n"]; Body = expr body }),
       apply (Ref "fac", Obj (box 4)))
     |> eval |> assertEquals (Ok (box 24))

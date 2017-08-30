@@ -22,12 +22,12 @@ let rec forceMutable (obj : obj) =
 let private addTupleToEnv names (obj : obj) env =
   match names with
   | []     -> env
-  | [name] -> env |> Map.add (Name name) (Ok obj)
+  | [name] -> env |> Map.add name (Ok obj)
   | _ ->
     match obj with
     | :? (obj[]) as items when items.Length = names.Length ->
       names
-      |> List.mapi (fun i name -> Name name, items.[i])
+      |> List.mapi (fun i name -> name, items.[i])
       |> List.fold (fun env (name, obj) -> env |> Map.add name (Ok obj)) env
     | _ -> env
 
@@ -48,9 +48,9 @@ let rec eval expr env =
 
   match expr.Value with
   | Obj x -> Ok x
-  | Ref x -> tryGet (Name x)
+  | Ref x -> tryGet x
   | RefMember (expr, name) ->
-    let toResult x = match x with Some x -> Ok x | _ -> error (IdentifierNotFound (Name name))
+    let toResult x = match x with Some x -> Ok x | _ -> error (IdentifierNotFound name)
     env |> forceEval expr |> Result.bind (function
       | :? Record as r -> r |> Map.tryFind name |> toResult
       | :? Instance as x -> x.Type.Members |> Map.tryFind name |> toResult |> Result.bind (fun f -> apply (box f) x.Data)
@@ -60,13 +60,13 @@ let rec eval expr env =
         | UserType (_, ctor) when name = "new" ->
           let ctor arg = apply (box ctor) arg |> Result.bind force |> Result.map (fun x -> box { Data = x; Type = t })
           box (BuiltinFunc { new IFuncObj with member this.Apply arg = ctor arg }) |> Ok
-        | _ -> error (IdentifierNotFound (Name name))
+        | _ -> error (IdentifierNotFound name)
       | o -> o |> CLR.tryGetInstanceMember name |> toResult)
   | Let (name, value, succ) ->
     let value = env |> letEval value
-    let env = env |> Map.add (Name name) value
+    let env = env |> Map.add name value
     match value with
-    | Ok (:? Func as f) -> match f with UserFunc f -> f.Env <- f.Env |> Map.add (Name name) value | _ -> ()  // to enable recursive call
+    | Ok (:? Func as f) -> match f with UserFunc f -> f.Env <- f.Env |> Map.add name value | _ -> ()  // to enable recursive call
     | _ -> ()
     env |> eval succ
   | Combine (expr1, expr2) ->
@@ -86,13 +86,6 @@ let rec eval expr env =
       | Ok null -> Ok null
       | Ok arg -> env |> forceEval f |> Result.bind (fun f -> apply f arg)
       | err -> err
-  | BinaryOp (op, expr1, expr2) ->
-    tryGet (Op op)
-    |> Result.bind (fun f -> env |> forceEval expr1 |> Result.bind (apply f))
-    |> Result.bind (fun f -> env |> forceEval expr2 |> Result.bind (apply f))
-  | UnaryOp (op, expr) ->
-    tryGet (Op op)
-    |> Result.bind (fun f -> env |> forceEval expr |> Result.bind (apply f))
   | If (cond, thenExpr, elseExpr) ->
     env |> forceEval cond
     |> Result.bind (function
@@ -102,7 +95,7 @@ let rec eval expr env =
     (Ok (Map.empty, env), fields) ||> List.fold (fun state (name, expr) ->
       state |> Result.bind (fun (record, env) ->
         env |> letEval expr
-        |> Result.map (fun x -> record |> Map.add name x, env |> Map.add (Name name) (Ok x))))
+        |> Result.map (fun x -> record |> Map.add name x, env |> Map.add name (Ok x))))
     |> Result.map (fst >> box)
   | NewList exprs ->
     let items = exprs |> Array.map (fun expr -> env |> forceEval expr)
@@ -127,7 +120,7 @@ let rec eval expr env =
     |> Result.map (fun (dst, newval) -> dst.Value <- newval; newval)
   | Open (record, succ) ->
     env |> forceEval record |> Result.bind (function
-      | :? Record as r -> (env, r) ||> Seq.fold (fun env x -> env |> Map.add (Name x.Key) (Ok x.Value)) |> eval succ
+      | :? Record as r -> (env, r) ||> Seq.fold (fun env x -> env |> Map.add x.Key (Ok x.Value)) |> eval succ
       | x -> error (TypeMismatch (ClrType typeof<Record>, typeid x)))
   | OnError (target, handler) ->
     match env |> forceEval target with

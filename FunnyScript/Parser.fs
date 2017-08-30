@@ -120,29 +120,35 @@ let pExpr =
   opp.TermParser <- pSyntaxSugarLambdaTerm <|> pTerm
 
   let infixOp  str precedence mapping = InfixOperator(str, spaces, precedence, Associativity.Left, mapping) :> Operator<_, _, _>
-  let binaryOp str precedence op      = infixOp str precedence (fun x y -> { Value = BinaryOp (op, x, y); Position = None })
-  let prefixOp str precedence op      = PrefixOperator (str, spaces, precedence, true, (fun x -> { Value = UnaryOp (op, x); Position = None })) :> Operator<_, _, _>
-  [ binaryOp "*"  9 Mul
-    binaryOp "/"  9 Div
-    binaryOp "%"  9 Mod
-    binaryOp "+"  8 Plus
-    binaryOp "-"  8 Minus
-    binaryOp "::" 7 Cons
+  let binaryOp str precedence = infixOp str precedence (fun x y ->
+    let trace x = { Value = x; Position = None }
+    let apply arg f = trace (Apply (f, arg, NormalApply))
+    Ref str |> trace |> apply x |> apply y)
+  let prefixOp str precedence = PrefixOperator (str, spaces, precedence, true, (fun x ->
+    let trace x = { Value = x; Position = None }
+    let apply arg f = trace (Apply (f, arg, NormalApply))
+    Ref ("~" + str) |> trace |> apply x)) :> Operator<_, _, _>  // 単項演算子の場合は先頭に '~' を付けた識別子とする
+  [ binaryOp "*"  9
+    binaryOp "/"  9
+    binaryOp "%"  9
+    binaryOp "+"  8
+    binaryOp "-"  8
+    binaryOp "::" 7
     infixOp  "|>"  5 (fun arg f -> { arg with Value = Apply (f, arg, Pipeline) })
     infixOp  "|?>" 5 (fun arg f -> { arg with Value = Apply (f, arg, NullPropagationPipeline) })
     infixOp  "|!>" 5 (fun arg handler -> { arg with Value = OnError (arg, handler) })
-    binaryOp "<"  4 Less
-    binaryOp ">"  4 Greater
-    binaryOp "<=" 4 LessEq
-    binaryOp ">=" 4 GreaterEq
-    binaryOp "==" 3 Equal
-    binaryOp "!=" 3 NotEq
-    binaryOp ":?" 3 Is
-    binaryOp "&&" 2 LogicalAnd
-    binaryOp "||" 2 LogicalOr
-    prefixOp "!" 10 LogicalNot
-    prefixOp "+" 10 UnaryPlus
-    prefixOp "-" 10 UnaryMinus
+    binaryOp "<"  4
+    binaryOp ">"  4
+    binaryOp "<=" 4
+    binaryOp ">=" 4
+    binaryOp "==" 3
+    binaryOp "!=" 3
+    binaryOp ":?" 3
+    binaryOp "&&" 2
+    binaryOp "||" 2
+    prefixOp "!" 10
+    prefixOp "+" 10
+    prefixOp "-" 10
     InfixOperator("<-", spaces, 1, Associativity.Right, fun x y -> { Value = Substitute (x, y); Position = None }) :> Operator<_, _, _>
   ] |> List.iter opp.AddOperator
   pExprRef :=

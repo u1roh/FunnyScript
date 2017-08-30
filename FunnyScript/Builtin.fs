@@ -64,64 +64,64 @@ let private deftype id members =
     members
     |> List.map (fun (name, f) -> name, builtinFunc f)
     |> Map.ofList
-  Name (typeName id), box { Id = id; Members = members }
+  typeName id, box { Id = id; Members = members }
 
 let load env =
-  [ Op Plus,  arith (+) (+)
-    Op Minus, arith (-) (-)
-    Op Mul,   arith (*) (*)
-    Op Div,   arith (/) (/)
-    Op Mod,   toFunc2 (fun a b -> match a, b with (:? int as a), (:? int as b) -> Ok (a % b |> box) | _ -> Error (TypeMismatch (ClrType typeof<int>, typeid a)))
-    Op Equal, toFunc2 (fun a b -> box (a =  b) |> Ok)
-    Op NotEq, toFunc2 (fun a b -> box (a <> b) |> Ok)
-    Op Less,      compare (<)  (<)
-    Op LessEq,    compare (<=) (<=)
-    Op Greater,   compare (>)  (>)
-    Op GreaterEq, compare (>=) (>=)
-    Op LogicalAnd, logical (&&)
-    Op LogicalOr,  logical (||)
-    Op LogicalNot, toFunc1 (function :? bool as x -> not x |> box |> Ok | x -> Error (TypeMismatch (ClrType typeof<bool>, typeid x)))
-    Op UnaryPlus,  toFunc1 (function :? int as x -> Ok (box +x) | :? float as x -> Ok (box +x) | x -> Error (TypeMismatch (ClrType typeof<int>, typeid x)))
-    Op UnaryMinus, toFunc1 (function :? int as x -> Ok (box -x) | :? float as x -> Ok (box -x) | x -> Error (TypeMismatch (ClrType typeof<int>, typeid x)))
-    Op Is,   toFunc2 (fun o t  -> match t  with :? Type as t  -> Ok (box (t.Id = typeid o)) | _ -> Error (TypeMismatch (ClrType typeof<Type>, typeid t)))
-    //Op Cons, toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> AST.List |> Ok | _ -> Error (TypeMismatch (ListType, typeid ls)))
+  [ "+",  arith (+) (+)
+    "-",  arith (-) (-)
+    "*",  arith (*) (*)
+    "/",  arith (/) (/)
+    "%",  toFunc2 (fun a b -> match a, b with (:? int as a), (:? int as b) -> Ok (a % b |> box) | _ -> Error (TypeMismatch (ClrType typeof<int>, typeid a)))
+    "==", toFunc2 (fun a b -> box (a =  b) |> Ok)
+    "!=", toFunc2 (fun a b -> box (a <> b) |> Ok)
+    "<",  compare (<)  (<)
+    "<=", compare (<=) (<=)
+    ">",  compare (>)  (>)
+    ">=", compare (>=) (>=)
+    "&&", logical (&&)
+    "||", logical (||)
+    ":?", toFunc2 (fun o t  -> match t  with :? Type as t  -> Ok (box (t.Id = typeid o)) | _ -> Error (TypeMismatch (ClrType typeof<Type>, typeid t)))
+    "~!", toFunc1 (function :? bool as x -> not x |> box |> Ok | x -> Error (TypeMismatch (ClrType typeof<bool>, typeid x)))
+    "~+", toFunc1 (function :? int as x -> Ok (box +x) | :? float as x -> Ok (box +x) | x -> Error (TypeMismatch (ClrType typeof<int>, typeid x)))
+    "~-", toFunc1 (function :? int as x -> Ok (box -x) | :? float as x -> Ok (box -x) | x -> Error (TypeMismatch (ClrType typeof<int>, typeid x)))
+    //"::", toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> AST.List |> Ok | _ -> Error (TypeMismatch (ListType, typeid ls)))
 
-    Name "class", toFunc2 makeClass
-    Name "mutable", toFunc1 (toMutable >> box >> Ok)
-    Name "error", toFunc1 (fun x -> Error (UserError x))
-    Name "trace", toFunc1 trace
+    "class", toFunc2 makeClass
+    "mutable", toFunc1 (toMutable >> box >> Ok)
+    "error", toFunc1 (fun x -> Error (UserError x))
+    "trace", toFunc1 trace
 
-    Name "array", toFunc2 (fun len f ->
+    "array", toFunc2 (fun len f ->
       let f = Eval.apply None f >> Result.bind Eval.force >> function Ok x -> x | Error e -> failwith (e.ToString())
       match len with
       | :? int as len -> Array.init len f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<int>, typeid len)))
 
-    Name "isEmpty", toFunc1 (function
+    "isEmpty", toFunc1 (function
       | :? ICollection as a -> Ok <| box (a.Count = 0)
       | :? IEnumerable as a -> Ok <| box (Seq.cast<obj> a |> Seq.isEmpty)
       | a -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid a)))
 
-    Name "length", toFunc1 (function
+    "length", toFunc1 (function
       | (:? ICollection as a) -> Ok (box a.Count)
       | (:? IEnumerable as a) -> Ok (Seq.cast<obj> a |> Seq.length |> box)
       | a -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid a)))
 
-    Name "foreach", toFunc2 (fun f src ->
+    "foreach", toFunc2 (fun f src ->
       let f = Eval.apply None f >> Result.bind Eval.force >> ignore
       match src with
       | (:? (obj[]) as src) -> src |> Array.iter f; Ok null
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.iter f; Ok null
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
-    Name "map", toFunc2 (fun f src ->
+    "map", toFunc2 (fun f src ->
       let f = Eval.apply None f >> Result.bind Eval.force >> function Ok x -> x | Error e -> failwith (e.ToString())
       match src with
       | (:? (obj[]) as src) -> src |> Array.map f |> box |> Ok
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.map f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
-    Name "choose", toFunc2 (fun f src ->
+    "choose", toFunc2 (fun f src ->
       let f = Eval.apply None f >> Result.bind Eval.force >> function Ok null -> None | Ok x -> Some x | Error e -> failwith (e.ToString())
       match src with
       | (:? (obj[]) as src) -> src |> Array.choose f |> box |> Ok
@@ -140,10 +140,10 @@ let load env =
 //      ]
     deftype (ClrType typeof<Type>) []
 
-    Name "Cast", castModule
-//    Name "List", listModule
+    "Cast", castModule
+//    "List", listModule
 
-    Name "Stack", toFunc0 (fun () -> Stack() :> obj |> Ok)
+    "Stack", toFunc0 (fun () -> Stack() :> obj |> Ok)
   ]
-  |> List.fold (fun env (id, obj) -> env |> Map.add id (Ok obj)) env
+  |> List.fold (fun env (name, obj) -> env |> Map.add name (Ok obj)) env
 

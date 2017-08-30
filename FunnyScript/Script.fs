@@ -16,7 +16,7 @@ type Env private (data : AST.Env) =
     data |> CLR.loadAssembly asm |> Env
 
   member this.Add (name, obj : obj) =
-    data |> Map.add (Name name) (Ok obj) |> Env
+    data |> Map.add name (Ok obj) |> Env
 
   member this.Eval expr =
     data |> Eval.eval expr |> Result.bind Eval.force

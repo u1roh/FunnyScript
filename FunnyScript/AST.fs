@@ -13,39 +13,15 @@ type Trace<'value> = {
     Position : Position option
   }
 
-type Operator =
-  | Plus
-  | Minus
-  | UnaryPlus
-  | UnaryMinus
-  | Mul
-  | Div
-  | Mod
-  | Equal
-  | NotEq
-  | Less
-  | LessEq
-  | Greater
-  | GreaterEq
-  | LogicalNot
-  | LogicalAnd
-  | LogicalOr
-  | Is
-  | Cons
-
-type ID =
-  | Name of string
-  | Op   of Operator
-
 type ApplType =
   | NormalApply
   | Pipeline
   | NullPropagationPipeline
 
-type Env = Map<ID, Result>
+type Env = Map<string, Result>
 
 and Error =
-  | IdentifierNotFound of ID
+  | IdentifierNotFound of string
   | NotApplyable of f:obj * arg:obj
   | TypeMismatch of expected:TypeId * actual:TypeId
   | NotImplemented of string
@@ -74,8 +50,6 @@ and Expression =
   | Obj of obj
   | Ref of name:string
   | RefMember of self:Expr * name:string
-  | BinaryOp of Operator * Expr * Expr
-  | UnaryOp  of Operator * Expr
   | Let of name:string * value:Expr * succ:Expr
   | Combine of Expr * Expr
   | Apply of func:Expr * para:Expr * ApplType
