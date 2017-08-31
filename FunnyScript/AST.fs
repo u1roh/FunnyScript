@@ -46,7 +46,6 @@ and Expression =
   | Ref of name:string
   | RefMember of self:Expr * name:string
   | Let of name:string * value:Expr * succ:Expr
-  | Combine of Expr * Expr
   | Apply of func:Expr * para:Expr
   | FuncDef of FuncDef
   | NewRecord of (string * Expr) list

@@ -8,7 +8,7 @@ let binaryOp (op, x1, x2) = Ref op |> invoke x1 |> invoke x2
 let def (name, x1, x2) = Let (name, expr x1, expr x2)
 let apply (x1, x2) = Apply (expr x1, expr x2)
 let ifexpr (x1, x2, x3) = If (expr x1, expr x2, expr x3)
-let combine (x1, x2) = Combine (expr x1, expr x2)
+let combine (x1, x2) = Let ("", expr x1, expr x2)
 
 let a1 = binaryOp ("+", Obj (box 1), Obj (box 2))
 

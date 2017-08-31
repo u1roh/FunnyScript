@@ -67,10 +67,10 @@ let pExpr =
     opt pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';' .>>. pExpr
     |>> function
       | ((Some name, expr1), expr2) -> Let (name, expr1, expr2)
-      | ((_, expr1), expr2)         -> Combine (expr1, expr2)
+      | ((_, expr1), expr2)         -> Let (null, expr1, expr2)
   let pDo =
     str_ws "do" >>. pExpr .>> char_ws ';' .>>. opt pExpr
-    |>> (fun (expr1, expr2) -> match expr2 with Some expr2 -> Combine (expr1, expr2) | _ -> Combine (expr1, { Value = Obj null; Position = None }))
+    |>> (fun (expr1, expr2) -> Let (null, expr1, expr2 |> Option.defaultValue { Value = Obj null; Position = None }))
   let pOpen =
     str_ws "open" >>. pExpr .>> char_ws ';' .>>. pExpr
     |>> Open

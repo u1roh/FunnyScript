@@ -1,4 +1,5 @@
 ﻿module FunnyScript.Eval
+open System
 open System.Collections
 
 let rec force (obj : obj) =
@@ -54,7 +55,7 @@ let rec eval expr env =
     env |> forceEval expr |> Result.bind (function
       | :? Record as r -> r |> Map.tryFind name |> toResult
       | :? Instance as x -> x.Type.Members |> Map.tryFind name |> toResult |> Result.bind (fun f -> apply (box f) x.Data)
-      | :? Type as t ->
+      | :? AST.Type as t ->
         match t.Id with
         | ClrType t -> t |> CLR.tryGetStaticMember name |> toResult
         | UserType (_, ctor) when name = "new" ->
@@ -63,15 +64,16 @@ let rec eval expr env =
         | _ -> error (IdentifierNotFound name)
       | o -> o |> CLR.tryGetInstanceMember name |> toResult)
   | Let (name, value, succ) ->
-    let value = env |> letEval value
-    let env = env |> Map.add name value
-    match value with
-    | Ok (:? Func as f) -> match f with UserFunc f -> f.Env <- f.Env |> Map.add name value | _ -> ()  // to enable recursive call
-    | _ -> ()
-    env |> eval succ
-  | Combine (expr1, expr2) ->
-    env |> forceEval expr1 |> Result.bind (fun _ ->
-    env |> eval expr2)
+    if String.IsNullOrEmpty name then
+      env |> forceEval value |> Result.bind (fun _ ->
+      env |> eval succ)
+    else
+      let value = env |> letEval value
+      let env = env |> Map.add name value
+      match value with
+      | Ok (:? Func as f) -> match f with UserFunc f -> f.Env <- f.Env |> Map.add name value | _ -> ()  // to enable recursive call
+      | _ -> ()
+      env |> eval succ
   | FuncDef def -> UserFunc { Def = def; Env = env } |> box |> Ok
   | Apply (f, arg) ->
     env |> forceEval f   |> Result.bind (fun f ->
