@@ -44,7 +44,7 @@ let pLiteralString =
   |>> (String.concat "" >> box >> Obj)
 
 let pIdentifier =
-  regex "[a-zA-Z_][0-9a-zA-Z_]*" .>> spaces
+  regex @"\w(\w|\d)*" .>> spaces
 
 let pAtom =
   choice [

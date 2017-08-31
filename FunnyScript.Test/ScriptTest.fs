@@ -243,3 +243,8 @@ let pipelineTest = test "pipeline test" {
     x
   """ ==> 7
 }
+
+let unicodeTest = test "unicode identifier test" {
+  do! "α := 1; α" ==> 1
+  do! "うんこ := 100; うんこ" ==> 100
+}
