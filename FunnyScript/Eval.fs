@@ -73,19 +73,9 @@ let rec eval expr env =
     env |> forceEval expr1 |> Result.bind (fun _ ->
     env |> eval expr2)
   | FuncDef def -> UserFunc { Def = def; Env = env } |> box |> Ok
-  | Apply (f, arg, apltype) ->
-    match apltype with
-    | NormalApply ->
-      env |> forceEval f   |> Result.bind (fun f ->
-      env |> forceEval arg |> Result.bind (apply f))
-    | Pipeline ->
-      env |> forceEval arg |> Result.bind (fun arg ->
-      env |> forceEval f   |> Result.bind (fun f   -> apply f arg))
-    | NullPropagationPipeline ->
-      match env |> forceEval arg with
-      | Ok null -> Ok null
-      | Ok arg -> env |> forceEval f |> Result.bind (fun f -> apply f arg)
-      | err -> err
+  | Apply (f, arg) ->
+    env |> forceEval f   |> Result.bind (fun f ->
+    env |> forceEval arg |> Result.bind (apply f))
   | If (cond, thenExpr, elseExpr) ->
     env |> forceEval cond
     |> Result.bind (function

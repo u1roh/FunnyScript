@@ -78,6 +78,8 @@ let load env =
     "<=", compare (<=) (<=)
     ">",  compare (>)  (>)
     ">=", compare (>=) (>=)
+    "|>",  toFunc2 (fun arg f -> Eval.apply None f arg |> Result.mapError (fun e -> e.Value))
+    "|?>", toFunc2 (fun arg f -> if arg = null then Ok null else Eval.apply None f arg |> Result.mapError (fun e -> e.Value))
     "&&", logical (&&)
     "||", logical (||)
     ":?", toFunc2 (fun o t  -> match t  with :? Type as t  -> Ok (box (t.Id = typeid o)) | _ -> Error (TypeMismatch (ClrType typeof<Type>, typeid t)))

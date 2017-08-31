@@ -105,7 +105,7 @@ let pExpr =
     .>>. many (attempt (char_ws '.' >>. pIdentifier))
     |>> fun (expr, mems) -> (expr, mems) ||> List.fold (fun expr mem -> { expr with Value = RefMember (expr, mem) })
   let pTerm =
-    many1 pTermItem |>> fun items -> (List.head items, List.tail items) ||> List.fold (fun f arg -> { arg with Value = Apply (f, arg, NormalApply) })
+    many1 pTermItem |>> fun items -> (List.head items, List.tail items) ||> List.fold (fun f arg -> { arg with Value = Apply (f, arg) })
   let pSyntaxSugarLambdaTerm : Parser =
     char_ws '.'
     >>. sepBy1 pIdentifier (char_ws '.')
@@ -114,7 +114,7 @@ let pExpr =
     |>> fun { Value = (mems, args); Position = pos } ->
       let trace x = { Value = x; Position = pos }
       let self = (Ref "__SELF__", mems) ||> List.fold (fun expr mem -> RefMember (trace expr, mem))
-      let body = (self, args) ||> List.fold (fun f arg -> Apply (trace f, arg, NormalApply))
+      let body = (self, args) ||> List.fold (fun f arg -> Apply (trace f, arg))
       FuncDef { Args = ["__SELF__"]; Body = trace body } |> trace
   let opp = new OperatorPrecedenceParser<Expr,unit,unit>()
   opp.TermParser <- pSyntaxSugarLambdaTerm <|> pTerm
@@ -122,11 +122,11 @@ let pExpr =
   let infixOp  str precedence mapping = InfixOperator(str, spaces, precedence, Associativity.Left, mapping) :> Operator<_, _, _>
   let binaryOp str precedence = infixOp str precedence (fun x y ->
     let trace x = { Value = x; Position = None }
-    let apply arg f = trace (Apply (f, arg, NormalApply))
+    let apply arg f = trace (Apply (f, arg))
     Ref str |> trace |> apply x |> apply y)
   let prefixOp str precedence = PrefixOperator (str, spaces, precedence, true, (fun x ->
     let trace x = { Value = x; Position = None }
-    let apply arg f = trace (Apply (f, arg, NormalApply))
+    let apply arg f = trace (Apply (f, arg))
     Ref ("~" + str) |> trace |> apply x)) :> Operator<_, _, _>  // 単項演算子の場合は先頭に '~' を付けた識別子とする
   [ binaryOp "*"  9
     binaryOp "/"  9
@@ -134,8 +134,8 @@ let pExpr =
     binaryOp "+"  8
     binaryOp "-"  8
     binaryOp "::" 7
-    infixOp  "|>"  5 (fun arg f -> { arg with Value = Apply (f, arg, Pipeline) })
-    infixOp  "|?>" 5 (fun arg f -> { arg with Value = Apply (f, arg, NullPropagationPipeline) })
+    binaryOp "|>" 5
+    binaryOp "|?>" 5
     infixOp  "|!>" 5 (fun arg handler -> { arg with Value = OnError (arg, handler) })
     binaryOp "<"  4
     binaryOp ">"  4
