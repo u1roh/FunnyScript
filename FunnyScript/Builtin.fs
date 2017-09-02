@@ -3,7 +3,7 @@ open System.Collections
 
 let private funcObj f = { new IFuncObj with member __.Apply a = f a }
 let private toResult r = r |> Result.mapError (fun e -> { Value = e; Position = None })
-let private builtinFunc f = BuiltinFunc (funcObj (f >> toResult))
+let private builtinFunc f = funcObj (f >> toResult)
 let private toFunc0 f = box (builtinFunc (fun _ -> f()))
 let private toFunc1 f = box (builtinFunc f)
 let private toFunc2 f = toFunc1 (f >> toFunc1 >> Ok)
@@ -135,7 +135,7 @@ let load env =
     deftype (ClrType typeof<int>)    []
     deftype (ClrType typeof<float>)  []
     deftype (ClrType typeof<Record>) []
-    deftype (ClrType typeof<Func>)   []
+    deftype (ClrType typeof<IFuncObj>) []
 //    deftype ListType [
 //        "head",     asList (fun x -> x.Head)
 //        "tail",     asList (fun x -> List x.Tail)

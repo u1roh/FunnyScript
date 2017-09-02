@@ -20,21 +20,13 @@ let rec forceMutable (obj : obj) =
   | :? IMutable as x -> Ok x
   | _ -> Error { Value = NotMutable; Position = None }
 
-let private addTupleToEnv names (obj : obj) env =
-  match names with
-  | []     -> env
-  | [name] -> env |> Map.add name (Ok obj)
-  | _ ->
-    match obj with
-    | :? (obj[]) as items when items.Length = names.Length ->
-      names
-      |> List.mapi (fun i name -> name, items.[i])
-      |> List.fold (fun env (name, obj) -> env |> Map.add name (Ok obj)) env
-    | _ -> env
-
 module private Env =
   let tryGet pos id (env : Env) =
     env |> Map.tryFind id |> function Some x -> x | _ -> Error { Value = IdentifierNotFound id; Position = pos }
+
+type private IUserFuncObj =
+  inherit IFuncObj
+  abstract InitSelfName : string -> unit
 
 let rec eval expr env =
   let forceEval expr env =
@@ -60,7 +52,7 @@ let rec eval expr env =
         | ClrType t -> t |> CLR.tryGetStaticMember name |> toResult
         | UserType (_, ctor) when name = "new" ->
           let ctor arg = apply (box ctor) arg |> Result.bind force |> Result.map (fun x -> box { Data = x; Type = t })
-          box (BuiltinFunc { new IFuncObj with member this.Apply arg = ctor arg }) |> Ok
+          box { new IFuncObj with member this.Apply arg = ctor arg } |> Ok
         | _ -> error (IdentifierNotFound name)
       | o -> o |> CLR.tryGetInstanceMember name |> toResult)
   | Let (name, value, succ) ->
@@ -70,11 +62,9 @@ let rec eval expr env =
     else
       let value = env |> letEval value
       let env = env |> Map.add name value
-      match value with
-      | Ok (:? Func as f) -> match f with UserFunc f -> f.Env <- f.Env |> Map.add name value | _ -> ()  // to enable recursive call
-      | _ -> ()
+      match value with Ok (:? IUserFuncObj as f) -> f.InitSelfName name | _ -> ()  // to enable recursive call
       env |> eval succ
-  | FuncDef def -> UserFunc { Def = def; Env = env } |> box |> Ok
+  | FuncDef def -> createUserFuncObj def env |> box |> Ok
   | Apply (f, arg) ->
     env |> forceEval f   |> Result.bind (fun f ->
     env |> forceEval arg |> Result.bind (apply f))
@@ -129,10 +119,7 @@ let rec eval expr env =
 and apply pos f arg =
   let err() = Error { Value = NotApplyable (f, arg); Position = pos }
   match f with
-  | :? Func as f ->
-    match f with
-    | BuiltinFunc f -> f.Apply arg
-    | UserFunc f -> lazy (f.Env |> addTupleToEnv f.Def.Args arg |> eval f.Def.Body) |> box |> Ok
+  | :? IFuncObj as f -> f.Apply arg
   | :? int as a ->
     match arg with
     | :? int   as b -> Ok <| box (a * b)
@@ -149,3 +136,26 @@ and apply pos f arg =
       | (:? IEnumerable as x), (:? int as i) -> Ok (x |> Seq.cast<obj> |> Seq.item i)
       | _ -> Error { Value = TypeMismatch (ClrType typeof<int>, typeid arg); Position = pos })
   //| _ -> err()
+
+and private createUserFuncObj def env =
+  let addTupleToEnv names (obj : obj) env =
+    match names with
+    | []     -> env
+    | [name] -> env |> Map.add name (Ok obj)
+    | _ ->
+      match obj with
+      | :? (obj[]) as items when items.Length = names.Length ->
+        names
+        |> List.mapi (fun i name -> name, items.[i])
+        |> List.fold (fun env (name, obj) -> env |> Map.add name (Ok obj)) env
+      | _ -> env
+  let mutable env = env
+  let mutable named = false
+  { new IUserFuncObj with
+    member __.Apply arg =
+      lazy (env |> addTupleToEnv def.Args arg |> eval def.Body) |> box |> Ok
+    member self.InitSelfName name = 
+      if not named then
+        env <- env |> Map.add name (Ok (box self)) // to enable recursive call
+        named <- true
+  }
