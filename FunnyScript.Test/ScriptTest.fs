@@ -10,8 +10,12 @@ let (==>) (script : string) expected =
   |> assertEquals (Ok (box expected))
 
 let (==>!) (script : string) error =
+  let rec strip e = match e with StackTrace (e, _, _) -> strip e | _ -> e
   match env.Run ("ScriptTest", script) with
-  | Error (Script.RuntimeError (UserError e)) -> e |> assertEquals error
+  | Error (Script.RuntimeError e) ->
+    match strip e with
+    | UserError e -> e |> assertEquals error
+    | e -> fail (sprintf "unexpected error: %A" e)
   | Error e -> fail (sprintf "unexpected error: %A" e)
   | Ok _ -> fail "Error expected, but succceeded"
 

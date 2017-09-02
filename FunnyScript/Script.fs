@@ -36,9 +36,9 @@ let rec getRuntimeErrorString e =
   | StackTrace (e, expr, env) ->
     let msg = getRuntimeErrorString e
     let trace =
-      match expr.Position with
-      | Some pos -> sprintf "at %s (%d, %d): %A" pos.FilePath pos.Line pos.Column expr.Value
-      | None -> sprintf "at %A" expr.Value
+      match expr with
+      | Trace (expr, pos) -> sprintf "at %s (%d, %d): %A" pos.FilePath pos.Line pos.Column expr
+      | _ -> sprintf "at %A" expr
     msg + "\n" + trace
   | _ -> sprintf "RUNTIME ERROR! %A" e
 

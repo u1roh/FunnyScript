@@ -38,7 +38,8 @@ let rec eval expr env =
   let tryGet id = env |> Env.tryGet id
 
   Result.mapError (fun e -> StackTrace (e, expr, env)) <|
-  match expr.Value with
+  match expr with
+  | Trace (expr, _) -> eval expr env
   | Obj x -> Ok x
   | Ref x -> tryGet x
   | RefMember (expr, name) ->

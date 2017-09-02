@@ -36,7 +36,7 @@ namespace FunnyScript.Gui
         } ) );
 
     Script.Env env = Script.Env.Default;
-    Result<AST.Trace<AST.Expression>, string> expr;
+    Result<AST.Expr, string> expr;
     CompletionWindow completionWindow = null;
     bool keywordCompletion = true;
 

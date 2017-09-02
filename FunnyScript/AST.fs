@@ -8,11 +8,6 @@ type Position = {
   } with
   override this.ToString () = sprintf "%s(%d, %d)" this.FilePath this.Line this.Column
 
-type Trace<'value> = {
-    Value : 'value
-    Position : Position option
-  }
-
 type Env = Map<string, Result>
 
 and Err =
@@ -43,7 +38,7 @@ and Instance = {
 
 and Record = Map<string, obj>
 
-and Expression =
+and Expr =
   | Obj of obj
   | Ref of name:string
   | RefMember of self:Expr * name:string
@@ -57,8 +52,7 @@ and Expression =
   | Substitute of Expr * Expr
   | Open of value:Expr * succ:Expr
   | OnError of target:Expr * handler:Expr
-
-and Expr = Trace<Expression>
+  | Trace of Expr * Position
 
 and FuncDef = {
     Args : string list

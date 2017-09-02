@@ -13,7 +13,7 @@ let private convPos (pos : Position) =
   { FilePath = pos.StreamName; Line = int pos.Line; Column = int pos.Column }
 
 let private toTracable parser =
-  parser .>>. getPosition |>> fun (x, pos) -> { Value = x; Position = Some (convPos pos) }
+  parser .>>. getPosition |>> fun (x, pos) -> Trace (x, convPos pos)
 
 let pLiteralNumber =
   let numfmt =
@@ -70,7 +70,7 @@ let pExpr =
       | ((_, expr1), expr2)         -> Let (null, expr1, expr2)
   let pDo =
     str_ws "do" >>. pExpr .>> char_ws ';' .>>. opt pExpr
-    |>> (fun (expr1, expr2) -> Let (null, expr1, expr2 |> Option.defaultValue { Value = Obj null; Position = None }))
+    |>> fun (expr1, expr2) -> Let (null, expr1, expr2 |> Option.defaultValue (Obj null))
   let pOpen =
     str_ws "open" >>. pExpr .>> char_ws ';' .>>. pExpr
     |>> Open
@@ -97,37 +97,30 @@ let pExpr =
     between_ws '(' ')' (sepByComma pExpr)
     |>> function
       | [] -> Obj null
-      | [expr] -> expr.Value
+      | [expr] -> expr
       | tuple  -> tuple |> List.toArray |> NewList
   let pTermItem =
     choice [ attempt pLambda; pAtom; pList; pTuple; pRecord ]
-    |> toTracable
     .>>. many (attempt (char_ws '.' >>. pIdentifier))
-    |>> fun (expr, mems) -> (expr, mems) ||> List.fold (fun expr mem -> { expr with Value = RefMember (expr, mem) })
+    |>> fun (expr, mems) -> (expr, mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
   let pTerm =
-    many1 pTermItem |>> fun items -> (List.head items, List.tail items) ||> List.fold (fun f arg -> { arg with Value = Apply (f, arg) })
+    many1 pTermItem |>> fun items -> (List.head items, List.tail items) ||> List.fold (fun f arg -> Apply (f, arg))
   let pSyntaxSugarLambdaTerm : Parser =
     char_ws '.'
     >>. sepBy1 pIdentifier (char_ws '.')
     .>>. many pTermItem
-    |> toTracable
-    |>> fun { Value = (mems, args); Position = pos } ->
-      let trace x = { Value = x; Position = pos }
-      let self = (Ref "__SELF__", mems) ||> List.fold (fun expr mem -> RefMember (trace expr, mem))
-      let body = (self, args) ||> List.fold (fun f arg -> Apply (trace f, arg))
-      FuncDef { Args = ["__SELF__"]; Body = trace body } |> trace
+    .>>. getPosition
+    |>> fun ((mems, args), pos) ->
+      let self = (Ref "__SELF__", mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
+      let body = (self, args) ||> List.fold (fun f arg -> Apply (f, arg))
+      Trace (FuncDef { Args = ["__SELF__"]; Body = body }, convPos pos)
   let opp = new OperatorPrecedenceParser<Expr,unit,unit>()
   opp.TermParser <- pSyntaxSugarLambdaTerm <|> pTerm
 
   let infixOp  str precedence mapping = InfixOperator(str, spaces, precedence, Associativity.Left, mapping) :> Operator<_, _, _>
-  let binaryOp str precedence = infixOp str precedence (fun x y ->
-    let trace x = { Value = x; Position = None }
-    let apply arg f = trace (Apply (f, arg))
-    Ref str |> trace |> apply x |> apply y)
-  let prefixOp str precedence = PrefixOperator (str, spaces, precedence, true, (fun x ->
-    let trace x = { Value = x; Position = None }
-    let apply arg f = trace (Apply (f, arg))
-    Ref ("~" + str) |> trace |> apply x)) :> Operator<_, _, _>  // 単項演算子の場合は先頭に '~' を付けた識別子とする
+  let binaryOp str precedence = infixOp str precedence (fun x y -> Apply (Apply (Ref str, x), y))
+  let prefixOp str precedence = PrefixOperator (str, spaces, precedence, true, (fun x -> Apply (Ref ("~" + str), x))) :> Operator<_, _, _>
+  // ↑単項演算子の場合は先頭に '~' を付けた識別子とする
   [ binaryOp "*"  9
     binaryOp "/"  9
     binaryOp "%"  9
@@ -136,7 +129,7 @@ let pExpr =
     binaryOp "::" 7
     binaryOp "|>" 5
     binaryOp "|?>" 5
-    infixOp  "|!>" 5 (fun arg handler -> { arg with Value = OnError (arg, handler) })
+    infixOp  "|!>" 5 (fun arg handler -> OnError (arg, handler))
     binaryOp "<"  4
     binaryOp ">"  4
     binaryOp "<=" 4
@@ -149,7 +142,7 @@ let pExpr =
     prefixOp "!" 10
     prefixOp "+" 10
     prefixOp "-" 10
-    InfixOperator("<-", spaces, 1, Associativity.Right, fun x y -> { Value = Substitute (x, y); Position = None }) :> Operator<_, _, _>
+    InfixOperator("<-", spaces, 1, Associativity.Right, fun x y -> Substitute (x, y)) :> Operator<_, _, _>
   ] |> List.iter opp.AddOperator
   pExprRef :=
     choice [
@@ -157,7 +150,7 @@ let pExpr =
       pIf
       pOpen
       attempt pLet
-      opp.ExpressionParser |>> fun x -> x.Value
+      opp.ExpressionParser
     ]
     |> toTracable
   pExpr

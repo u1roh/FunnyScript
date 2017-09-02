@@ -6,7 +6,7 @@ open FunnyScript;
 type ScriptRunner (output : string -> unit) =
   let env = Script.Env.Default.LoadAssembly typeof<System.Drawing.Graphics>.Assembly
   let mutable script = ""
-  let mutable program : Expr = { Value = Obj null; Position = None }
+  let mutable program : Expr = Obj null
 
   member __.Script = script
 

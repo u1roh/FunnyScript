@@ -16,7 +16,9 @@ let ``string literal`` () =
     let result = snipet |> replace |> Parser.parse "ParserTest"
     do!
       match result with
-      | Ok expr -> assertEquals expected expr.Value
+      | Ok expr ->
+        let rec strip x = match x with Trace (x, _) -> strip x | _ -> x
+        strip expr |> assertEquals expected
       | Error err ->
           fail (sprintf "%A" err)
   }
