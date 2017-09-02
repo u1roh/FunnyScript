@@ -9,11 +9,10 @@ open FParsec.Error
 type Result = Result<Expr, string>
 type Parser = Parser<Expr, unit>
 
-let private convPos (pos : Position) =
-  { FilePath = pos.StreamName; Line = int pos.Line; Column = int pos.Column }
-
-let private toTracable parser =
-  parser .>>. getPosition |>> fun (x, pos) -> Trace (x, convPos pos)
+let private trace parser =
+  let lncol (pos : Position) = int pos.Line, int pos.Column
+  getPosition .>>. parser .>>. getPosition
+  |>> fun ((pos1, x), pos2) -> x, { FilePath = pos1.StreamName; LineCol1 = lncol pos1; LineCol2 = lncol pos2 }
 
 let pLiteralNumber =
   let numfmt =
@@ -109,11 +108,10 @@ let pExpr =
     char_ws '.'
     >>. sepBy1 pIdentifier (char_ws '.')
     .>>. many pTermItem
-    .>>. getPosition
-    |>> fun ((mems, args), pos) ->
+    |>> fun (mems, args) ->
       let self = (Ref "__SELF__", mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
       let body = (self, args) ||> List.fold (fun f arg -> Apply (f, arg))
-      Trace (FuncDef { Args = ["__SELF__"]; Body = body }, convPos pos)
+      FuncDef { Args = ["__SELF__"]; Body = body }
   let opp = new OperatorPrecedenceParser<Expr,unit,unit>()
   opp.TermParser <- pSyntaxSugarLambdaTerm <|> pTerm
 
@@ -152,7 +150,7 @@ let pExpr =
       attempt pLet
       opp.ExpressionParser
     ]
-    |> toTracable
+    |> trace |>> Trace
   pExpr
 
 let private removeComments (program : string) =

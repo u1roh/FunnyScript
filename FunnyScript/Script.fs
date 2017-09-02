@@ -33,13 +33,11 @@ type Env private (data : AST.Env) =
 
 let rec getRuntimeErrorString e =
   match e with
-  | StackTrace (e, expr, env) ->
+  | StackTrace (e, expr, _) ->
     let msg = getRuntimeErrorString e
-    let trace =
-      match expr with
-      | Trace (expr, pos) -> sprintf "at %s (%d, %d): %A" pos.FilePath pos.Line pos.Column expr
-      | _ -> sprintf "at %A" expr
-    msg + "\n" + trace
+    match expr with
+    | Trace (expr, pos) -> msg + "\n" + sprintf "at %s: %A" (pos.ToString()) expr
+    | _ -> msg
   | _ -> sprintf "RUNTIME ERROR! %A" e
 
 let getResultString result =

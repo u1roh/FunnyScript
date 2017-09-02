@@ -3,10 +3,11 @@ module FunnyScript.AST
 
 type Position = {
     FilePath  : string
-    Line      : int
-    Column    : int
+    LineCol1  : int * int
+    LineCol2  : int * int
   } with
-  override this.ToString () = sprintf "%s(%d, %d)" this.FilePath this.Line this.Column
+  override this.ToString () =
+    sprintf "%s %A~%A" this.FilePath this.LineCol1 this.LineCol2
 
 type Env = Map<string, Result>
 
