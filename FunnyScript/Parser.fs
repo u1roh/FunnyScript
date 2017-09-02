@@ -43,7 +43,10 @@ let pLiteralString =
   |>> (String.concat "" >> box >> Obj)
 
 let pIdentifier =
-  regex @"\w(\w|\d)*" .>> spaces
+  choice [
+    regex @"\w(\w|\d)*" .>> spaces
+    many (noneOf "`") |> between (skipChar '`') (skipChar '`') .>> spaces |>> (List.toArray >> String)
+  ]
 
 let pAtom =
   choice [

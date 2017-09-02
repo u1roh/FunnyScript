@@ -102,6 +102,13 @@ let operatorTest = test "operator test" {
   do! "!false" ==> true
 }
 
+let identifierTest = test "identifier test" {
+  do! "`+` 2 4" ==> 6
+  do! "`I love F#` := 123; `I love F#`" ==> 123
+  do! "`×` := x -> y -> x * y; `×` 3 5" ==> 15  // 掛け算の演算子なのだけどエックスと区別がつかない…
+  do! "`+` := x -> y -> x - y; 7 + 3" ==> 4 // + 演算子を引き算に上書き
+}
+
 let clrTest = test "CLR reflection test" {
   do! "System :? record" ==> true
   do! "System.Collections :? record" ==> true
