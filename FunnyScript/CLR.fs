@@ -40,7 +40,7 @@ let loadSystemAssembly env =
 
 
 
-let private builtinFunc f = { new IFuncObj with member __.Apply a = f a |> Result.mapError (fun e -> { Value = e; Position = None }) }
+let private builtinFunc f = { new IFuncObj with member __.Apply a = f a }
 let private toFunc1 f = box (builtinFunc f)
 
 type private Method = {

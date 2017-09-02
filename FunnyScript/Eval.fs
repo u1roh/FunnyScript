@@ -18,11 +18,11 @@ let rec forceMutable (obj : obj) =
   match obj with
   | :? Lazy<Result> as x -> x.Force() |> Result.bind forceMutable
   | :? IMutable as x -> Ok x
-  | _ -> Error { Value = NotMutable; Position = None }
+  | _ -> Error NotMutable
 
 module private Env =
-  let tryGet pos id (env : Env) =
-    env |> Map.tryFind id |> function Some x -> x | _ -> Error { Value = IdentifierNotFound id; Position = pos }
+  let tryGet id (env : Env) =
+    env |> Map.tryFind id |> function Some x -> x | _ -> Error (IdentifierNotFound id)
 
 type private IUserFuncObj =
   inherit IFuncObj
@@ -35,15 +35,14 @@ let rec eval expr env =
   let letEval expr env =
     env |> eval expr |> Result.bind forceLet
 
-  let apply f arg = apply expr.Position f arg
-  let error e = Error { Value = e; Position = expr.Position }
-  let tryGet id = env |> Env.tryGet expr.Position id
+  let tryGet id = env |> Env.tryGet id
 
+  Result.mapError (fun e -> StackTrace (e, expr, env)) <|
   match expr.Value with
   | Obj x -> Ok x
   | Ref x -> tryGet x
   | RefMember (expr, name) ->
-    let toResult x = match x with Some x -> Ok x | _ -> error (IdentifierNotFound name)
+    let toResult x = match x with Some x -> Ok x | _ -> Error (IdentifierNotFound name)
     env |> forceEval expr |> Result.bind (function
       | :? Record as r -> r |> Map.tryFind name |> toResult
       | :? Instance as x -> x.Type.Members |> Map.tryFind name |> toResult |> Result.bind (fun f -> apply (box f) x.Data)
@@ -53,7 +52,7 @@ let rec eval expr env =
         | UserType (_, ctor) when name = "new" ->
           let ctor arg = apply (box ctor) arg |> Result.bind force |> Result.map (fun x -> box { Data = x; Type = t })
           box { new IFuncObj with member this.Apply arg = ctor arg } |> Ok
-        | _ -> error (IdentifierNotFound name)
+        | _ -> Error (IdentifierNotFound name)
       | o -> o |> CLR.tryGetInstanceMember name |> toResult)
   | Let (name, value, succ) ->
     if String.IsNullOrEmpty name then
@@ -72,7 +71,7 @@ let rec eval expr env =
     env |> forceEval cond
     |> Result.bind (function
       | :? bool as x -> env |> eval (if x then thenExpr else elseExpr)
-      | x -> error (TypeMismatch (ClrType typeof<bool>, typeid x)))
+      | x -> Error (TypeMismatch (ClrType typeof<bool>, typeid x)))
   | NewRecord fields ->
     (Ok (Map.empty, env), fields) ||> List.fold (fun state (name, expr) ->
       state |> Result.bind (fun (record, env) ->
@@ -83,7 +82,7 @@ let rec eval expr env =
     let items = exprs |> Array.map (fun expr -> env |> forceEval expr)
     let error =
       items |> Array.choose (function Error e -> Some e | _ -> None) |> Array.toList
-      |> function [] -> None | [e] -> Some e | es -> Some { Value = ErrorList es; Position = expr.Position }
+      |> function [] -> None | [e] -> Some e | es -> Some (ErrorList es)
     match error with
     | Some error -> Error error
     | _ -> items |> Array.choose (function Ok x -> Some x | _ -> None) |> box |> Ok
@@ -95,7 +94,7 @@ let rec eval expr env =
       | (:? float as value1), (:? float as value2) -> [| value1 .. value2 |] |> box |> Ok
       | (:? int as value1),   (:? float as value2) -> [| float value1 .. value2 |] |> box |> Ok
       | (:? float as value1), (:? int   as value2) -> [| value1 .. float value2 |] |> box |> Ok
-      | _ -> error (MiscError "not numeric type") ))
+      | _ -> Error (MiscError "not numeric type") ))
   | Substitute (expr1, expr2) ->
     env |> eval expr1 |> Result.bind forceMutable
     |> Result.bind (fun dst -> env |> eval expr2 |> Result.map (fun newval -> dst, newval))
@@ -103,10 +102,10 @@ let rec eval expr env =
   | Open (record, succ) ->
     env |> forceEval record |> Result.bind (function
       | :? Record as r -> (env, r) ||> Seq.fold (fun env x -> env |> Map.add x.Key (Ok x.Value)) |> eval succ
-      | x -> error (TypeMismatch (ClrType typeof<Record>, typeid x)))
+      | x -> Error (TypeMismatch (ClrType typeof<Record>, typeid x)))
   | OnError (target, handler) ->
     match env |> forceEval target with
-    | Error { Value = e } ->
+    | Error e ->
       let e =
         match e with
         | UserError e -> e
@@ -116,8 +115,8 @@ let rec eval expr env =
       env |> forceEval handler |> Result.bind (fun f -> apply f e)
     | x -> x
 
-and apply pos f arg =
-  let err() = Error { Value = NotApplyable (f, arg); Position = pos }
+and apply f arg =
+  let err() = Error (NotApplyable (f, arg))
   match f with
   | :? IFuncObj as f -> f.Apply arg
   | :? int as a ->
@@ -131,10 +130,10 @@ and apply pos f arg =
     | :? float as b -> Ok <| box (a * b)
     | _ -> err()
   | x ->
-    x |> CLR.tryApplyIndexer arg |> Option.map (Result.mapError (fun e -> { Value = e; Position = pos})) |> Option.defaultWith (fun () ->
+    x |> CLR.tryApplyIndexer arg |> Option.defaultWith (fun () ->
       match x, arg with
       | (:? IEnumerable as x), (:? int as i) -> Ok (x |> Seq.cast<obj> |> Seq.item i)
-      | _ -> Error { Value = TypeMismatch (ClrType typeof<int>, typeid arg); Position = pos })
+      | _ -> Error (TypeMismatch (ClrType typeof<int>, typeid arg)))
   //| _ -> err()
 
 and private createUserFuncObj def env =

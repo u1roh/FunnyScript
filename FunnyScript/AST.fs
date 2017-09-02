@@ -15,7 +15,7 @@ type Trace<'value> = {
 
 type Env = Map<string, Result>
 
-and Error =
+and Err =
   | IdentifierNotFound of string
   | NotApplyable of f:obj * arg:obj
   | TypeMismatch of expected:TypeId * actual:TypeId
@@ -26,8 +26,7 @@ and Error =
   | ErrorList of Err list
   | NotMutable
   | ClassDefError
-
-and Err = Trace<Error>
+  | StackTrace of Err * Expr * Env
 
 and Result = Result<obj, Err>
 

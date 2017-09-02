@@ -31,9 +31,19 @@ type Env private (data : AST.Env) =
     this.Run (path, File.ReadAllText path)
 
 
+let rec getRuntimeErrorString e =
+  match e with
+  | StackTrace (e, expr, env) ->
+    let msg = getRuntimeErrorString e
+    let trace =
+      match expr.Position with
+      | Some pos -> sprintf "at %s (%d, %d): %A" pos.FilePath pos.Line pos.Column expr.Value
+      | None -> sprintf "at %A" expr.Value
+    msg + "\n" + trace
+  | _ -> sprintf "RUNTIME ERROR! %A" e
+
 let getResultString result =
   match result with
   | Ok x -> sprintf "%A" x
-  | Error (ParserError s) -> sprintf "PARSER ERROR!: %s" s
-  | Error (RuntimeError { Value = e; Position = Some pos }) -> sprintf "RUNTIME ERROR! %A\n at %s (%d, %d)" e pos.FilePath pos.Line pos.Column
-  | Error (RuntimeError { Value = e; Position = None })     -> sprintf "RUNTIME ERROR! %A\n" e
+  | Error (ParserError  s) -> sprintf "PARSER ERROR!: %s" s
+  | Error (RuntimeError e) -> getRuntimeErrorString e

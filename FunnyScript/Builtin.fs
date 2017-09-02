@@ -2,10 +2,8 @@
 open System.Collections
 
 let private funcObj f = { new IFuncObj with member __.Apply a = f a }
-let private toResult r = r |> Result.mapError (fun e -> { Value = e; Position = None })
-let private builtinFunc f = funcObj (f >> toResult)
-let private toFunc0 f = box (builtinFunc (fun _ -> f()))
-let private toFunc1 f = box (builtinFunc f)
+let private toFunc0 f = box (funcObj (fun _ -> f()))
+let private toFunc1 f = box (funcObj f)
 let private toFunc2 f = toFunc1 (f >> toFunc1 >> Ok)
 let private toFunc3 f = toFunc1 (f >> toFunc2 >> Ok)
 
@@ -62,7 +60,7 @@ let private castModule =
 let private deftype id members =
   let members =
     members
-    |> List.map (fun (name, f) -> name, builtinFunc f)
+    |> List.map (fun (name, f) -> name, funcObj f)
     |> Map.ofList
   typeName id, box { Id = id; Members = members }
 
@@ -78,8 +76,8 @@ let load env =
     "<=", compare (<=) (<=)
     ">",  compare (>)  (>)
     ">=", compare (>=) (>=)
-    "|>",  toFunc2 (fun arg f -> Eval.apply None f arg |> Result.mapError (fun e -> e.Value))
-    "|?>", toFunc2 (fun arg f -> if arg = null then Ok null else Eval.apply None f arg |> Result.mapError (fun e -> e.Value))
+    "|>",  toFunc2 (fun arg f -> Eval.apply f arg)
+    "|?>", toFunc2 (fun arg f -> if arg = null then Ok null else Eval.apply f arg)
     "&&", logical (&&)
     "||", logical (||)
     ":?", toFunc2 (fun o t  -> match t  with :? Type as t  -> Ok (box (t.Id = typeid o)) | _ -> Error (TypeMismatch (ClrType typeof<Type>, typeid t)))
@@ -94,7 +92,7 @@ let load env =
     "trace", toFunc1 trace
 
     "array", toFunc2 (fun len f ->
-      let f = Eval.apply None f >> Result.bind Eval.force >> function Ok x -> x | Error e -> failwith (e.ToString())
+      let f = Eval.apply f >> Result.bind Eval.force >> function Ok x -> x | Error e -> failwith (e.ToString())
       match len with
       | :? int as len -> Array.init len f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<int>, typeid len)))
@@ -110,21 +108,21 @@ let load env =
       | a -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid a)))
 
     "foreach", toFunc2 (fun f src ->
-      let f = Eval.apply None f >> Result.bind Eval.force >> ignore
+      let f = Eval.apply f >> Result.bind Eval.force >> ignore
       match src with
       | (:? (obj[]) as src) -> src |> Array.iter f; Ok null
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.iter f; Ok null
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     "map", toFunc2 (fun f src ->
-      let f = Eval.apply None f >> Result.bind Eval.force >> function Ok x -> x | Error e -> failwith (e.ToString())
+      let f = Eval.apply f >> Result.bind Eval.force >> function Ok x -> x | Error e -> failwith (e.ToString())
       match src with
       | (:? (obj[]) as src) -> src |> Array.map f |> box |> Ok
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.map f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     "choose", toFunc2 (fun f src ->
-      let f = Eval.apply None f >> Result.bind Eval.force >> function Ok null -> None | Ok x -> Some x | Error e -> failwith (e.ToString())
+      let f = Eval.apply f >> Result.bind Eval.force >> function Ok null -> None | Ok x -> Some x | Error e -> failwith (e.ToString())
       match src with
       | (:? (obj[]) as src) -> src |> Array.choose f |> box |> Ok
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.choose f |> box |> Ok

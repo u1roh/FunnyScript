@@ -11,7 +11,7 @@ let (==>) (script : string) expected =
 
 let (==>!) (script : string) error =
   match env.Run ("ScriptTest", script) with
-  | Error (Script.RuntimeError ({ Value = UserError e })) -> e |> assertEquals error
+  | Error (Script.RuntimeError (UserError e)) -> e |> assertEquals error
   | Error e -> fail (sprintf "unexpected error: %A" e)
   | Ok _ -> fail "Error expected, but succceeded"
 
