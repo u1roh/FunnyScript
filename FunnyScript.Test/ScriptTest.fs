@@ -47,11 +47,18 @@ let testScript = test "scripting test" {
   do! "a := b := 100; b + 20; a" ==> 120
   do! "f := a := 100; x -> x + a; f 10" ==> 110
 
+  // 関数適用の文法で掛け算が出来る
   do! "2 3" ==> 6
   do! "1.2 2" ==> 2.4
   do! "2(3 + 4)" ==> 14
   do! "a := 12.3; 2a" ==> 24.6
   do! "a := 5; b := 3; a b" ==> 15
+
+  // if 式は else が省略できる（省略された場合は null を返す）
+  do! "? true => 123" ==> 123
+  do! "? false => 123" ==> null
+  do! "f := n -> ? n % 2 == 0 => \"yes\"; f 4" ==> "yes"
+  do! "f := n -> ? n % 2 == 0 => \"yes\"; f 3" ==> null
 }
 
 let typeTest = test "type test" {

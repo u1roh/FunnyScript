@@ -77,8 +77,8 @@ let pExpr =
     str_ws "open" >>. pExpr .>> char_ws ';' .>>. pExpr
     |>> Open
   let pIf =
-    (opt (char_ws '|') .>> char_ws '?') >>. pExpr .>> str_ws "=>" .>>. pExpr .>> char_ws '|' .>>. pExpr
-    |>> fun ((cond, expr1), expr2) -> If (cond, expr1, expr2)
+    (opt (char_ws '|') .>> char_ws '?') >>. pExpr .>> str_ws "=>" .>>. pExpr .>>. opt (char_ws '|' >>. pExpr)
+    |>> fun ((cond, expr1), expr2) -> If (cond, expr1, expr2 |> Option.defaultValue (Obj null))
   let pLambda =
     choice [
       pIdentifier |>> (fun x -> [x])
