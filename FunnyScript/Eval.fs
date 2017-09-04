@@ -137,6 +137,8 @@ and apply f arg =
       | _ -> Error (TypeMismatch (ClrType typeof<int>, typeid arg)))
   //| _ -> err()
 
+and applyForce f = apply f >> Result.bind force
+
 and private createUserFuncObj def env =
   let addTupleToEnv names (obj : obj) env =
     match names with

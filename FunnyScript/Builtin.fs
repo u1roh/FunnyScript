@@ -108,24 +108,30 @@ let load env =
       | a -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid a)))
 
     "foreach", toFunc2 (fun f src ->
-      let f = Eval.apply f >> Result.bind Eval.force >> ignore
+      let f = Eval.applyForce f >> ignore
       match src with
       | (:? (obj[]) as src) -> src |> Array.iter f; Ok null
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.iter f; Ok null
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     "map", toFunc2 (fun f src ->
-      let f = Eval.apply f >> Result.bind Eval.force >> function Ok x -> x | Error e -> failwith (e.ToString())
+      let f = Eval.applyForce f >> function Ok x -> x | Error e -> failwith (e.ToString())
       match src with
       | (:? (obj[]) as src) -> src |> Array.map f |> box |> Ok
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.map f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     "choose", toFunc2 (fun f src ->
-      let f = Eval.apply f >> Result.bind Eval.force >> function Ok null -> None | Ok x -> Some x | Error e -> failwith (e.ToString())
+      let f = Eval.applyForce f >> function Ok null -> None | Ok x -> Some x | Error e -> failwith (e.ToString())
       match src with
       | (:? (obj[]) as src) -> src |> Array.choose f |> box |> Ok
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.choose f |> box |> Ok
+      | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
+
+    "fold", toFunc3 (fun acc0 f src ->
+      let f acc x = acc |> Result.bind (Eval.applyForce f) |> Result.bind (fun f -> x |> Eval.applyForce f)
+      match src with
+      | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.fold f (Ok acc0)
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     deftype (ClrType typeof<unit>)   []
