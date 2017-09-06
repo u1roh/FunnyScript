@@ -51,11 +51,11 @@ let testScript = test "scripting test" {
   do! "a := 12.3; 2a" ==> 24.6
   do! "a := 5; b := 3; a b" ==> 15
 
-  // if 式は else が省略できる（省略された場合は null を返す）
+  // if 式は else が省略できる（省略された場合は Unmatched エラーを返す）
   do! "? true => 123" ==> 123
-  do! "? false => 123" ==> null
+  do! "? false => 123" ==>! Unmatched
   do! "f := n -> ? n % 2 == 0 => \"yes\"; f 4" ==> "yes"
-  do! "f := n -> ? n % 2 == 0 => \"yes\"; f 3" ==> null
+  do! "f := n -> ? n % 2 == 0 => \"yes\"; f 3" ==>! Unmatched
 }
 
 let typeTest = test "type test" {
@@ -267,4 +267,26 @@ let unicodeTest = test "unicode identifier test" {
 
 let patternMatchTest = test "pattern match test" {
   do! "f := (x, y) -> x + y; f 1" ==>! Unmatched
+
+  do! """
+    10 |> match [
+      (x, y) -> x + y,
+      x -> 2 * x
+    ]
+  """ ==> 20
+
+  do! """
+    10 |> match [
+      (x, y) -> x + y,
+      x -> ? x % 2 == 1 => 2 * x
+    ]
+  """ ==>! Unmatched
+
+  do! """
+    f := match [
+      (x, y) -> x + y,
+      x -> ? x % 2 == 1 => 2 * x
+    ];
+    f (3, 6)
+  """ ==> 9
 }

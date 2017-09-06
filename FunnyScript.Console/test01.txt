@@ -113,3 +113,9 @@ do out (piyopiyo (-2.0));
 
 
 trace "end"
+
+x |> match [
+  (x, y) -> ...
+  { name := n; age := a; } -> ...
+]
+through

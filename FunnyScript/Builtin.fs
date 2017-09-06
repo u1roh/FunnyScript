@@ -65,6 +65,7 @@ let private deftype id members =
   typeName id, box { Id = id; Members = members }
 
 let load env =
+  let env = env |> Map.add "unmatched" (Error Unmatched)
   [ "+",  arith (+) (+)
     "-",  arith (-) (-)
     "*",  arith (*) (*)
@@ -91,8 +92,18 @@ let load env =
     "error", toFunc1 (fun x -> Error (UserError x))
     "trace", toFunc1 trace
 
+    "match", toFunc2 (fun handlers x ->
+      match handlers with
+      | :? (obj[]) as handlers ->
+        handlers |> Array.tryPick (fun f ->
+          match Eval.applyForce f x with
+          | Error Unmatched -> None
+          | result -> Some result)
+        |> Option.defaultValue (Error Unmatched)
+      | _ -> Error (TypeMismatch (ClrType typeof<IFuncObj[]>, typeid handlers)))
+
     "array", toFunc2 (fun len f ->
-      let f = Eval.apply f >> Result.bind Eval.force >> function Ok x -> x | Error e -> failwith (e.ToString())
+      let f = Eval.applyForce f >> function Ok x -> x | Error e -> failwith (e.ToString())
       match len with
       | :? int as len -> Array.init len f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<int>, typeid len)))

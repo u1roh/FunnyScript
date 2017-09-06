@@ -78,7 +78,7 @@ let pExpr =
     |>> Open
   let pIf =
     (opt (char_ws '|') .>> char_ws '?') >>. pExpr .>> str_ws "=>" .>>. pExpr .>>. opt (char_ws '|' >>. pExpr)
-    |>> fun ((cond, expr1), expr2) -> If (cond, expr1, expr2 |> Option.defaultValue (Obj null))
+    |>> fun ((cond, expr1), expr2) -> If (cond, expr1, expr2 |> Option.defaultValue (Ref "unmatched"))
   let pLambda =
     choice [
       pIdentifier |>> (fun x -> [x])
