@@ -15,6 +15,7 @@ and Err =
   | IdentifierNotFound of string
   | NotApplyable of f:obj * arg:obj
   | TypeMismatch of expected:TypeId * actual:TypeId
+  | Unmatched
   | NotImplemented of string
   | UserError of obj
   | MiscError of string

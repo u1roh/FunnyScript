@@ -12,10 +12,7 @@ let (==>) (script : string) expected =
 let (==>!) (script : string) error =
   let rec strip e = match e with StackTrace (e, _, _) -> strip e | _ -> e
   match env.Run ("ScriptTest", script) with
-  | Error (Script.RuntimeError e) ->
-    match strip e with
-    | UserError e -> e |> assertEquals error
-    | e -> fail (sprintf "unexpected error: %A" e)
+  | Error (Script.RuntimeError e) -> strip e |> assertEquals error
   | Error e -> fail (sprintf "unexpected error: %A" e)
   | Ok _ -> fail "Error expected, but succceeded"
 
@@ -213,7 +210,7 @@ let errorTest = test "error test" {
   do! """
     sqrt := x -> ? x < 0 => error "x must be positive" | System.Math.Sqrt x;
     sqrt (-1)
-  """ ==>! "x must be positive"
+  """ ==>! UserError "x must be positive"
 
   do! """
     f := a -> a + 1;
@@ -266,4 +263,8 @@ let pipelineTest = test "pipeline test" {
 let unicodeTest = test "unicode identifier test" {
   do! "α := 1; α" ==> 1
   do! "うんこ := 100; うんこ" ==> 100
+}
+
+let patternMatchTest = test "pattern match test" {
+  do! "f := (x, y) -> x + y; f 1" ==>! Unmatched
 }

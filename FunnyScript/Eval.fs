@@ -142,20 +142,21 @@ and applyForce f = apply f >> Result.bind force
 and private createUserFuncObj def env =
   let addTupleToEnv names (obj : obj) env =
     match names with
-    | []     -> env
-    | [name] -> env |> Map.add name (Ok obj)
+    | []     -> env |> Ok
+    | [name] -> env |> Map.add name (Ok obj) |> Ok
     | _ ->
       match obj with
       | :? (obj[]) as items when items.Length = names.Length ->
         names
         |> List.mapi (fun i name -> name, items.[i])
         |> List.fold (fun env (name, obj) -> env |> Map.add name (Ok obj)) env
-      | _ -> env
+        |> Ok
+      | _ -> Error Unmatched
   let mutable env = env
   let mutable named = false
   { new IUserFuncObj with
     member __.Apply arg =
-      lazy (env |> addTupleToEnv def.Args arg |> eval def.Body) |> box |> Ok
+      lazy (env |> addTupleToEnv def.Args arg |> Result.bind (eval def.Body)) |> box |> Ok
     member self.InitSelfName name = 
       if not named then
         env <- env |> Map.add name (Ok (box self)) // to enable recursive call
