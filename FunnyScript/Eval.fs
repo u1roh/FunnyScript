@@ -19,6 +19,11 @@ let rec forceMutable (obj : obj) =
   | :? Lazy<Result> as x -> x.Force() |> Result.bind forceMutable
   | :? IMutable as x -> Ok x
   | _ -> Error NotMutable
+    
+let cast<'a> (obj : obj) =
+  match obj with
+  | :? 'a as obj -> Ok obj
+  | _ -> Error (TypeMismatch (ClrType typeof<'a>, typeid obj))
 
 module private Env =
   let tryGet id (env : Env) =
@@ -31,6 +36,9 @@ type private IUserFuncObj =
 let rec eval expr env =
   let forceEval expr env =
     env |> eval expr |> Result.bind force
+
+  let forceEvalAs expr env =
+    env |> forceEval expr |> Result.bind cast<_>
 
   let letEval expr env =
     env |> eval expr |> Result.bind forceLet
@@ -69,28 +77,18 @@ let rec eval expr env =
     env |> forceEval f   |> Result.bind (fun f ->
     env |> forceEval arg |> Result.bind (apply f))
   | LogicalAnd (expr1, expr2) ->
-    env |> forceEval expr1
-    |> Result.bind (function :? bool as x -> Ok x | x -> Error (TypeMismatch (ClrType typeof<bool>, typeid x)))
+    env |> forceEval expr1 |> Result.bind cast<bool>
     |> Result.bind (function
       | false -> box false |> Ok
-      | true  ->
-        env |> forceEval expr2
-        |> Result.bind (function :? bool as x -> Ok x | x -> Error (TypeMismatch (ClrType typeof<bool>, typeid x)))
-        |> Result.map box)
+      | true  -> env |> forceEval expr2 |> Result.bind cast<bool> |> Result.map box)
   | LogicalOr (expr1, expr2) ->
-    env |> forceEval expr1
-    |> Result.bind (function :? bool as x -> Ok x | x -> Error (TypeMismatch (ClrType typeof<bool>, typeid x)))
+    env |> forceEval expr1 |> Result.bind cast<bool>
     |> Result.bind (function
       | true -> box true |> Ok
-      | false ->
-        env |> forceEval expr2
-        |> Result.bind (function :? bool as x -> Ok x | x -> Error (TypeMismatch (ClrType typeof<bool>, typeid x)))
-        |> Result.map box)
+      | false -> env |> forceEval expr2 |> Result.bind cast<bool> |> Result.map box)
   | If (cond, thenExpr, elseExpr) ->
-    env |> forceEval cond
-    |> Result.bind (function
-      | :? bool as x -> env |> eval (if x then thenExpr else elseExpr)
-      | x -> Error (TypeMismatch (ClrType typeof<bool>, typeid x)))
+    env |> forceEval cond |> Result.bind cast<bool>
+    |> Result.bind (fun x -> env |> eval (if x then thenExpr else elseExpr))
   | NewRecord fields ->
     (Ok (Map.empty, env), fields) ||> List.fold (fun state (name, expr) ->
       state |> Result.bind (fun (record, env) ->
@@ -119,9 +117,8 @@ let rec eval expr env =
     |> Result.bind (fun dst -> env |> eval expr2 |> Result.map (fun newval -> dst, newval))
     |> Result.map (fun (dst, newval) -> dst.Value <- newval; newval)
   | Open (record, succ) ->
-    env |> forceEval record |> Result.bind (function
-      | :? Record as r -> (env, r) ||> Seq.fold (fun env x -> env |> Map.add x.Key (Ok x.Value)) |> eval succ
-      | x -> Error (TypeMismatch (ClrType typeof<Record>, typeid x)))
+    env |> forceEval record |> Result.bind cast<Record>
+    |> Result.bind (fun r -> (env, r) ||> Seq.fold (fun env x -> env |> Map.add x.Key (Ok x.Value)) |> eval succ)
   | OnError (target, handler) ->
     match env |> forceEval target with
     | Error e ->
