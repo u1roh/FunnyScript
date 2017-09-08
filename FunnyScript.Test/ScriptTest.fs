@@ -105,6 +105,16 @@ let operatorTest = test "operator test" {
   do! "false || false" ==> false
   do! "!true" ==> false
   do! "!false" ==> true
+
+  do! """
+  x := mutable 0;
+  _ := true || (do x <- 1; false);
+  x""" ==> 0
+
+  do! """
+  x := mutable 10;
+  _ := false && (do x <- 20; false);
+  x""" ==> 10
 }
 
 let identifierTest = test "identifier test" {

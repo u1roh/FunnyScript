@@ -68,6 +68,24 @@ let rec eval expr env =
   | Apply (f, arg) ->
     env |> forceEval f   |> Result.bind (fun f ->
     env |> forceEval arg |> Result.bind (apply f))
+  | LogicalAnd (expr1, expr2) ->
+    env |> forceEval expr1
+    |> Result.bind (function :? bool as x -> Ok x | x -> Error (TypeMismatch (ClrType typeof<bool>, typeid x)))
+    |> Result.bind (function
+      | false -> box false |> Ok
+      | true  ->
+        env |> forceEval expr2
+        |> Result.bind (function :? bool as x -> Ok x | x -> Error (TypeMismatch (ClrType typeof<bool>, typeid x)))
+        |> Result.map box)
+  | LogicalOr (expr1, expr2) ->
+    env |> forceEval expr1
+    |> Result.bind (function :? bool as x -> Ok x | x -> Error (TypeMismatch (ClrType typeof<bool>, typeid x)))
+    |> Result.bind (function
+      | true -> box true |> Ok
+      | false ->
+        env |> forceEval expr2
+        |> Result.bind (function :? bool as x -> Ok x | x -> Error (TypeMismatch (ClrType typeof<bool>, typeid x)))
+        |> Result.map box)
   | If (cond, thenExpr, elseExpr) ->
     env |> forceEval cond
     |> Result.bind (function

@@ -138,8 +138,8 @@ let pExpr =
     binaryOp "==" 3
     binaryOp "!=" 3
     binaryOp ":?" 3
-    binaryOp "&&" 2
-    binaryOp "||" 2
+    infixOp "&&" 2 (fun x y -> LogicalAnd (x, y)) // 論理演算は、左オペランドの値によっては右オペランドの式を評価してはいけない
+    infixOp "||" 2 (fun x y -> LogicalOr  (x, y)) // 場合があるので、他の演算子のように binaryOp で定義することは出来ない
     prefixOp "!" 10
     prefixOp "+" 10
     prefixOp "-" 10

@@ -46,6 +46,8 @@ and Expr =
   | RefMember of self:Expr * name:string
   | Let of name:string * value:Expr * succ:Expr
   | Apply of func:Expr * para:Expr
+  | LogicalAnd of Expr * Expr
+  | LogicalOr  of Expr * Expr
   | FuncDef of FuncDef
   | NewRecord of (string * Expr) list
   | NewList of Expr[]
