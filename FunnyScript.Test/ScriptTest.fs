@@ -32,6 +32,7 @@ let testScript = test "scripting test" {
   do! "f := $ b -> @ * b; f 3 4" ==> 12
   do! "f := a -> $ a * @; f 3 4" ==> 12
   do! "? true => 1 | 2" ==> 1
+  do! "if true => 3 else 4" ==> 3
   do! "a := 5;  ? a < 6 => 1 | 2" ==> 1
   do! "a := 5; |? a < 4 => 1 | 2" ==> 2
   do! "fac := n -> ? n == 0 => 1 | n * fac (n - 1); fac 4" ==> 24
@@ -46,6 +47,17 @@ let testScript = test "scripting test" {
   do! "a := 1; -a" ==> -1
   do! "a := b := 100; b + 20; a" ==> 120
   do! "f := a := 100; x -> x + a; f 10" ==> 110
+
+  // Fizz Buzz
+  // else if と書かなくても if を並べれば良いところが特長
+  do! """
+    fizzbuzz := n ->
+      if n % 3 == 0 && n % 5 == 0 => "fizzbuzz"
+      if n % 3 == 0 => "fizz"
+      if n % 5 == 0 => "buzz"
+      else n.ToString();
+    [1, 2, 3, 4, 5] |> map fizzbuzz
+  """ ==> [| "1"; "2"; "fizz"; "4"; "buzz" |]
 
   // 関数適用の文法で掛け算が出来る
   do! "2 3" ==> 6

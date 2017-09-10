@@ -45,4 +45,5 @@ let identifierTest = test {
   do! parse "ひらがな" |> assertPred
   do! parse "Σ" |> assertPred
   do! parse "13abc" |> not |> assertPred
+  do! parse "do" |> not |> assertPred
 }

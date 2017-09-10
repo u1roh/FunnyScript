@@ -42,9 +42,13 @@ let pLiteralString =
   .>> spaces
   |>> (String.concat "" >> box >> Obj)
 
+let reservedWords =
+  [ "do"; "if"; "else" ] |> Set.ofList
+
 let pIdentifier =
   choice [
-    regex @"[_\p{Ll}\p{Lu}\p{Lt}\p{Lo}]([_\p{Ll}\p{Lu}\p{Lt}\p{Lo}\p{Nd}\p{Lm}])*" .>> spaces
+    attempt (regex @"[_\p{Ll}\p{Lu}\p{Lt}\p{Lo}]([_\p{Ll}\p{Lu}\p{Lt}\p{Lo}\p{Nd}\p{Lm}])*" .>> spaces
+      >>= fun s -> if reservedWords |> Set.contains s then fail (sprintf "'%s' is reserved word." s) else (fun stream -> Reply s))
     many (noneOf "`") |> between (skipChar '`') (skipChar '`') .>> spaces |>> (List.toArray >> String)
     pstring "@" .>> spaces
   ]
@@ -80,6 +84,11 @@ let pExpr =
   let pIf =
     (opt (char_ws '|') .>> char_ws '?') >>. pExpr .>> str_ws "=>" .>>. pExpr .>>. opt (char_ws '|' >>. pExpr)
     |>> fun ((cond, expr1), expr2) -> If (cond, expr1, expr2 |> Option.defaultValue (Ref "unmatched"))
+  let pIf2 =
+    many1 (str_ws "if" >>. pExpr .>> str_ws "=>" .>>. pExpr) .>>. opt (str_ws "else" >>. pExpr)
+    |>> fun (ifList, elseExpr) ->
+      elseExpr |> Option.defaultValue (Ref "unmatched")
+      |> List.foldBack (fun (cond, thenExpr) elseExpr -> If (cond, thenExpr, elseExpr)) ifList
   let pLambda =
     choice [
       pIdentifier |>> (fun x -> [x])
@@ -152,6 +161,7 @@ let pExpr =
     choice [
       pDo
       pIf
+      pIf2
       pOpen
       attempt pLet
       opp.ExpressionParser
