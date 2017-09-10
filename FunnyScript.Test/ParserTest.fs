@@ -3,6 +3,7 @@
 open Persimmon
 open Persimmon.Syntax.UseTestNameByReflection
 
+open FParsec.CharParsers
 open FunnyScript
 
 let ``string literal`` () =
@@ -36,3 +37,12 @@ let ``string literal`` () =
     ]
     run test
   }
+
+let identifierTest = test {
+  let parse id = id |> runParserOnString Parser.pIdentifier () "" |> function Success (r, _, _) -> true | _ -> false
+  do! parse "hoge" |> assertPred
+  do! parse "piyo_123" |> assertPred
+  do! parse "ひらがな" |> assertPred
+  do! parse "Σ" |> assertPred
+  do! parse "13abc" |> not |> assertPred
+}
