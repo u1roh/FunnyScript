@@ -27,7 +27,10 @@ let testScript = test "scripting test" {
   do! "1 + 2 * (3 + 4)" ==> 15
   do! "a := 1 + 2; b := 3 + 4; a * b" ==> 21
   do! "f := a -> a + 1; f 2" ==> 3
+  do! "f := $ @ + 1; f 2" ==> 3
   do! "f := a -> b -> a * b; f 3 4" ==> 12
+  do! "f := $ b -> @ * b; f 3 4" ==> 12
+  do! "f := a -> $ a * @; f 3 4" ==> 12
   do! "? true => 1 | 2" ==> 1
   do! "a := 5;  ? a < 6 => 1 | 2" ==> 1
   do! "a := 5; |? a < 4 => 1 | 2" ==> 2
@@ -195,6 +198,12 @@ let classTest = test "class test" {
     a := Adder.new 8;
     a.add 2
   """ ==> 10
+
+  do! """
+    Adder := class (n -> n) { add := $ n -> @ + n; };
+    a := Adder.new 7;
+    a.add 5
+  """ ==> 12
 
   do! """
     Person := class ((first, last) -> { first_name := first; last_name := last; }) {

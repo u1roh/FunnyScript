@@ -46,6 +46,7 @@ let pIdentifier =
   choice [
     regex @"\w(\w|\d)*" .>> spaces
     many (noneOf "`") |> between (skipChar '`') (skipChar '`') .>> spaces |>> (List.toArray >> String)
+    pstring "@" .>> spaces
   ]
 
 let pAtom =
@@ -86,6 +87,8 @@ let pExpr =
     ]
     .>> str_ws "->" .>>. pExpr
     |>> (fun (args, body) -> FuncDef { Args = args; Body = body })
+  let pLambda2 =
+    char_ws '$' >>. pExpr |>> fun expr -> FuncDef { Args = ["@"]; Body = expr }
   let pRecord =
     between_ws '{' '}' (many (pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';'))
     |>> NewRecord
@@ -102,7 +105,7 @@ let pExpr =
       | [expr] -> expr
       | tuple  -> tuple |> List.toArray |> NewList
   let pTermItem =
-    choice [ attempt pLambda; pAtom; pList; pTuple; pRecord ]
+    choice [ attempt pLambda; pLambda2; pAtom; pList; pTuple; pRecord ]
     .>>. many (attempt (char_ws '.' >>. pIdentifier))
     |>> fun (expr, mems) -> (expr, mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
   let pTerm =
