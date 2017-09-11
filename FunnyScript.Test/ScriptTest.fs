@@ -31,11 +31,9 @@ let testScript = test "scripting test" {
   do! "f := a -> b -> a * b; f 3 4" ==> 12
   do! "f := $ b -> @ * b; f 3 4" ==> 12
   do! "f := a -> $ a * @; f 3 4" ==> 12
-  do! "? true => 1 | 2" ==> 1
-  do! "if true => 3 else 4" ==> 3
-  do! "a := 5;  ? a < 6 => 1 | 2" ==> 1
-  do! "a := 5; |? a < 4 => 1 | 2" ==> 2
-  do! "fac := n -> ? n == 0 => 1 | n * fac (n - 1); fac 4" ==> 24
+  do! "if true => 1 else 2" ==> 1
+  do! "a := 5; if a < 6 => 1 else 2" ==> 1
+  do! "fac := n -> if n == 0 => 1 else n * fac (n - 1); fac 4" ==> 24
   do! "r := { a := 10; b := 2 + 3; }; r.b" ==> 5
   do! "{ a := 10; b := 2 + 3; }.b" ==> 5
   do! "r := { f := n -> n * 2; }; r.f 2" ==> 4
@@ -67,10 +65,10 @@ let testScript = test "scripting test" {
   do! "a := 5; b := 3; a b" ==> 15
 
   // if 式は else が省略できる（省略された場合は Unmatched エラーを返す）
-  do! "? true => 123" ==> 123
-  do! "? false => 123" ==>! Unmatched
-  do! "f := n -> ? n % 2 == 0 => \"yes\"; f 4" ==> "yes"
-  do! "f := n -> ? n % 2 == 0 => \"yes\"; f 3" ==>! Unmatched
+  do! "if true => 123" ==> 123
+  do! "if false => 123" ==>! Unmatched
+  do! "f := n -> if n % 2 == 0 => \"yes\"; f 4" ==> "yes"
+  do! "f := n -> if n % 2 == 0 => \"yes\"; f 3" ==>! Unmatched
 }
 
 let typeTest = test "type test" {
@@ -98,8 +96,8 @@ let listTest = test "list test" {
   do! "(10, 20, 30)" ==> [|10; 20; 30|]
   do! "[1, 2, 3] |> map (x -> 2 * x)" ==> [|2; 4; 6|]
   do! "[1, 2, 3] |> map ($ 2@)" ==> [|2; 4; 6|]
-  do! "[1, 2, 3, 4] |> choose (x -> ? x % 2 == 0 => () | x)" ==> [|1; 3|]
-  do! "[1, 2, 3, 4] |> choose ($ ? @ % 2 == 0 => () | @)" ==> [|1; 3|]
+  do! "[1, 2, 3, 4] |> choose (x -> if x % 2 == 0 => () else x)" ==> [|1; 3|]
+  do! "[1, 2, 3, 4] |> choose ($ if @ % 2 == 0 => () else @)" ==> [|1; 3|]
   do! "[1, 2, 3, 4] |> fold 0 `+`" ==> 10
   do! "[1 .. 5]" ==> [| 1; 2; 3; 4; 5 |]
   //do! "[1..5]" ==> ofList [1; 2; 3; 4; 5]
@@ -241,7 +239,7 @@ let errorTest = test "error test" {
   """ ==> null
 
   do! """
-    sqrt := x -> ? x < 0 => error "x must be positive" | System.Math.Sqrt x;
+    sqrt := x -> if x < 0 => error "x must be positive" else System.Math.Sqrt x;
     sqrt (-1)
   """ ==>! UserError "x must be positive"
 
@@ -311,14 +309,14 @@ let patternMatchTest = test "pattern match test" {
   do! """
     10 |> match [
       (x, y) -> x + y,
-      x -> ? x % 2 == 1 => 2 * x
+      x -> if x % 2 == 1 => 2 * x
     ]
   """ ==>! Unmatched
 
   do! """
     f := match [
       (x, y) -> x + y,
-      x -> ? x % 2 == 1 => 2 * x
+      x -> if x % 2 == 1 => 2 * x
     ];
     f (3, 6)
   """ ==> 9
