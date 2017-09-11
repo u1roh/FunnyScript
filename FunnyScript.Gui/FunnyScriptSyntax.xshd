@@ -21,6 +21,8 @@
     <Keywords fontWeight="bold" foreground="Blue">
       <Word>do</Word>
       <Word>open</Word>
+      <Word>if</Word>
+      <Word>else</Word>
     </Keywords>
 
     <!-- Digits -->
