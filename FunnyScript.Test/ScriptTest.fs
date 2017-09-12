@@ -27,10 +27,10 @@ let testScript = test "scripting test" {
   do! "1 + 2 * (3 + 4)" ==> 15
   do! "a := 1 + 2; b := 3 + 4; a * b" ==> 21
   do! "f := a -> a + 1; f 2" ==> 3
-  do! "f := $ @ + 1; f 2" ==> 3
+  do! "f := | @ + 1; f 2" ==> 3
   do! "f := a -> b -> a * b; f 3 4" ==> 12
-  do! "f := $ b -> @ * b; f 3 4" ==> 12
-  do! "f := a -> $ a * @; f 3 4" ==> 12
+  do! "f := | b -> @ * b; f 3 4" ==> 12
+  do! "f := a -> | a * @; f 3 4" ==> 12
   do! "if true => 1 else 2" ==> 1
   do! "a := 5; if a < 6 => 1 else 2" ==> 1
   do! "fac := n -> if n == 0 => 1 else n * fac (n - 1); fac 4" ==> 24
@@ -95,9 +95,9 @@ let listTest = test "list test" {
   do! "(10)" ==> 10
   do! "(10, 20, 30)" ==> [|10; 20; 30|]
   do! "[1, 2, 3] |> map (x -> 2 * x)" ==> [|2; 4; 6|]
-  do! "[1, 2, 3] |> map ($ 2@)" ==> [|2; 4; 6|]
+  do! "[1, 2, 3] |> map (| 2@)" ==> [|2; 4; 6|]
   do! "[1, 2, 3, 4] |> choose (x -> if x % 2 == 0 => () else x)" ==> [|1; 3|]
-  do! "[1, 2, 3, 4] |> choose ($ if @ % 2 == 0 => () else @)" ==> [|1; 3|]
+  do! "[1, 2, 3, 4] |> choose (| if @ % 2 == 0 => () else @)" ==> [|1; 3|]
   do! "[1, 2, 3, 4] |> fold 0 `+`" ==> 10
   do! "[1 .. 5]" ==> [| 1; 2; 3; 4; 5 |]
   //do! "[1..5]" ==> ofList [1; 2; 3; 4; 5]
@@ -212,7 +212,7 @@ let classTest = test "class test" {
   """ ==> 10
 
   do! """
-    Adder := class (n -> n) { add := $ n -> @ + n; };
+    Adder := class (n -> n) { add := | n -> @ + n; };
     a := Adder.new 7;
     a.add 5
   """ ==> 12
@@ -225,9 +225,15 @@ let classTest = test "class test" {
         |> .Append " "
         |> .Append self.last_name
         |> .ToString();
+      fullname2 := |
+        System.Text.StringBuilder.new()
+        |> .Append @.first_name
+        |> .Append " "
+        |> .Append @.last_name
+        |> .ToString();
     };
     charlie := Person.new ("Charlie", "Parker");
-    charlie.fullname
+    charlie.fullname2
   """ ==> "Charlie Parker"
 }
 
@@ -309,9 +315,23 @@ let patternMatchTest = test "pattern match test" {
   do! """
     10 |> match [
       (x, y) -> x + y,
+      | 3@
+    ]
+  """ ==> 30
+
+  do! """
+    10 |> match [
+      (x, y) -> x + y,
       x -> if x % 2 == 1 => 2 * x
     ]
   """ ==>! Unmatched
+
+  do! """
+    10 |> match [
+      (x, y) -> x + y,
+      | if @%2 == 0 => @ / 2
+    ]
+  """ ==> 5
 
   do! """
     f := match [

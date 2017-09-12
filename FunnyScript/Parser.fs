@@ -67,6 +67,7 @@ let pExpr =
   let pExpr, pExprRef = createParserForwardedToRef<Expr, unit>()
   let str_ws  s = skipString s >>. spaces
   let char_ws c = skipChar   c >>. spaces
+  let char_ws1 c = skipChar   c >>. spaces1
   let between_ws c1 c2 p = between (char_ws c1) (char_ws c2) p
   let sepByComma p = sepBy p (char_ws ',')
 
@@ -97,7 +98,7 @@ let pExpr =
     .>> str_ws "->" .>>. pExpr
     |>> (fun (args, body) -> FuncDef { Args = args; Body = body })
   let pLambda2 =
-    char_ws '$' >>. pExpr |>> fun expr -> FuncDef { Args = ["@"]; Body = expr }
+    attempt (char_ws1 '|') >>. pExpr |>> fun expr -> FuncDef { Args = ["@"]; Body = expr }
   let pRecord =
     between_ws '{' '}' (many (pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';'))
     |>> NewRecord
