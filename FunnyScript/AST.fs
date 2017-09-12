@@ -24,6 +24,8 @@ and Err =
   | NotMutable
   | ClassDefError
   | StackTrace of Err * Expr * Env
+with
+  member this.Strip() = match this with StackTrace (e, _, _) -> e.Strip() | _ -> this
 
 and Result = Result<obj, Err>
 

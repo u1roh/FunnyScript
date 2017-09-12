@@ -1,7 +1,7 @@
 ﻿module FunnyScript.Builtin
 open System.Collections
 
-let private funcObj f = { new IFuncObj with member __.Apply a = f a }
+let private funcObj f = { new IFuncObj with member __.Apply a = try f a with e -> Error (ExnError e) }
 let private toFunc0 f = box (funcObj (fun _ -> f()))
 let private toFunc1 f = box (funcObj f)
 let private toFunc2 f = toFunc1 (f >> toFunc1 >> Ok)
@@ -133,7 +133,7 @@ let load env =
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     "choose", toFunc2 (fun f src ->
-      let f = Eval.applyForce f >> function Ok null -> None | Ok x -> Some x | Error e -> failwith (e.ToString())
+      let f = Eval.applyForce f >> function Ok null -> None | Ok x -> Some x | Error Unmatched -> None | Error e -> failwith (e.ToString())
       match src with
       | (:? (obj[]) as src) -> src |> Array.choose f |> box |> Ok
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.choose f |> box |> Ok

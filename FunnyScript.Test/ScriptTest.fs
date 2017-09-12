@@ -98,6 +98,7 @@ let listTest = test "list test" {
   do! "[1, 2, 3] |> map (| 2@)" ==> [|2; 4; 6|]
   do! "[1, 2, 3, 4] |> choose (x -> if x % 2 == 0 => () else x)" ==> [|1; 3|]
   do! "[1, 2, 3, 4] |> choose (| if @ % 2 == 0 => () else @)" ==> [|1; 3|]
+  do! "[1, 2, 3, 4] |> choose (| if @ % 2 == 0 => 3@)" ==> [|6; 12|]  // if の条件から漏れた unmatched は除去される
   do! "[1, 2, 3, 4] |> fold 0 `+`" ==> 10
   do! "[1 .. 5]" ==> [| 1; 2; 3; 4; 5 |]
   //do! "[1..5]" ==> ofList [1; 2; 3; 4; 5]
@@ -260,6 +261,8 @@ let errorTest = test "error test" {
     b := f 1;  // 正常終了
     b |!> e -> "caught!" // エラー処理は無視される
   """ ==> 2
+
+  do! "f := | if @ % 2 == 0 => @; f 3" ==>! Unmatched
 }
 
 let openTest = test "open test" {
