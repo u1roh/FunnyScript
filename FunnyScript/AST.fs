@@ -77,15 +77,21 @@ and Type = {
     Members : Map<string, IFuncObj>
   }
 
+type private ErrInfoException (e : ErrInfo) =
+  inherit exn()
+  member val ErrInfo = e
+
+let raiseErrInfo e = raise (ErrInfoException e)
+
 let error e =
   Error { Err = e; StackTrace = [] }
 
 let funcObj f = {
   new IFuncObj with
     member __.Apply a =
-      //try f a |> Result.mapError ErrInfo.Create
-      try f a
-      with e -> error (ExnError e)
+      try f a with
+      | :? ErrInfoException as e -> Error e.ErrInfo
+      | e -> error (ExnError e)
 }
 
 let funcObj2 f = funcObj (f >> funcObj >> box >> Ok)

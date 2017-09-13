@@ -101,7 +101,7 @@ let load env =
       | _ -> error (TypeMismatch (ClrType typeof<IFuncObj[]>, typeid handlers))) |> box
 
     "array", toFunc2 (fun len f ->
-      let f = Eval.applyForce f >> function Ok x -> x | Error e -> failwith (e.ToString())
+      let f = Eval.applyForce f >> function Ok x -> x | Error e -> raiseErrInfo e
       match len with
       | :? int as len -> Array.init len f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<int>, typeid len)))
@@ -124,7 +124,7 @@ let load env =
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     "map", toFunc2 (fun f src ->
-      let f = Eval.applyForce f >> function Ok x -> x | Error e -> failwith (e.ToString())
+      let f = Eval.applyForce f >> function Ok x -> x | Error e -> raiseErrInfo e
       match src with
       | (:? (obj[]) as src) -> src |> Array.map f |> box |> Ok
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.map f |> box |> Ok
@@ -133,7 +133,7 @@ let load env =
     "choose", toFunc2 (fun f src ->
       let f = Eval.applyForce f >> function
         | Ok null -> None | Ok x -> Some x
-        | Error { Err = Unmatched } -> None | Error e -> failwith (e.ToString())
+        | Error { Err = Unmatched } -> None | Error e -> raiseErrInfo e
       match src with
       | (:? (obj[]) as src) -> src |> Array.choose f |> box |> Ok
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.choose f |> box |> Ok
