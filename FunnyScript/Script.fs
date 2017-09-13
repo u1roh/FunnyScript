@@ -2,7 +2,7 @@
 open System.IO;
 
 type Error =
-  | RuntimeError  of AST.Err
+  | RuntimeError  of AST.ErrInfo
   | ParserError   of string
 
 type Env private (data : AST.Env) =
@@ -31,14 +31,12 @@ type Env private (data : AST.Env) =
     this.Run (path, File.ReadAllText path)
 
 
-let rec getRuntimeErrorString e =
-  match e with
-  | StackTrace (e, expr, _) ->
-    let msg = getRuntimeErrorString e
+let getRuntimeErrorString e =
+  sprintf "RUNTIME ERROR! %A" e.Err
+  |> List.foldBack (fun (expr, env) msg ->
     match expr with
     | Trace (expr, pos) -> msg + "\n" + sprintf "at %s: %A" (pos.ToString()) expr
-    | _ -> msg
-  | _ -> sprintf "RUNTIME ERROR! %A" e
+    | _ -> msg) e.StackTrace
 
 let getResultString result =
   match result with

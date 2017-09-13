@@ -10,9 +10,8 @@ let (==>) (script : string) expected =
   |> assertEquals (Ok (box expected))
 
 let (==>!) (script : string) error =
-  let rec strip e = match e with StackTrace (e, _, _) -> strip e | _ -> e
   match env.Run ("ScriptTest", script) with
-  | Error (Script.RuntimeError e) -> strip e |> assertEquals error
+  | Error (Script.RuntimeError { Err = e }) -> e |> assertEquals error
   | Error e -> fail (sprintf "unexpected error: %A" e)
   | Ok _ -> fail "Error expected, but succceeded"
 
@@ -155,8 +154,8 @@ let clrTest = test "CLR reflection test" {
   do! "System.Math.Abs (-1.0)" ==> 1.0
   do! "System.Console.WriteLine \"[test] Hello, System.Console.WriteLine\"" ==> null
   do! "System.Console.WriteLine (\"[test] int = {0}, float = {1}\", 123, 3.14)" ==> null
-  do! "s := Stack(); do s.Push 123; s.Peek ()" ==> 123
-  do! "s := Stack(); do s.Push 123; s.Count" ==> 1
+  do! "s := System.Collections.Stack.new(); do s.Push 123; s.Peek ()" ==> 123
+  do! "s := System.Collections.Stack.new(); do s.Push 123; s.Count" ==> 1
   do! "s := System.Collections.Stack.new(); s.Count" ==> 0
   do! "System.String.Format (\"int val = {0}\", 987)" ==> "int val = 987"
 }
