@@ -24,16 +24,21 @@ namespace FunnyScript.Gui
     {
       InitializeComponent();
       editor.SourceFilePath = System.IO.Path.Combine( System.IO.Path.GetDirectoryName( typeof( MainWindow ).Assembly.Location ), "default.fny" );
+			editor.SetVariable("outputWindow", output);
       this.KeyDown += ( sender, e ) =>
       {
         if ( e.Key == Key.F5 ) this.MenuItem_Click( sender, e );
       };
     }
 
-    private void MenuItem_Click( object sender, RoutedEventArgs e )
-    {
-      var result = editor.Run();
-      Console.WriteLine( "{0}", Script.getResultString( result ) );
-    }
+		private void MenuItem_Click( object sender, RoutedEventArgs e )
+		{
+			output.Items.Clear();
+			var result = editor.Run();
+			var text = Script.getResultString(result);
+			int endpos = text.IndexOf('\n');
+			output.Items.Add(new ObjListView.Item(result, endpos == -1 ? text : text.Substring(0, endpos)));
+			Console.WriteLine("{0}", text);
+		}
   }
 }

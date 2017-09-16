@@ -1,5 +1,6 @@
 ﻿module FunnyScript.Script
-open System.IO;
+open System
+open System.IO
 
 type Error =
   | RuntimeError  of AST.ErrInfo
@@ -17,6 +18,12 @@ type Env private (data : AST.Env) =
 
   member this.Add (name, obj : obj) =
     data |> Map.add name (Ok obj) |> Env
+
+  member this.Add (name, f : Func<obj, Result>) =
+    data |> Map.add name (funcObj f.Invoke |> box |> Ok) |> Env
+
+  member this.Add (name, f : Func<obj, obj, Result>) =
+    data |> Map.add name (funcObj2 (fun a b -> f.Invoke (a, b)) |> box |> Ok) |> Env
 
   member this.Eval expr =
     data |> Eval.eval expr |> Result.bind Eval.force
