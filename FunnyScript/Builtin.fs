@@ -1,9 +1,7 @@
 ﻿module FunnyScript.Builtin
 open System.Collections
 
-let private funcObj f = { new IFuncObj with member __.Apply a = f a }
-let private toFunc0 f = box (funcObj (fun _ -> f()))
-let private toFunc1 f = box (funcObj f)
+let private toFunc1 f = box (funcObj (f >> Result.mapError ErrInfo.Create))
 let private toFunc2 f = toFunc1 (f >> toFunc1 >> Ok)
 let private toFunc3 f = toFunc1 (f >> toFunc2 >> Ok)
 
@@ -65,7 +63,7 @@ let private deftype id members =
   typeName id, box { Id = id; Members = members }
 
 let load env =
-  let env = env |> Map.add "unmatched" (Error Unmatched)
+  let env = env |> Map.add "unmatched" (error Unmatched)
   [ "+",  arith (+) (+)
     "-",  arith (-) (-)
     "*",  arith (*) (*)
@@ -77,8 +75,8 @@ let load env =
     "<=", compare (<=) (<=)
     ">",  compare (>)  (>)
     ">=", compare (>=) (>=)
-    "|>",  toFunc2 (fun arg f -> Eval.apply f arg)
-    "|?>", toFunc2 (fun arg f -> if arg = null then Ok null else Eval.apply f arg)
+    "|>",  funcObj2 (fun arg f -> Eval.apply f arg) |> box
+    "|?>", funcObj2 (fun arg f -> if arg = null then Ok null else Eval.apply f arg) |> box
     "&&", logical (&&)
     "||", logical (||)
     ":?", toFunc2 (fun o t  -> match t  with :? Type as t  -> Ok (box (t.Id = typeid o)) | _ -> Error (TypeMismatch (ClrType typeof<Type>, typeid t)))
@@ -87,23 +85,23 @@ let load env =
     "~-", toFunc1 (function :? int as x -> Ok (box -x) | :? float as x -> Ok (box -x) | x -> Error (TypeMismatch (ClrType typeof<int>, typeid x)))
     //"::", toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> AST.List |> Ok | _ -> Error (TypeMismatch (ListType, typeid ls)))
 
-    "class", toFunc2 makeClass
+    "class", funcObj2 makeClass |> box
     "mutable", toFunc1 (toMutable >> box >> Ok)
     "error", toFunc1 (fun x -> Error (UserError x))
     "trace", toFunc1 trace
 
-    "match", toFunc2 (fun handlers x ->
+    "match", funcObj2 (fun handlers x ->
       match handlers with
       | :? (obj[]) as handlers ->
         handlers |> Array.tryPick (fun f ->
           match Eval.applyForce f x with
-          | Error Unmatched -> None
+          | Error { Err = Unmatched } -> None
           | result -> Some result)
-        |> Option.defaultValue (Error Unmatched)
-      | _ -> Error (TypeMismatch (ClrType typeof<IFuncObj[]>, typeid handlers)))
+        |> Option.defaultValue (error Unmatched)
+      | _ -> error (TypeMismatch (ClrType typeof<IFuncObj[]>, typeid handlers))) |> box
 
     "array", toFunc2 (fun len f ->
-      let f = Eval.applyForce f >> function Ok x -> x | Error e -> failwith (e.ToString())
+      let f = Eval.applyForce f >> function Ok x -> x | Error e -> raiseErrInfo e
       match len with
       | :? int as len -> Array.init len f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<int>, typeid len)))
@@ -126,24 +124,26 @@ let load env =
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     "map", toFunc2 (fun f src ->
-      let f = Eval.applyForce f >> function Ok x -> x | Error e -> failwith (e.ToString())
+      let f = Eval.applyForce f >> function Ok x -> x | Error e -> raiseErrInfo e
       match src with
       | (:? (obj[]) as src) -> src |> Array.map f |> box |> Ok
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.map f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     "choose", toFunc2 (fun f src ->
-      let f = Eval.applyForce f >> function Ok null -> None | Ok x -> Some x | Error e -> failwith (e.ToString())
+      let f = Eval.applyForce f >> function
+        | Ok null -> None | Ok x -> Some x
+        | Error { Err = Unmatched } -> None | Error e -> raiseErrInfo e
       match src with
       | (:? (obj[]) as src) -> src |> Array.choose f |> box |> Ok
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.choose f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
-    "fold", toFunc3 (fun acc0 f src ->
+    "fold", funcObj3 (fun acc0 f src ->
       let f acc x = acc |> Result.bind (Eval.applyForce f) |> Result.bind (fun f -> x |> Eval.applyForce f)
       match src with
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.fold f (Ok acc0)
-      | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
+      | _ -> error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src))) |> box
 
     deftype (ClrType typeof<unit>)   []
     deftype (ClrType typeof<bool>)   []
@@ -160,7 +160,6 @@ let load env =
     "Cast", castModule
 //    "List", listModule
 
-    "Stack", toFunc0 (fun () -> Stack() :> obj |> Ok)
   ]
   |> List.fold (fun env (name, obj) -> env |> Map.add name (Ok obj)) env
 

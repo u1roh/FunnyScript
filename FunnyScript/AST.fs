@@ -23,9 +23,14 @@ and Err =
   | ErrorList of Err list
   | NotMutable
   | ClassDefError
-  | StackTrace of Err * Expr * Env
 
-and Result = Result<obj, Err>
+and ErrInfo = {
+    Err : Err
+    StackTrace : (Expr * Env) list
+  } with
+  static member Create err = { Err = err; StackTrace = [] }
+
+and Result = Result<obj, ErrInfo>
 
 and IMutable =
   abstract Value : obj with get, set
@@ -72,15 +77,35 @@ and Type = {
     Members : Map<string, IFuncObj>
   }
 
+type private ErrInfoException (e : ErrInfo) =
+  inherit exn()
+  member val ErrInfo = e
+
+let raiseErrInfo e = raise (ErrInfoException e)
+
+let error e =
+  Error { Err = e; StackTrace = [] }
+
+let funcObj f = {
+  new IFuncObj with
+    member __.Apply a =
+      try f a with
+      | :? ErrInfoException as e -> Error e.ErrInfo
+      | e -> error (ExnError e)
+}
+
+let funcObj2 f = funcObj (f >> funcObj >> box >> Ok)
+let funcObj3 f = funcObj (f >> funcObj2 >> box >> Ok)
+
 let makeClass (ctor : obj) (vtbl : obj) =
   match ctor, vtbl with
     | (:? IFuncObj as ctor), (:? Record as vtbl) -> Ok (ctor, vtbl)
-    | _ -> Error ClassDefError
+    | _ -> error ClassDefError
   |> Result.bind (fun (ctor, vtbl) ->
     let members, invalids = vtbl |> Map.partition (fun _ m -> match m with :? IFuncObj -> true | _ -> false)
     if invalids.IsEmpty
       then Ok (ctor, members)
-      else Error ClassDefError)
+      else error ClassDefError)
   |> Result.map (fun (ctor, members) ->
     let members = members |> Map.map (fun _ m -> match m with :? IFuncObj as m -> m | _ -> failwith "fatal error")
     box { Id = UserType ("", ctor); Members = members })

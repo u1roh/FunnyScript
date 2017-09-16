@@ -10,9 +10,8 @@ let (==>) (script : string) expected =
   |> assertEquals (Ok (box expected))
 
 let (==>!) (script : string) error =
-  let rec strip e = match e with StackTrace (e, _, _) -> strip e | _ -> e
   match env.Run ("ScriptTest", script) with
-  | Error (Script.RuntimeError e) -> strip e |> assertEquals error
+  | Error (Script.RuntimeError { Err = e }) -> e |> assertEquals error
   | Error e -> fail (sprintf "unexpected error: %A" e)
   | Ok _ -> fail "Error expected, but succceeded"
 
@@ -27,10 +26,10 @@ let testScript = test "scripting test" {
   do! "1 + 2 * (3 + 4)" ==> 15
   do! "a := 1 + 2; b := 3 + 4; a * b" ==> 21
   do! "f := a -> a + 1; f 2" ==> 3
-  do! "f := $ @ + 1; f 2" ==> 3
+  do! "f := | @ + 1; f 2" ==> 3
   do! "f := a -> b -> a * b; f 3 4" ==> 12
-  do! "f := $ b -> @ * b; f 3 4" ==> 12
-  do! "f := a -> $ a * @; f 3 4" ==> 12
+  do! "f := | b -> @ * b; f 3 4" ==> 12
+  do! "f := a -> | a * @; f 3 4" ==> 12
   do! "if true => 1 else 2" ==> 1
   do! "a := 5; if a < 6 => 1 else 2" ==> 1
   do! "fac := n -> if n == 0 => 1 else n * fac (n - 1); fac 4" ==> 24
@@ -95,9 +94,10 @@ let listTest = test "list test" {
   do! "(10)" ==> 10
   do! "(10, 20, 30)" ==> [|10; 20; 30|]
   do! "[1, 2, 3] |> map (x -> 2 * x)" ==> [|2; 4; 6|]
-  do! "[1, 2, 3] |> map ($ 2@)" ==> [|2; 4; 6|]
+  do! "[1, 2, 3] |> map (| 2@)" ==> [|2; 4; 6|]
   do! "[1, 2, 3, 4] |> choose (x -> if x % 2 == 0 => () else x)" ==> [|1; 3|]
-  do! "[1, 2, 3, 4] |> choose ($ if @ % 2 == 0 => () else @)" ==> [|1; 3|]
+  do! "[1, 2, 3, 4] |> choose (| if @ % 2 == 0 => () else @)" ==> [|1; 3|]
+  do! "[1, 2, 3, 4] |> choose (| if @ % 2 == 0 => 3@)" ==> [|6; 12|]  // if の条件から漏れた unmatched は除去される
   do! "[1, 2, 3, 4] |> fold 0 `+`" ==> 10
   do! "[1 .. 5]" ==> [| 1; 2; 3; 4; 5 |]
   //do! "[1..5]" ==> ofList [1; 2; 3; 4; 5]
@@ -154,8 +154,8 @@ let clrTest = test "CLR reflection test" {
   do! "System.Math.Abs (-1.0)" ==> 1.0
   do! "System.Console.WriteLine \"[test] Hello, System.Console.WriteLine\"" ==> null
   do! "System.Console.WriteLine (\"[test] int = {0}, float = {1}\", 123, 3.14)" ==> null
-  do! "s := Stack(); do s.Push 123; s.Peek ()" ==> 123
-  do! "s := Stack(); do s.Push 123; s.Count" ==> 1
+  do! "s := System.Collections.Stack.new(); do s.Push 123; s.Peek ()" ==> 123
+  do! "s := System.Collections.Stack.new(); do s.Push 123; s.Count" ==> 1
   do! "s := System.Collections.Stack.new(); s.Count" ==> 0
   do! "System.String.Format (\"int val = {0}\", 987)" ==> "int val = 987"
 }
@@ -212,7 +212,7 @@ let classTest = test "class test" {
   """ ==> 10
 
   do! """
-    Adder := class (n -> n) { add := $ n -> @ + n; };
+    Adder := class (n -> n) { add := | n -> @ + n; };
     a := Adder.new 7;
     a.add 5
   """ ==> 12
@@ -225,9 +225,15 @@ let classTest = test "class test" {
         |> .Append " "
         |> .Append self.last_name
         |> .ToString();
+      fullname2 := |
+        System.Text.StringBuilder.new()
+        |> .Append @.first_name
+        |> .Append " "
+        |> .Append @.last_name
+        |> .ToString();
     };
     charlie := Person.new ("Charlie", "Parker");
-    charlie.fullname
+    charlie.fullname2
   """ ==> "Charlie Parker"
 }
 
@@ -254,6 +260,8 @@ let errorTest = test "error test" {
     b := f 1;  // 正常終了
     b |!> e -> "caught!" // エラー処理は無視される
   """ ==> 2
+
+  do! "f := | if @ % 2 == 0 => @; f 3" ==>! Unmatched
 }
 
 let openTest = test "open test" {
@@ -309,9 +317,23 @@ let patternMatchTest = test "pattern match test" {
   do! """
     10 |> match [
       (x, y) -> x + y,
+      | 3@
+    ]
+  """ ==> 30
+
+  do! """
+    10 |> match [
+      (x, y) -> x + y,
       x -> if x % 2 == 1 => 2 * x
     ]
   """ ==>! Unmatched
+
+  do! """
+    10 |> match [
+      (x, y) -> x + y,
+      | if @%2 == 0 => @ / 2
+    ]
+  """ ==> 5
 
   do! """
     f := match [

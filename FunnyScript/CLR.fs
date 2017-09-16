@@ -40,8 +40,7 @@ let loadSystemAssembly env =
 
 
 
-let private builtinFunc f = { new IFuncObj with member __.Apply a = f a }
-let private toFunc1 f = box (builtinFunc f)
+let private toFunc1 f = box (funcObj (f >> Result.mapError ErrInfo.Create))
 
 type private Method = {
     Invoke : obj[] -> obj
@@ -123,4 +122,4 @@ let tryApplyIndexer (index : obj) (self : obj) =
   let indexer = self.GetType().GetProperty (match self with :? string -> "Chars" | _ -> "Item")
   if indexer = null then None else
     let index = match index with :? (obj[]) as index -> index | _ -> [| index |]
-    Some <| try indexer.GetValue (self, index) |> Ok with e -> Error (ExnError e)
+    Some <| try indexer.GetValue (self, index) |> Ok with e -> error (ExnError e)
