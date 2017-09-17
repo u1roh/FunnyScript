@@ -11,7 +11,7 @@
     Name="editor"
     ShowLineNumbers="True"
     FontFamily="Consolas"
-    FontSize="14">
+    FontSize="16">
     
   </ae:TextEditor>
 </UserControl>

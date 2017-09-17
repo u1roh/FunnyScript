@@ -81,18 +81,18 @@ namespace FunnyScript.Gui
         else {
           var candidates = new List<string>();
           if ( e.Text == "." ) {
-            candidates.AddRange( new[]
-            {
-              "Item1",
-              "Item2",
-              "Item3",
-            } );
+            //candidates.AddRange( new[]
+            //{
+            //  "Item1",
+            //  "Item2",
+            //  "Item3",
+            //} );
           }
           else if( keywordCompletion ) {
-            switch ( e.Text[0] ) {
-              case 'o': candidates.Add( "open" ); break;
-              case 'd': candidates.Add( "do" ); break;
-            }
+            //switch ( e.Text[0] ) {
+            //  case 'o': candidates.Add( "open" ); break;
+            //  case 'd': candidates.Add( "do" ); break;
+            //}
           }
           if ( candidates.Count > 0 ) {
             completionWindow = new CompletionWindow( editor.TextArea );

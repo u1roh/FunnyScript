@@ -25,6 +25,21 @@
       <Word>else</Word>
     </Keywords>
 
+    <Keywords foreground="Teal">
+      <Word>map</Word>
+      <Word>class</Word>
+      <Word>mutable</Word>
+      <Word>error</Word>
+      <Word>match</Word>
+      <Word>array</Word>
+      <Word>isEmpty</Word>
+      <Word>length</Word>
+      <Word>foreach</Word>
+      <Word>map</Word>
+      <Word>choose</Word>
+      <Word>fold</Word>
+    </Keywords>
+
     <!-- Digits -->
     <Rule foreground="Purple">
       \b0[xX][0-9a-fA-F]+  # hex number
