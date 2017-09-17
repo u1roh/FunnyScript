@@ -1,9 +1,8 @@
 ﻿module FunnyScript.Builtin
 open System.Collections
 
-let private toFunc1 f = box (funcObj (f >> Result.mapError ErrInfo.Create))
+let private toFunc1 f = box (FuncObj.create (f >> Result.mapError ErrInfo.Create))
 let private toFunc2 f = toFunc1 (f >> toFunc1 >> Ok)
-let private toFunc3 f = toFunc1 (f >> toFunc2 >> Ok)
 
 let private tryToFloat (obj : obj) =
   match obj with
@@ -58,7 +57,7 @@ let private castModule =
 let private deftype id members =
   let members =
     members
-    |> List.map (fun (name, f) -> name, funcObj f)
+    |> List.map (fun (name, f) -> name, FuncObj.create f)
     |> Map.ofList
   typeName id, box { Id = id; Members = members }
 
@@ -68,29 +67,29 @@ let load env =
     "-",  arith (-) (-)
     "*",  arith (*) (*)
     "/",  arith (/) (/)
-    "%",  toFunc2 (fun a b -> match a, b with (:? int as a), (:? int as b) -> Ok (a % b |> box) | _ -> Error (TypeMismatch (ClrType typeof<int>, typeid a)))
-    "==", toFunc2 (fun a b -> box (a =  b) |> Ok)
-    "!=", toFunc2 (fun a b -> box (a <> b) |> Ok)
+    "%",  FuncObj.ofFun2 (fun a b -> a % b) :> obj
+    "==", FuncObj.ofFun2 (fun a b -> a =  b) :> obj
+    "!=", FuncObj.ofFun2 (fun a b -> a <> b) :> obj
     "<",  compare (<)  (<)
     "<=", compare (<=) (<=)
     ">",  compare (>)  (>)
     ">=", compare (>=) (>=)
-    "|>",  funcObj2 (fun arg f -> Eval.apply f arg) |> box
-    "|?>", funcObj2 (fun arg f -> if arg = null then Ok null else Eval.apply f arg) |> box
+    "|>",  FuncObj.create2 (fun arg f -> Eval.apply f arg) |> box
+    "|?>", FuncObj.create2 (fun arg f -> if arg = null then Ok null else Eval.apply f arg) |> box
     "&&", logical (&&)
     "||", logical (||)
-    ":?", toFunc2 (fun o t  -> match t  with :? Type as t  -> Ok (box (t.Id = typeid o)) | _ -> Error (TypeMismatch (ClrType typeof<Type>, typeid t)))
-    "~!", toFunc1 (function :? bool as x -> not x |> box |> Ok | x -> Error (TypeMismatch (ClrType typeof<bool>, typeid x)))
-    "~+", toFunc1 (function :? int as x -> Ok (box +x) | :? float as x -> Ok (box +x) | x -> Error (TypeMismatch (ClrType typeof<int>, typeid x)))
-    "~-", toFunc1 (function :? int as x -> Ok (box -x) | :? float as x -> Ok (box -x) | x -> Error (TypeMismatch (ClrType typeof<int>, typeid x)))
+    ":?", FuncObj.ofFun2 (fun o (t : Type) -> t.Id = typeid o) :> obj
+    "~!", FuncObj.ofFun not :> obj
+    "~+", FuncObj.ofList [FuncObj.ofFun (fun (x : int) -> +x); FuncObj.ofFun (fun (x : float) -> +x)] :> obj
+    "~-", FuncObj.ofList [FuncObj.ofFun (fun (x : int) -> -x); FuncObj.ofFun (fun (x : float) -> -x)] :> obj
     //"::", toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> AST.List |> Ok | _ -> Error (TypeMismatch (ListType, typeid ls)))
 
-    "class", funcObj2 makeClass |> box
-    "mutable", toFunc1 (toMutable >> box >> Ok)
-    "error", toFunc1 (fun x -> Error (UserError x))
-    "trace", toFunc1 trace
+    "class", FuncObj.create2 makeClass |> box
+    "mutable", FuncObj.ofFun toMutable :> obj
+    "error", FuncObj.create (fun x -> error (UserError x)) :> obj
+    "trace", FuncObj.create trace :> obj
 
-    "match", funcObj2 (fun handlers x ->
+    "match", FuncObj.create2 (fun handlers x ->
       match handlers with
       | :? (obj[]) as handlers ->
         handlers |> Array.tryPick (fun f ->
@@ -139,7 +138,7 @@ let load env =
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.choose f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
-    "fold", funcObj3 (fun acc0 f src ->
+    "fold", FuncObj.create3 (fun acc0 f src ->
       let f acc x = acc |> Result.bind (Eval.applyForce f) |> Result.bind (fun f -> x |> Eval.applyForce f)
       match src with
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.fold f (Ok acc0)

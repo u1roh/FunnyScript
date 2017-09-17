@@ -157,6 +157,26 @@ namespace FunnyScript.Gui
       env = env.Add( name, obj );
     }
 
+		public void SetFunc<T, TResult>(string name, Func<T, TResult> f)
+		{
+			env = env.AddFunc(name, f);
+		}
+
+		public void SetFunc<T1, T2, TResult>(string name, Func<T1, T2, TResult> f)
+		{
+			env = env.AddFunc(name, f);
+		}
+
+		public void SetAction<T>(string name, Action<T> f)
+		{
+			env = env.AddAction(name, f);
+		}
+
+		public void SetAction<T1, T2>(string name, Action<T1, T2> f)
+		{
+			env = env.AddAction(name, f);
+		}
+
     public void Parse()
     {
       expr = Parser.parse( "(noname)", editor.Text );

@@ -86,16 +86,49 @@ let raiseErrInfo e = raise (ErrInfoException e)
 let error e =
   Error { Err = e; StackTrace = [] }
 
-let funcObj f = {
-  new IFuncObj with
-    member __.Apply a =
-      try f a with
-      | :? ErrInfoException as e -> Error e.ErrInfo
-      | e -> error (ExnError e)
-}
 
-let funcObj2 f = funcObj (f >> funcObj >> box >> Ok)
-let funcObj3 f = funcObj (f >> funcObj2 >> box >> Ok)
+module FuncObj =
+  let create f = {
+    new IFuncObj with
+      member __.Apply a =
+        try f a with
+        | :? ErrInfoException as e -> Error e.ErrInfo
+        | e -> error (ExnError e)
+  }
+
+  let create2 f = create (f >> create  >> box >> Ok)
+  let create3 f = create (f >> create2 >> box >> Ok)
+
+  let ofFun (f : 'a -> 'r) =
+    create (function
+      | :? 'a as a -> f a |> box |> Ok
+      | x -> error (TypeMismatch (ClrType typeof<'a>, ClrType (x.GetType()))))
+
+  let ofFun2 f = ofFun (f >> ofFun)
+  let ofFun3 f = ofFun (f >> ofFun2)
+
+  let invoke (f : obj) arg =
+    match f with
+    | :? IFuncObj as f -> f.Apply arg
+    | _ -> error (NotApplyable (f, arg))
+
+  let invoke2 f arg1 arg2 =
+    invoke f arg1 |> Result.bind (fun f -> invoke f arg2)
+
+  let ofList flist =
+    let rec execute errors flist arg =
+      match flist with
+      | f :: flist -> match invoke f arg with Error e -> execute (e.Err :: errors) flist arg | x -> x
+      | [] -> error (ErrorList errors)
+    create (execute [] flist)
+
+  let ofList2 flist =
+    let rec execute errors flist arg1 arg2 =
+      match flist with
+      | f :: flist -> match invoke2 f arg1 arg2 with Error e -> execute (e.Err :: errors) flist arg1 arg2 | x -> x
+      | [] -> error (ErrorList errors)
+    create2 (execute [] flist)
+
 
 let makeClass (ctor : obj) (vtbl : obj) =
   match ctor, vtbl with

@@ -16,7 +16,7 @@ type ScriptRunner (output : string -> unit) =
     | Error e -> sprintf "%s" e |> output; false
     | Ok expr -> program <- expr; true
   
-  member __.Run (argname, argobj) =
+  member __.Run (argname, argobj : obj) =
     let env = env.Add (argname, argobj)
     let result = env.Eval program
     output (sprintf "%A" result)

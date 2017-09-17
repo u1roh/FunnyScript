@@ -40,7 +40,7 @@ let loadSystemAssembly env =
 
 
 
-let private toFunc1 f = box (funcObj (f >> Result.mapError ErrInfo.Create))
+let private toFunc1 f = box (FuncObj.create (f >> Result.mapError ErrInfo.Create))
 
 type private Method = {
     Invoke : obj[] -> obj

@@ -24,7 +24,7 @@ namespace FunnyScript.Gui
     {
       InitializeComponent();
       editor.SourceFilePath = System.IO.Path.Combine( System.IO.Path.GetDirectoryName( typeof( MainWindow ).Assembly.Location ), "default.fny" );
-			editor.SetVariable("outputWindow", output);
+			editor.SetFunc("dump", ( string name, object obj ) => { output.Add(name, obj); return obj; });
       this.KeyDown += ( sender, e ) =>
       {
         if ( e.Key == Key.F5 ) this.MenuItem_Click( sender, e );

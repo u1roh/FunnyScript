@@ -59,7 +59,7 @@ let rec eval expr env =
         match t.Id with
         | ClrType t -> t |> CLR.tryGetStaticMember name |> toResult
         | UserType (_, ctor) when name = "new" ->
-          funcObj (ctor.Apply >> Result.bind force >> Result.map (fun x -> box { Data = x; Type = t })) |> box |> Ok
+          FuncObj.create (ctor.Apply >> Result.bind force >> Result.map (fun x -> box { Data = x; Type = t })) |> box |> Ok
         | _ -> error (IdentifierNotFound name)
       | o -> o |> CLR.tryGetInstanceMember name |> toResult)
   | Let (name, value, succ) ->
