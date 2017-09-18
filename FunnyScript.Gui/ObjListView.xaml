@@ -9,7 +9,7 @@
   <ListBox
     ItemsSource="{Binding Path=Items}"
     FontFamily="Consolas"
-    FontSize="16"
+    FontSize="20"
     ScrollViewer.VerticalScrollBarVisibility="Visible">
   </ListBox>
 </UserControl>

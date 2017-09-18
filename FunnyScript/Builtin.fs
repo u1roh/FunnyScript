@@ -1,4 +1,5 @@
 ﻿module FunnyScript.Builtin
+open System
 open System.Collections
 
 let private toFunc1 f = box (FuncObj.create (f >> Result.mapError ErrInfo.Create))
@@ -78,7 +79,7 @@ let load env =
     "|?>", FuncObj.create2 (fun arg f -> if arg = null then Ok null else Eval.apply f arg) |> box
     "&&", logical (&&)
     "||", logical (||)
-    ":?", FuncObj.ofFun2 (fun o (t : Type) -> t.Id = typeid o) :> obj
+    ":?", FuncObj.ofFun2 (fun o (t : AST.Type) -> t.Id = typeid o) :> obj
     "~!", FuncObj.ofFun not :> obj
     "~+", FuncObj.ofList [FuncObj.ofFun (fun (x : int) -> +x); FuncObj.ofFun (fun (x : float) -> +x)] :> obj
     "~-", FuncObj.ofList [FuncObj.ofFun (fun (x : int) -> -x); FuncObj.ofFun (fun (x : float) -> -x)] :> obj
@@ -111,22 +112,22 @@ let load env =
       | a -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid a)))
 
     "length", toFunc1 (function
-      | (:? ICollection as a) -> Ok (box a.Count)
-      | (:? IEnumerable as a) -> Ok (Seq.cast<obj> a |> Seq.length |> box)
+      | :? ICollection as a -> Ok (box a.Count)
+      | :? IEnumerable as a -> Ok (Seq.cast<obj> a |> Seq.length |> box)
       | a -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid a)))
 
     "foreach", toFunc2 (fun f src ->
       let f = Eval.applyForce f >> ignore
       match src with
-      | (:? (obj[]) as src) -> src |> Array.iter f; Ok null
-      | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.iter f; Ok null
+      | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.iter f; Ok null
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     "map", toFunc2 (fun f src ->
       let f = Eval.applyForce f >> function Ok x -> x | Error e -> raiseErrInfo e
       match src with
-      | (:? (obj[]) as src) -> src |> Array.map f |> box |> Ok
-      | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.map f |> box |> Ok
+      | :? (obj[]) as src -> src |> Array.map f |> box |> Ok
+      | :? Array as src -> Array.init src.Length (src.GetValue >> f) |> box |> Ok
+      | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.map f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     "choose", toFunc2 (fun f src ->
@@ -134,8 +135,9 @@ let load env =
         | Ok null -> None | Ok x -> Some x
         | Error { Err = Unmatched } -> None | Error e -> raiseErrInfo e
       match src with
-      | (:? (obj[]) as src) -> src |> Array.choose f |> box |> Ok
-      | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.choose f |> box |> Ok
+      | :? (obj[]) as src -> src |> Array.choose f |> box |> Ok
+      | :? Array as src -> Array.init src.Length (src.GetValue >> f) |> Array.choose id |> box |> Ok
+      | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.choose f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     "fold", FuncObj.create3 (fun acc0 f src ->
@@ -154,7 +156,7 @@ let load env =
 //        "head",     asList (fun x -> x.Head)
 //        "tail",     asList (fun x -> List x.Tail)
 //      ]
-    deftype (ClrType typeof<Type>) []
+    deftype (ClrType typeof<AST.Type>) []
 
     "Cast", castModule
 //    "List", listModule
