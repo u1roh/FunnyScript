@@ -69,35 +69,35 @@ do hello ();  // 呼び出し
 
 ラムダ式以外に関数を定義する文法はありません。
 
+#### 簡易ラムダ式
+```
+add10 := x -> x + 10; // x に10を足す関数
+add10 := | @ + 10; // こう書いても同じです
+```
+`|` が簡易ラムダ式の開始の記号です。
+`@` が暗黙的に定義された引数です。
+
 ### 条件分岐
 ```
-result := ? x % 2 == 0 => "even" | "odd"
+result := if x % 2 == 0 => "even" else "odd";
+
+// ※ 以前は下記のように書く（ちょっと変わった）文法でしたが、普通に if キーワードを使う文法に変えました。
+// result := ? x % 2 == 0 => "even" | "odd";
 ```
 
-if 式なのですけれど、記号だけの変な文法にしてみました。
-* `?` が if に相当します。
-* `=>` が then に相当します。
-* `|` が else に相当します。
+普通の if 式とちょっと違うのは、else if の else を省略できることです。
 
-特別ルールとして、`?` の前に `|` を付けて `|?` と書いてもOKです。
-従って次のように書けます。
-```
-result :=
-  |? x % 2 == 0 => "even"
-  | "odd"
-```
-いわゆる `else if` も `|?` と書けます。
 ```
 fizzbuzz := n ->
-  |? n % 3 == 0 && n % 5 == 0 => "FizzBuzz"
-  |? n % 3 == 0 => "Fizz"
-  |? n % 5 == 0 => "Buzz"
-  | n;
+  if n % 3 == 0 && n % 5 == 0 => "fizzbuzz"
+  if n % 3 == 0 => "fizz"
+  if n % 5 == 0 => "buzz"
+  else n.ToString();
 ```
 
 ### 再帰呼び出し
 ```
-fac := n -> ? n == 0 => 1 | n * fac (n - 1);	// 階乗計算
+fac := n -> if n == 0 => 1 else n * fac (n - 1);	// 階乗計算
 ```
 
 しれっと再帰呼び出ししていますが、内部はやや強引な実装になっています。
@@ -139,6 +139,8 @@ do System.Console.WriteLine ("sub: {0}", Calc.sub 8 2);
 ```
 
 ### リスト
+※ 現在 head, tail は使えません。リストは廃止して配列だけにしちゃうかも。
+
 ```
 a := [1, 2, 3];  // リテラル
 b := List.init 3 (i -> 2 * i);  // [0, 2, 4]
@@ -255,3 +257,15 @@ do System.Console.WriteLine charlie.fullname;
 上のコードでは `self` という名前で受け取っていますが、特に `self` は予約語ではなく名前は何でもよいです。
 
 「継承」はできません。実装する予定もありません。
+
+「簡易ラムダ式」を使うとメソッドは下記のように書くことが出来ます。
+```
+Person := class ((first, last) -> { first_name := first; last_name := last; }) {
+  fullname := |
+	System.Text.StringBuilder.new()
+	|> .Append @.first_name
+	|> .Append " "
+	|> .Append @.last_name
+	|> .ToString();
+};
+```
