@@ -61,7 +61,23 @@ let rec eval expr env =
         | UserType (_, ctor) when name = "new" ->
           FuncObj.create (ctor.Apply >> Result.bind force >> Result.map (fun x -> box { Data = x; Type = t })) |> box |> Ok
         | _ -> error (IdentifierNotFound name)
-      | o -> o |> CLR.tryGetInstanceMember name |> toResult)
+      | o ->
+        match o |> CLR.tryGetInstanceMember name with
+        | Some x -> Ok x
+        | _ ->
+          let t = o.GetType()
+          Seq.append (t |> Seq.unfold (fun t -> if t = null then None else Some (t, t.BaseType))) (t.GetInterfaces())
+          |> Seq.tryPick (fun t ->
+            let typeName = t.FullName.Split '.'
+            if typeName.Length = 0 then None else env |> Map.tryFind typeName.[0]
+            |> Option.bind Result.toOption
+            |> Option.bind (fun x ->
+              (Some x, typeName.[1..]) ||> Seq.fold (fun obj item ->
+                obj |> Option.bind (function :? Record as r -> r |> Map.tryFind item | _ -> None)))
+            |> Option.bind (function :? AST.Type as t -> t.Members |> Map.tryFind name | _ -> None))
+          |> function
+            | Some f -> apply (box f) o
+            | _ -> error (IdentifierNotFound name))
   | Let (name, value, succ) ->
     if String.IsNullOrEmpty name then
       env |> forceEval value |> Result.bind (fun _ ->
