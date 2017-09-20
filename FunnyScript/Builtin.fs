@@ -100,6 +100,8 @@ let load env =
         |> Option.defaultValue (error Unmatched)
       | _ -> error (TypeMismatch (ClrType typeof<IFuncObj[]>, typeid handlers))) |> box
 
+    "extend", FuncObj.ofFun2 extendType :> obj
+
     "array", toFunc2 (fun len f ->
       let f = Eval.applyForce f >> function Ok x -> x | Error e -> raiseErrInfo e
       match len with

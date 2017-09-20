@@ -74,7 +74,7 @@ and TypeId =
 
 and Type = {
     Id : TypeId
-    Members : Map<string, IFuncObj>
+    mutable Members : Map<string, IFuncObj>
   }
 
 type private ErrInfoException (e : ErrInfo) =
@@ -143,6 +143,13 @@ let makeClass (ctor : obj) (vtbl : obj) =
     let members = members |> Map.map (fun _ m -> match m with :? IFuncObj as m -> m | _ -> failwith "fatal error")
     box { Id = UserType ("", ctor); Members = members })
 
+let extendType (t : Type) (vtbl : Record) =
+  let members, invalids = vtbl |> Map.partition (fun _ m -> match m with :? IFuncObj -> true | _ -> false)
+  if not invalids.IsEmpty then error ClassDefError else
+    t.Members <-
+      (t.Members, members) ||> Map.fold (fun vtbl name m ->
+        match m with :? IFuncObj as m -> vtbl |> Map.add name m | _ -> vtbl)
+    Ok null
 
 let rec typeid (obj : obj) =
   match obj with

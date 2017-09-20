@@ -343,3 +343,10 @@ let patternMatchTest = test "pattern match test" {
     f (3, 6)
   """ ==> 9
 }
+
+let extendTest = test "extend test" {
+  do! """
+  do extend System.Int32 { square := | @ * @; };
+  (12).square
+  """ ==> 144
+}
