@@ -4,7 +4,7 @@ open System.Reflection
 
 let rec private typesToFunnyObjs (types : (string list * System.Type)[]) =
   let leaves, branches = types |> Array.partition (fst >> List.isEmpty)
-  let leaves = leaves |> Array.map (snd >> fun t -> t.Name, box { Id = ClrType t; Members = Map.empty })
+  let leaves = leaves |> Array.map (snd >> fun t -> t.Name, box { Id = ClrType t; ExtMembers = Map.empty })
   branches
   |> Array.groupBy (fst >> List.head)
   |> Array.map (fun (name, items) ->

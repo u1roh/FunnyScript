@@ -40,7 +40,7 @@ and IFuncObj =
 
 and Instance = {
     Data : obj
-    Type : Type
+    Type : FunnyType
   }
 
 and Record = Map<string, obj>
@@ -69,12 +69,12 @@ and FuncDef = {
   }
 
 and TypeId =
-  | UserType of string * IFuncObj
+  | UserType of name:string * ctor:IFuncObj * members:Map<string, IFuncObj>
   | ClrType  of System.Type
 
-and Type = {
+and FunnyType = {
     Id : TypeId
-    mutable Members : Map<string, IFuncObj>
+    mutable ExtMembers : Map<string, IFuncObj>
   }
 
 type private ErrInfoException (e : ErrInfo) =
@@ -141,13 +141,13 @@ let makeClass (ctor : obj) (vtbl : obj) =
       else error ClassDefError)
   |> Result.map (fun (ctor, members) ->
     let members = members |> Map.map (fun _ m -> match m with :? IFuncObj as m -> m | _ -> failwith "fatal error")
-    box { Id = UserType ("", ctor); Members = members })
+    box { Id = UserType ("", ctor, members); ExtMembers = Map.empty })
 
-let extendType (t : Type) (vtbl : Record) =
+let extendType (t : FunnyType) (vtbl : Record) =
   let members, invalids = vtbl |> Map.partition (fun _ m -> match m with :? IFuncObj -> true | _ -> false)
   if not invalids.IsEmpty then error ClassDefError else
-    t.Members <-
-      (t.Members, members) ||> Map.fold (fun vtbl name m ->
+    t.ExtMembers <-
+      (t.ExtMembers, members) ||> Map.fold (fun vtbl name m ->
         match m with :? IFuncObj as m -> vtbl |> Map.add name m | _ -> vtbl)
     Ok null
 
@@ -160,14 +160,14 @@ let rec typeid (obj : obj) =
 
 let typeName id =
   match id with
-  | UserType (x, _) -> x
+  | UserType (x, _, _) -> x
   | ClrType t ->
     if t = typeof<int>    then "int"      else
     if t = typeof<float>  then "float"    else
     if t = typeof<bool>   then "bool"     else
-    if t = typeof<IFuncObj> then "function" else
-    if t = typeof<Record> then "record"   else
-    if t = typeof<Type>   then "type"     else
+    if t = typeof<IFuncObj>   then "function" else
+    if t = typeof<Record>     then "record"   else
+    if t = typeof<FunnyType>  then "type"     else
     t.FullName
 
 let toMutable obj =

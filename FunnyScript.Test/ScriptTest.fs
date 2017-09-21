@@ -349,4 +349,11 @@ let extendTest = test "extend test" {
   do extend System.Int32 { square := | @ * @; };
   (12).square
   """ ==> 144
+
+  do! """
+  Vector := class ((x, y) -> { x := x; y := y; }) { len2 := | @.x @.x + @.y @.y; };
+  do extend Vector { len := | System.Math.Sqrt @.len2; };
+  v := Vector.new (1.0, 2.0);
+  v.len
+  """ ==> sqrt 5.
 }

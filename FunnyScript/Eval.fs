@@ -54,11 +54,17 @@ let rec eval expr env =
     let toResult x = match x with Some x -> Ok x | _ -> error (IdentifierNotFound name)
     env |> forceEval expr |> Result.bind (function
       | :? Record as r -> r |> Map.tryFind name |> toResult
-      | :? Instance as x -> x.Type.Members |> Map.tryFind name |> toResult |> Result.bind (fun f -> apply (box f) x.Data)
-      | :? AST.Type as t ->
+      | :? Instance as x ->
+        match x.Type with
+        | { Id = UserType (_, _, mems); ExtMembers = exts } ->
+          mems |> Map.tryFind name |> Option.map (fun f -> apply (box f) x.Data)
+          |> Option.orElseWith (fun () -> exts |> Map.tryFind name |> Option.map (fun f -> apply (box f) x))
+          |> Option.defaultValue (error (IdentifierNotFound name))
+        | _ -> error (MiscError "fatal error")
+      | :? FunnyType as t ->
         match t.Id with
         | ClrType t -> t |> CLR.tryGetStaticMember name |> toResult
-        | UserType (_, ctor) when name = "new" ->
+        | UserType (_, ctor, _) when name = "new" ->
           FuncObj.create (ctor.Apply >> Result.bind force >> Result.map (fun x -> box { Data = x; Type = t })) |> box |> Ok
         | _ -> error (IdentifierNotFound name)
       | o ->
@@ -74,7 +80,7 @@ let rec eval expr env =
             |> Option.bind (fun x ->
               (Some x, typeName.[1..]) ||> Seq.fold (fun obj item ->
                 obj |> Option.bind (function :? Record as r -> r |> Map.tryFind item | _ -> None)))
-            |> Option.bind (function :? AST.Type as t -> t.Members |> Map.tryFind name | _ -> None))
+            |> Option.bind (function :? FunnyType as t -> t.ExtMembers |> Map.tryFind name | _ -> None))
           |> function
             | Some f -> apply (box f) o
             | _ -> error (IdentifierNotFound name))

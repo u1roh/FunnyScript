@@ -60,7 +60,7 @@ let private deftype id members =
     members
     |> List.map (fun (name, f) -> name, FuncObj.create f)
     |> Map.ofList
-  typeName id, box { Id = id; Members = members }
+  typeName id, box { Id = id; ExtMembers = members }
 
 let load env =
   let env = env |> Map.add "unmatched" (error Unmatched)
@@ -79,7 +79,7 @@ let load env =
     "|?>", FuncObj.create2 (fun arg f -> if arg = null then Ok null else Eval.apply f arg) |> box
     "&&", logical (&&)
     "||", logical (||)
-    ":?", FuncObj.ofFun2 (fun o (t : AST.Type) -> t.Id = typeid o) :> obj
+    ":?", FuncObj.ofFun2 (fun o (t : FunnyType) -> t.Id = typeid o) :> obj
     "~!", FuncObj.ofFun not :> obj
     "~+", FuncObj.ofList [FuncObj.ofFun (fun (x : int) -> +x); FuncObj.ofFun (fun (x : float) -> +x)] :> obj
     "~-", FuncObj.ofList [FuncObj.ofFun (fun (x : int) -> -x); FuncObj.ofFun (fun (x : float) -> -x)] :> obj
@@ -158,7 +158,7 @@ let load env =
 //        "head",     asList (fun x -> x.Head)
 //        "tail",     asList (fun x -> List x.Tail)
 //      ]
-    deftype (ClrType typeof<AST.Type>) []
+    deftype (ClrType typeof<FunnyType>) []
 
     "Cast", castModule
 //    "List", listModule
