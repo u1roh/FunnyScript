@@ -129,6 +129,7 @@ let load env =
       match src with
       | :? (obj[]) as src -> src |> Array.map f |> box |> Ok
       | :? Array as src -> Array.init src.Length (src.GetValue >> f) |> box |> Ok
+      | :? IFunnyArray as src -> Array.init src.Length (fun i -> f src.[i]) |> box |> Ok
       | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.map f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 

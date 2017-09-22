@@ -133,6 +133,12 @@ let rec eval expr env =
       | (:? int as value1),   (:? float as value2) -> [| float value1 .. value2 |] |> box |> Ok
       | (:? float as value1), (:? int   as value2) -> [| value1 .. float value2 |] |> box |> Ok
       | _ -> error (MiscError "not numeric type") ))
+  | Interval (lower, upper) ->
+    env |> forceEval lower.Expr |> Result.bind cast<int> |> Result.bind (fun lowerVal ->
+    env |> forceEval upper.Expr |> Result.bind cast<int> |> Result.bind (fun upperVal ->
+      { min = if lower.IsOpen then lowerVal + 1 else lowerVal
+        max = if upper.IsOpen then upperVal - 1 else upperVal }
+      |> box |> Ok))
   | Substitute (expr1, expr2) ->
     env |> eval expr1 |> Result.bind forceMutable
     |> Result.bind (fun dst -> env |> eval expr2 |> Result.map (fun newval -> dst, newval))

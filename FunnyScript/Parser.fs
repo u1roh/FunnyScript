@@ -114,8 +114,18 @@ let pExpr =
       | [] -> Obj null
       | [expr] -> expr
       | tuple  -> tuple |> List.toArray |> NewList
+  let pRange =
+    between (pchar '~') (pchar '~')
+      ((pchar '[' <|> pchar '(') .>> spaces
+      .>>. pExpr .>> char_ws ',' .>>. pExpr
+      .>>. (pchar ']' <|> pchar ')'))
+    .>> spaces
+    |>> fun (((brace1, lower), upper), brace2) ->
+      let lower = { Expr = lower; IsOpen = brace1 = '(' }
+      let upper = { Expr = upper; IsOpen = brace2 = ')' }
+      Interval (lower, upper)
   let pTermItem =
-    choice [ attempt pLambda; pLambda2; pAtom; pList; pTuple; pRecord ]
+    choice [ attempt pLambda; pLambda2; pAtom; pList; pTuple; pRecord; pRange ]
     .>>. many (attempt (char_ws '.' >>. pIdentifier))
     |>> fun (expr, mems) -> (expr, mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
   let pTerm =

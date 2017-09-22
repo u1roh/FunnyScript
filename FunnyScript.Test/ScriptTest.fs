@@ -68,6 +68,12 @@ let testScript = test "scripting test" {
   do! "if false => 123" ==>! Unmatched
   do! "f := n -> if n % 2 == 0 => \"yes\"; f 4" ==> "yes"
   do! "f := n -> if n % 2 == 0 => \"yes\"; f 3" ==>! Unmatched
+
+  // Range
+  do! "~[0, 10)~.contains 0" ==> true
+  do! "~[0, 10)~.min" ==> 0
+  do! "~[0, 10)~.max" ==> 9
+  do! "~(3, 5]~ |> map (`+` 1)" ==> [| 5; 6 |]
 }
 
 let typeTest = test "type test" {

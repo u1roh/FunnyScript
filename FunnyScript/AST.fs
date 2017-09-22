@@ -9,6 +9,19 @@ type Position = {
   override this.ToString () =
     sprintf "%s %A~%A" this.FilePath this.LineCol1 this.LineCol2
 
+type IFunnyArray =
+  inherit System.Collections.IEnumerable
+  abstract Length : int
+  abstract Item : int -> obj with get
+
+type IntInterval = { min : int; max : int } with
+  member this.contains n = this.min <= n && n <= this.max
+  interface IFunnyArray with
+    member this.Length = this.max - this.min + 1 |> max 0
+    member this.Item with get i = this.min + i |> box
+    member this.GetEnumerator () = (seq { this.min .. this.max } :> System.Collections.IEnumerable).GetEnumerator()
+
+
 type Env = Map<string, Result>
 
 and Err =
@@ -57,6 +70,7 @@ and Expr =
   | NewRecord of (string * Expr) list
   | NewList of Expr[]
   | ListByRange of Expr * Expr
+  | Interval of IntervalBound * IntervalBound
   | If of condition:Expr * thenExpr:Expr * elseExpr:Expr
   | Substitute of Expr * Expr
   | Open of value:Expr * succ:Expr
@@ -66,6 +80,11 @@ and Expr =
 and FuncDef = {
     Args : string list
     Body : Expr
+  }
+
+and IntervalBound = {
+    Expr   : Expr
+    IsOpen : bool
   }
 
 and TypeId =
