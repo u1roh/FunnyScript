@@ -105,15 +105,15 @@ let pExpr =
   let pList =
     between_ws '[' ']'
       (choice [
-        attempt (pExpr .>> str_ws ".." .>>. pExpr |>> ListByRange)
-        sepByComma pExpr |>> (List.toArray >> NewList)
+        attempt (pExpr .>> str_ws ".." .>>. pExpr |>> ArrayByRange)
+        sepByComma pExpr |>> (List.toArray >> NewArray)
       ])
   let pTuple =
     between_ws '(' ')' (sepByComma pExpr)
     |>> function
       | [] -> Obj null
       | [expr] -> expr
-      | tuple  -> tuple |> List.toArray |> NewList
+      | tuple  -> tuple |> List.toArray |> NewArray
   let pRange =
     between (pchar '~') (pchar '~')
       ((pchar '[' <|> pchar '(') .>> spaces

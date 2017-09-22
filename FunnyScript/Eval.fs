@@ -116,7 +116,7 @@ let rec eval expr env =
         env |> letEval expr
         |> Result.map (fun x -> record |> Map.add name x, env |> Map.add name (Ok x))))
     |> Result.map (fst >> box)
-  | NewList exprs ->
+  | NewArray exprs ->
     let items = exprs |> Array.map (fun expr -> env |> forceEval expr)
     let err =
       items |> Array.choose (function Error { Err = e } -> Some e | _ -> None) |> Array.toList
@@ -124,7 +124,7 @@ let rec eval expr env =
     match err with
     | Some err -> error err
     | _ -> items |> Array.choose (function Ok x -> Some x | _ -> None) |> box |> Ok
-  | ListByRange (expr1, expr2) ->
+  | ArrayByRange (expr1, expr2) ->
     env |> forceEval expr1 |> Result.bind (fun value1 ->
     env |> forceEval expr2 |> Result.bind (fun value2 ->
       match value1, value2 with

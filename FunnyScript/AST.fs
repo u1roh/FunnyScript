@@ -68,8 +68,8 @@ and Expr =
   | LogicalOr  of Expr * Expr
   | FuncDef of FuncDef
   | NewRecord of (string * Expr) list
-  | NewList of Expr[]
-  | ListByRange of Expr * Expr
+  | NewArray of Expr[]
+  | ArrayByRange of Expr * Expr
   | Interval of IntervalBound * IntervalBound
   | If of condition:Expr * thenExpr:Expr * elseExpr:Expr
   | Substitute of Expr * Expr
