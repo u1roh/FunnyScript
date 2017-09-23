@@ -74,6 +74,12 @@ let testScript = test "scripting test" {
   do! "~[0, 10)~.min" ==> 0
   do! "~[0, 10)~.max" ==> 9
   do! "~(3, 5]~ |> map (`+` 1)" ==> [| 5; 6 |]
+
+  // Yコンビネータによる再帰計算
+  do! """
+    Y := f -> x -> f (Y f) x; // Yコンビネータ
+    ~[0, 5]~ |> map (Y | n -> if n == 0 => 1 else n (@ (n - 1)))  // ラムダ式で階乗の再帰計算
+  """ ==> [| 1; 1; 2; 6; 24; 120 |]
 }
 
 let typeTest = test "type test" {
