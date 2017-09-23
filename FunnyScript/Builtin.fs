@@ -127,9 +127,7 @@ let load env =
     "map", toFunc2 (fun f src ->
       let f = Eval.applyForce f >> function Ok x -> x | Error e -> raiseErrInfo e
       match src with
-      | :? (obj[]) as src -> src |> Array.map f |> box |> Ok
-      | :? Array as src -> Array.init src.Length (src.GetValue >> f) |> box |> Ok
-      | :? IFunnyArray as src -> Array.init src.Length (fun i -> f src.[i]) |> box |> Ok
+      | FunnyArray src -> src |> FunnyArray.map f |> box |> Ok
       | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.map f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
@@ -138,8 +136,7 @@ let load env =
         | Ok null -> None | Ok x -> Some x
         | Error { Err = Unmatched } -> None | Error e -> raiseErrInfo e
       match src with
-      | :? (obj[]) as src -> src |> Array.choose f |> box |> Ok
-      | :? Array as src -> Array.init src.Length (src.GetValue >> f) |> Array.choose id |> box |> Ok
+      | FunnyArray src -> src |> FunnyArray.choose f |> box |> Ok
       | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.choose f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
