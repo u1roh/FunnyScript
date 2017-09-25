@@ -139,6 +139,8 @@ let rec eval expr env =
   | Open (record, succ) ->
     env |> forceEval record |> Result.bind cast<Record>
     |> Result.bind (fun r -> env |> Env.openRecord r |> eval succ)
+  | Load (asm, succ) ->
+    env |> CLR.loadAssembly (Reflection.Assembly.LoadFrom asm) |> eval succ
   | OnError (target, handler) ->
     match env |> forceEval target with
     | Error { Err = e } ->

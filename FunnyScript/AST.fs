@@ -49,6 +49,7 @@ and Expr =
   | If of condition:Expr * thenExpr:Expr * elseExpr:Expr
   | Substitute of Expr * Expr
   | Open of value:Expr * succ:Expr
+  | Load of asm:string * succ:Expr
   | OnError of target:Expr * handler:Expr
   | Trace of Expr * Position
 

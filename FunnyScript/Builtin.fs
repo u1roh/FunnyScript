@@ -86,8 +86,8 @@ let private stdlib1 =
     ] :> obj
 
     "%",  FuncObj.ofFun2 (fun a b -> a % b) :> obj
-    "==", FuncObj.ofFun2 (fun a b -> a =  b) :> obj
-    "!=", FuncObj.ofFun2 (fun a b -> a <> b) :> obj
+    "==", FuncObj.create2 (fun a b -> (a =  b) |> box |> Ok) :> obj
+    "!=", FuncObj.create2 (fun a b -> (a <> b) |> box |> Ok) :> obj
     "<",  compare (<)  (<)
     "<=", compare (<=) (<=)
     ">",  compare (>)  (>)

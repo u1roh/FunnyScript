@@ -148,6 +148,7 @@ let operatorTest = test "operator test" {
   _ := false && (do x <- 20; false);
   x""" ==> 10
 
+  // 文字列の連結
   do! "\"abc\" + \"123\"" ==> "abc123"
 }
 
@@ -294,6 +295,12 @@ let openTest = test "open test" {
 
   // これも出来るようにしたいが、現状ではクラスを open することは出来ない
   //do! "open System.Math; Abs (-3.14)" ==> Float 3.14
+
+  do! """
+  load "C:\\Program Files (x86)\\Reference Assemblies\\Microsoft\\Framework\\.NETFramework\\v4.5.2\\System.Numerics.dll";
+  open System.Numerics;
+  Complex != ()
+  """ ==> true
 }
 
 let castTest = test "cast test" {

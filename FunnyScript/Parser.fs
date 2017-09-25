@@ -40,7 +40,7 @@ let pLiteralString =
   many stringChar
   |> between (pchar '"') (pchar '"')
   .>> spaces
-  |>> (String.concat "" >> box >> Obj)
+  |>> String.concat ""
 
 let reservedWords =
   [ "do"; "if"; "else" ] |> Set.ofList
@@ -58,7 +58,7 @@ let pAtom =
     skipString "true"  .>> spaces |>> (fun () -> box true  |> Obj)
     skipString "false" .>> spaces |>> (fun () -> box false |> Obj)
     pLiteralNumber
-    pLiteralString
+    pLiteralString |>> (box >> Obj)
     pIdentifier |>> Ref
   ]
 
@@ -82,6 +82,9 @@ let pExpr =
   let pOpen =
     str_ws "open" >>. pExpr .>> char_ws ';' .>>. pExpr
     |>> Open
+  let pLoad =
+    str_ws "load" >>. pLiteralString .>> char_ws ';' .>>. pExpr
+    |>> Load
 //  let pIf =
 //    (opt (char_ws '|') .>> char_ws '?') >>. pExpr .>> str_ws "=>" .>>. pExpr .>>. opt (char_ws '|' >>. pExpr)
 //    |>> fun ((cond, expr1), expr2) -> If (cond, expr1, expr2 |> Option.defaultValue (Ref "unmatched"))
@@ -173,6 +176,7 @@ let pExpr =
       pDo
       pIf
       pOpen
+      pLoad
       attempt pLet
       opp.ExpressionParser
     ]
