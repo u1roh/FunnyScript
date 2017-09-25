@@ -65,7 +65,7 @@ let rec eval expr env =
         match t.Id with
         | ClrType t -> t |> CLR.tryGetStaticMember name |> toResult
         | UserType (_, ctor, _) when name = "new" ->
-          FuncObj.create (ctor.Apply >> Result.bind force >> Result.map (fun x -> box { Data = x; Type = t })) |> box |> Ok
+          FuncObj.create (FuncObj.invoke ctor >> Result.bind force >> Result.map (fun x -> box { Data = x; Type = t })) |> box |> Ok
         | _ -> error (IdentifierNotFound name)
       | o ->
         match o |> CLR.tryGetInstanceMember name with
@@ -96,7 +96,7 @@ let rec eval expr env =
   | FuncDef def -> createUserFuncObj def env |> box |> Ok
   | Apply (f, arg) ->
     env |> forceEval f   |> Result.bind (fun f ->
-    env |> forceEval arg |> Result.bind (apply f))
+    env |> forceEval arg |> Result.bind (applyCore env f))
   | LogicalAnd (expr1, expr2) ->
     env |> forceEval expr1 |> Result.bind cast<bool>
     |> Result.bind (function
@@ -158,10 +158,10 @@ let rec eval expr env =
       env |> forceEval handler |> Result.bind (fun f -> apply f e)
     | x -> x
 
-and apply f arg =
+and applyCore env (f : obj) (arg : obj) =
   let err() = error (NotApplyable (f, arg))
   match f with
-  | :? IFuncObj as f -> f.Apply arg
+  | :? IFuncObj as f -> f.Apply (arg, env)
   | :? int as a ->
     match arg with
     | :? int   as b -> Ok <| box (a * b)
@@ -179,6 +179,7 @@ and apply f arg =
       | _ -> error (TypeMismatch (ClrType typeof<int>, typeid arg)))
   //| _ -> err()
 
+and apply f arg = applyCore Map.empty f arg
 and applyForce f = apply f >> Result.bind force
 
 and private createUserFuncObj def env =
@@ -197,7 +198,7 @@ and private createUserFuncObj def env =
   let mutable env = env
   let mutable named = false
   { new IUserFuncObj with
-    member __.Apply arg =
+    member __.Apply (arg, _) =
       lazy (env |> addTupleToEnv def.Args arg |> Result.bind (eval def.Body)) |> box |> Ok
     member self.InitSelfName name = 
       if not named then

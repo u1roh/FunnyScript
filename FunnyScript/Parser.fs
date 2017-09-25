@@ -62,13 +62,13 @@ let pAtom =
     pIdentifier |>> Ref
   ]
 
+let private str_ws   s = skipString s >>. spaces
+let private char_ws  c = skipChar   c >>. spaces
+let private char_ws1 c = skipChar   c >>. spaces1
+let private between_ws c1 c2 p = between (char_ws c1) (char_ws c2) p
 
 let pExpr =
   let pExpr, pExprRef = createParserForwardedToRef<Expr, unit>()
-  let str_ws  s = skipString s >>. spaces
-  let char_ws c = skipChar   c >>. spaces
-  let char_ws1 c = skipChar   c >>. spaces1
-  let between_ws c1 c2 p = between (char_ws c1) (char_ws c2) p
   let sepByComma p = sepBy p (char_ws ',')
 
   let pLet =
@@ -179,6 +179,9 @@ let pExpr =
     |> trace |>> Trace
   pExpr
 
+let pLibRecord =
+  many (pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';')
+
 let private removeComments (program : string) =
   program.Split '\n'
   |> Seq.map (fun (s : string) -> let i = s.IndexOf "//" in if 0 <= i && i < s.Length then s.Substring (0, i) else s)  // コメントの除去
@@ -190,6 +193,13 @@ let parse streamName program =
   |> function
     | Success (x, _, _) -> Result.Ok x
     | Failure (s, e, _) -> Result.Error s
+
+let parseLib streamName program =
+  removeComments program
+  |> runParserOnString (spaces >>. pLibRecord .>> eof) () streamName
+  |> function
+    | Success (x, _, _) -> FunnyScript.Ok x
+    | Failure (s, e, _) -> FunnyScript.Error s
 
 let test() =
   parse "1" |> printfn "%A"

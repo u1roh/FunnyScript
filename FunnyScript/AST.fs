@@ -9,6 +9,7 @@ and Err =
   | TypeMismatch of expected:TypeId * actual:TypeId
   | Unmatched
   | NotImplemented of string
+  | ParseError of string
   | UserError of obj
   | MiscError of string
   | ExnError of exn
@@ -25,7 +26,7 @@ and ErrInfo = {
 and Result = Result<obj, ErrInfo>
 
 and IFuncObj =
-  abstract Apply : obj -> Result
+  abstract Apply : obj * Env -> Result
 
 and Instance = {
     Data : obj
@@ -83,7 +84,7 @@ let error e =
 module FuncObj =
   let create f = {
     new IFuncObj with
-      member __.Apply a =
+      member __.Apply (a, _) =
         try f a with
         | :? ErrInfoException as e -> Error e.ErrInfo
         | e -> error (ExnError e)
@@ -102,7 +103,7 @@ module FuncObj =
 
   let invoke (f : obj) arg =
     match f with
-    | :? IFuncObj as f -> f.Apply arg
+    | :? IFuncObj as f -> f.Apply (arg, Map.empty)
     | _ -> error (NotApplyable (f, arg))
 
   let invoke2 f arg1 arg2 =

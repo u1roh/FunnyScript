@@ -88,7 +88,17 @@ let load env =
     "class", FuncObj.create2 makeClass |> box
     "mutable", FuncObj.ofFun toMutable :> obj
     "error", FuncObj.create (fun x -> error (UserError x)) :> obj
-    "trace", FuncObj.create trace :> obj
+
+    "eval",
+    { new IFuncObj with
+      member __.Apply (arg, env) =
+        match arg with
+        | :? string as script ->
+          Parser.parse "" script
+          |> Result.mapError (ParseError >> ErrInfo.Create)
+          |> Result.bind (fun expr -> env |> Eval.eval expr)
+        | x -> error (TypeMismatch (ClrType typeof<string>, ClrType (x.GetType())))
+    } :> obj
 
     "match", FuncObj.create2 (fun handlers x ->
       match handlers with

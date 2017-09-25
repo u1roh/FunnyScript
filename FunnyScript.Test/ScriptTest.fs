@@ -369,3 +369,11 @@ let extendTest = test "extend test" {
   v.len
   """ ==> sqrt 5.
 }
+
+let evalTest = test "eval test" {
+  do! """
+    a := 10;
+    b := 7;
+    eval "a + b"
+  """ ==> 17
+}

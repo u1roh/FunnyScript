@@ -50,14 +50,6 @@ let testAST = test "FunnyScript AST test" {
     If (binaryOp ("==", Obj (box 3), a1), Obj "equal", Obj "not equal")
     |> eval |> assertEquals (Ok (box "equal"))
   do!
-    Let ("a", Obj (box 10),
-      Let (null,
-        Apply (Ref "trace", Ref "a"),
-        Let (null,
-          Let ("a", Obj (box 3.14), Apply (Ref "trace", Ref "a")),
-          Ref "a")))
-    |> eval |> assertEquals (Ok (box 10))
-  do!
     Let ("hoge", FuncDef ({ Args = ["a"]; Body = binaryOp ("+", Obj (box 100), Ref "a") }),
       Apply (Ref "hoge", Obj (box 22)))
     |> eval |> assertEquals (Ok (box 122))
