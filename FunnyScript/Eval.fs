@@ -25,9 +25,12 @@ let cast<'a> (obj : obj) =
   | :? 'a as obj -> Ok obj
   | _ -> error (TypeMismatch (ClrType typeof<'a>, typeid obj))
 
-module private Env =
+module internal Env =
   let tryGet id (env : Env) =
     env |> Map.tryFind id |> function Some x -> x | _ -> error (IdentifierNotFound id)
+
+  let openRecord (record : Record) env =
+    (env, record) ||> Seq.fold (fun env x -> env |> Map.add x.Key (Ok x.Value))
 
 type private IUserFuncObj =
   inherit IFuncObj
@@ -39,9 +42,6 @@ let rec eval expr env =
 
   let forceEvalAs expr env =
     env |> forceEval expr |> Result.bind cast<_>
-
-  let letEval expr env =
-    env |> eval expr |> Result.bind forceLet
 
   let tryGet id = env |> Env.tryGet id
 
@@ -89,10 +89,7 @@ let rec eval expr env =
       env |> forceEval value |> Result.bind (fun _ ->
       env |> eval succ)
     else
-      let value = env |> letEval value
-      let env = env |> Map.add name value
-      match value with Ok (:? IUserFuncObj as f) -> f.InitSelfName name | _ -> ()  // to enable recursive call
-      env |> eval succ
+      env |> letEval name value |> snd |> eval succ
   | FuncDef def -> createUserFuncObj def env |> box |> Ok
   | Apply (f, arg) ->
     env |> forceEval f   |> Result.bind (fun f ->
@@ -111,11 +108,7 @@ let rec eval expr env =
     env |> forceEval cond |> Result.bind cast<bool>
     |> Result.bind (fun x -> env |> eval (if x then thenExpr else elseExpr))
   | NewRecord fields ->
-    (Ok (Map.empty, env), fields) ||> List.fold (fun state (name, expr) ->
-      state |> Result.bind (fun (record, env) ->
-        env |> letEval expr
-        |> Result.map (fun x -> record |> Map.add name x, env |> Map.add name (Ok x))))
-    |> Result.map (fst >> box)
+    env |> recordEval fields
   | NewArray exprs ->
     let items = exprs |> Array.map (fun expr -> env |> forceEval expr)
     let err =
@@ -145,7 +138,7 @@ let rec eval expr env =
     |> Result.map (fun (dst, newval) -> dst.Value <- newval; newval)
   | Open (record, succ) ->
     env |> forceEval record |> Result.bind cast<Record>
-    |> Result.bind (fun r -> (env, r) ||> Seq.fold (fun env x -> env |> Map.add x.Key (Ok x.Value)) |> eval succ)
+    |> Result.bind (fun r -> env |> Env.openRecord r |> eval succ)
   | OnError (target, handler) ->
     match env |> forceEval target with
     | Error { Err = e } ->
@@ -157,6 +150,19 @@ let rec eval expr env =
         | _ -> box e
       env |> forceEval handler |> Result.bind (fun f -> apply f e)
     | x -> x
+
+and letEval name expr env =
+  let value = env |> eval expr |> Result.bind forceLet
+  let env = env |> Map.add name value
+  match value with Ok (:? IUserFuncObj as f) -> f.InitSelfName name | _ -> ()  // to enable recursive call
+  value, env
+
+and recordEval fields env =
+  (Ok (Map.empty, env), fields) ||> List.fold (fun state (name, expr) ->
+    state |> Result.bind (fun (record, env) ->
+      let x, env = env |> letEval name expr
+      x |> Result.map (fun x -> record |> Map.add name x, env)))
+  |> Result.map (fst >> box)
 
 and applyCore env (f : obj) (arg : obj) =
   let err() = error (NotApplyable (f, arg))

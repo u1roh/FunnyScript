@@ -45,6 +45,9 @@ let testScript = test "scripting test" {
   do! "a := b := 100; b + 20; a" ==> 120
   do! "f := a := 100; x -> x + a; f 10" ==> 110
 
+  // レコード内の再帰関数
+  do! "r := { fac := n -> if n == 0 => 1 else n * fac (n - 1); }; r.fac 4" ==> 24
+
   // Fizz Buzz
   // else if と書かなくても if を並べれば良いところが特長
   do! """
@@ -80,6 +83,8 @@ let testScript = test "scripting test" {
     Y := f -> x -> f (Y f) x; // Yコンビネータ
     ~[0, 5]~ |> map (Y | n -> if n == 0 => 1 else n (@ (n - 1)))  // ラムダ式で階乗の再帰計算
   """ ==> [| 1; 1; 2; 6; 24; 120 |]
+  // 組み込みの Y コンビネータ rec の利用
+  do! "~[0, 4]~ |> map (rec| n -> if n == 0 => 1 else n * @ (n - 1))" ==> [| 1; 1; 2; 6; 24 |]
 }
 
 let typeTest = test "type test" {

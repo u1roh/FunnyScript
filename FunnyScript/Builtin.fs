@@ -62,8 +62,7 @@ let private deftype id members =
     |> Map.ofList
   typeName id, box { Id = id; ExtMembers = members }
 
-let load env =
-  let env = env |> Map.add "unmatched" (error Unmatched)
+let private stdlib1 =
   [ "+",  arith (+) (+)
     "-",  arith (-) (-)
     "*",  arith (*) (*)
@@ -171,6 +170,18 @@ let load env =
     "Cast", castModule
 //    "List", listModule
 
-  ]
-  |> List.fold (fun env (name, obj) -> env |> Map.add name (Ok obj)) env
+  ] |> List.map (fun (name, obj) -> name, Obj obj)
 
+let private stdlib2 =
+  """
+  rec := f -> x -> f (rec f) x; // Yコンビネータ
+  """
+  |> Parser.parseModule "stdlib"
+  |> function Ok lib -> lib | _ -> failwith "parse error in stdlib"
+
+let load env =
+  let env = env |> Map.add "unmatched" (error Unmatched)
+  env |> Eval.recordEval (stdlib1 @ stdlib2)
+  |> Result.map (fun r ->
+    env |> Map.add "std" (Ok r) |> Eval.Env.openRecord (r :?> Record))
+  |> function Ok env -> env | Error { Err = e } -> failwith (sprintf "error in stdlib: %A" e)
