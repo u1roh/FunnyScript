@@ -179,7 +179,7 @@ let pExpr =
     |> trace |>> Trace
   pExpr
 
-let pLibRecord =
+let pModule =
   many (pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';')
 
 let private removeComments (program : string) =
@@ -194,9 +194,9 @@ let parse streamName program =
     | Success (x, _, _) -> Result.Ok x
     | Failure (s, e, _) -> Result.Error s
 
-let parseLib streamName program =
+let parseModule streamName program =
   removeComments program
-  |> runParserOnString (spaces >>. pLibRecord .>> eof) () streamName
+  |> runParserOnString (spaces >>. pModule .>> eof) () streamName
   |> function
     | Success (x, _, _) -> FunnyScript.Ok x
     | Failure (s, e, _) -> FunnyScript.Error s

@@ -16,6 +16,17 @@ type Env private (data : AST.Env) =
   member this.LoadAssembly asm =
     data |> CLR.loadAssembly asm |> Env
 
+  member this.LoadModule (name, m : list<string * Expr>) =
+    let result = data |> Eval.eval (NewRecord m) 
+    data |> Map.add name result |> Env
+
+  member this.LoadModule (name, moduleScript) =
+    let result =
+      Parser.parseModule name moduleScript
+      |> Result.mapError (ParseError >> ErrInfo.Create)
+      |> Result.bind (fun m -> data |> Eval.eval (NewRecord m))
+    data |> Map.add name result |> Env
+
   member this.Add (name, obj : obj) =
     data |> Map.add name (Ok obj) |> Env
 
