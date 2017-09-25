@@ -19,7 +19,8 @@ and Err =
 
 and ErrInfo = {
     Err : Err
-    StackTrace : (Expr * Env) list
+    //StackTrace : (Expr * Env) list
+    StackTrace : Position list
   } with
   static member Create err = { Err = err; StackTrace = [] }
 

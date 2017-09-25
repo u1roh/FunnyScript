@@ -123,3 +123,12 @@ let tryApplyIndexer (index : obj) (self : obj) =
   if indexer = null then None else
     let index = match index with :? (obj[]) as index -> index | _ -> [| index |]
     Some <| try indexer.GetValue (self, index) |> Ok with e -> error (ExnError e)
+
+let createOperatorFuncObj opName =
+  let opfunc left = FuncObj.create2 (fun x y ->
+    try
+      (if left then x else y).GetType().GetMethod opName |> function
+        | null -> error (IdentifierNotFound opName)
+        | op -> op.Invoke (null, [| x; y |]) |> Ok
+    with e -> error (ExnError e))
+  FuncObj.ofList2 [opfunc true; opfunc false]

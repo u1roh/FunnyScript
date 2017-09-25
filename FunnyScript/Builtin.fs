@@ -68,21 +68,25 @@ let private stdlib1 =
       FuncObj.ofFun2 (fun (x : int) (y : int) -> x + y)
       FuncObj.ofFun2 (fun (x : float) (y : float) -> x + y)
       FuncObj.ofFun2 (fun (x : string) (y : string) -> x + y)
+      CLR.createOperatorFuncObj "op_Addition"
     ] :> obj
 
     "-", FuncObj.ofList2 [
       FuncObj.ofFun2 (fun (x : int) (y : int) -> x - y)
       FuncObj.ofFun2 (fun (x : float) (y : float) -> x - y)
+      CLR.createOperatorFuncObj "op_Subtraction"
     ] :> obj
 
     "*", FuncObj.ofList2 [
       FuncObj.ofFun2 (fun (x : int) (y : int) -> x * y)
       FuncObj.ofFun2 (fun (x : float) (y : float) -> x * y)
+      CLR.createOperatorFuncObj "op_Multiply"
     ] :> obj
 
     "/", FuncObj.ofList2 [
       FuncObj.ofFun2 (fun (x : int) (y : int) -> x / y)
       FuncObj.ofFun2 (fun (x : float) (y : float) -> x / y)
+      CLR.createOperatorFuncObj "op_Division"
     ] :> obj
 
     "%",  FuncObj.ofFun2 (fun a b -> a % b) :> obj

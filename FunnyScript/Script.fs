@@ -10,6 +10,7 @@ type Env private (data : AST.Env) =
   static member Default =
     Map.empty
     |> CLR.loadSystemAssembly
+    |> CLR.loadAssembly typeof<Numerics.Complex>.Assembly
     |> Builtin.load
     |> Env
 
@@ -57,10 +58,11 @@ type Env private (data : AST.Env) =
 
 let getRuntimeErrorString e =
   sprintf "RUNTIME ERROR! %A" e.Err
-  |> List.foldBack (fun (expr, env) msg ->
-    match expr with
-    | Trace (expr, pos) -> msg + "\n" + sprintf "at %s: %A" (pos.ToString()) expr
-    | _ -> msg) e.StackTrace
+//  |> List.foldBack (fun (expr, env) msg ->
+//    match expr with
+//    | Trace (expr, pos) -> msg + "\n" + sprintf "at %s: %A" (pos.ToString()) expr
+//    | _ -> msg) e.StackTrace
+  |> List.foldBack (fun pos msg -> msg + "\n" + sprintf "at %s" (pos.ToString()) ) e.StackTrace
 
 let getResultString result =
   match result with

@@ -150,6 +150,26 @@ let operatorTest = test "operator test" {
 
   // 文字列の連結
   do! "\"abc\" + \"123\"" ==> "abc123"
+
+  do! """
+  open System.Numerics;
+  a := Complex.new (1.0, 2.0);
+  b := Complex.new (3.0, 4.0);
+  a + b
+  """ ==> Numerics.Complex (4.0, 6.0)
+
+  do! """
+  open System.Numerics;
+  a := Complex.new (1.0, 2.0);
+  b := Complex.new (3.0, 4.0);
+  a - b
+  """ ==> Numerics.Complex (-2., -2.)
+
+  do! """
+  open System.Numerics;
+  a := Complex.new (1.0, 2.0);
+  Complex.new (2.0, 0.0) * a
+  """ ==> Numerics.Complex (2.0, 4.0)
 }
 
 let identifierTest = test "identifier test" {
