@@ -147,6 +147,8 @@ let operatorTest = test "operator test" {
   x := mutable 10;
   _ := false && (do x <- 20; false);
   x""" ==> 10
+
+  do! "\"abc\" + \"123\"" ==> "abc123"
 }
 
 let identifierTest = test "identifier test" {

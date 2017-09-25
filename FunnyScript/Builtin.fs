@@ -63,10 +63,28 @@ let private deftype id members =
   typeName id, box { Id = id; ExtMembers = members }
 
 let private stdlib1 =
-  [ "+",  arith (+) (+)
-    "-",  arith (-) (-)
-    "*",  arith (*) (*)
-    "/",  arith (/) (/)
+  [
+    "+", FuncObj.ofList2 [
+      FuncObj.ofFun2 (fun (x : int) (y : int) -> x + y)
+      FuncObj.ofFun2 (fun (x : float) (y : float) -> x + y)
+      FuncObj.ofFun2 (fun (x : string) (y : string) -> x + y)
+    ] :> obj
+
+    "-", FuncObj.ofList2 [
+      FuncObj.ofFun2 (fun (x : int) (y : int) -> x - y)
+      FuncObj.ofFun2 (fun (x : float) (y : float) -> x - y)
+    ] :> obj
+
+    "*", FuncObj.ofList2 [
+      FuncObj.ofFun2 (fun (x : int) (y : int) -> x * y)
+      FuncObj.ofFun2 (fun (x : float) (y : float) -> x * y)
+    ] :> obj
+
+    "/", FuncObj.ofList2 [
+      FuncObj.ofFun2 (fun (x : int) (y : int) -> x / y)
+      FuncObj.ofFun2 (fun (x : float) (y : float) -> x / y)
+    ] :> obj
+
     "%",  FuncObj.ofFun2 (fun a b -> a % b) :> obj
     "==", FuncObj.ofFun2 (fun a b -> a =  b) :> obj
     "!=", FuncObj.ofFun2 (fun a b -> a <> b) :> obj
