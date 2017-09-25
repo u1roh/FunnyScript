@@ -36,6 +36,30 @@ type private IUserFuncObj =
   inherit IFuncObj
   abstract InitSelfName : string -> unit
 
+let applyCore env (f : obj) (arg : obj) =
+  let err() = error (NotApplyable (f, arg))
+  match f with
+  | :? IFuncObj as f -> f.Apply (arg, env)
+  | :? int as a ->
+    match arg with
+    | :? int   as b -> Ok <| box (a * b)
+    | :? float as b -> Ok <| box (float a * b)
+    | _ -> err()
+  | :? float as a ->
+    match arg with
+    | :? int   as b -> Ok <| box (a * float b)
+    | :? float as b -> Ok <| box (a * b)
+    | _ -> err()
+  | x ->
+    x |> CLR.tryApplyIndexer arg |> Option.defaultWith (fun () ->
+      match x, arg with
+      | (:? IEnumerable as x), (:? int as i) -> Ok (x |> Seq.cast<obj> |> Seq.item i)
+      | _ -> error (TypeMismatch (ClrType typeof<int>, typeid arg)))
+  //| _ -> err()
+
+let apply f arg = applyCore Map.empty f arg
+let applyForce f = apply f >> Result.bind force
+
 let rec eval expr env =
   let forceEval expr env =
     env |> eval expr |> Result.bind force
@@ -166,29 +190,6 @@ and recordEval fields env =
       x |> Result.map (fun x -> record |> Map.add name x, env)))
   |> Result.map (fst >> box)
 
-and applyCore env (f : obj) (arg : obj) =
-  let err() = error (NotApplyable (f, arg))
-  match f with
-  | :? IFuncObj as f -> f.Apply (arg, env)
-  | :? int as a ->
-    match arg with
-    | :? int   as b -> Ok <| box (a * b)
-    | :? float as b -> Ok <| box (float a * b)
-    | _ -> err()
-  | :? float as a ->
-    match arg with
-    | :? int   as b -> Ok <| box (a * float b)
-    | :? float as b -> Ok <| box (a * b)
-    | _ -> err()
-  | x ->
-    x |> CLR.tryApplyIndexer arg |> Option.defaultWith (fun () ->
-      match x, arg with
-      | (:? IEnumerable as x), (:? int as i) -> Ok (x |> Seq.cast<obj> |> Seq.item i)
-      | _ -> error (TypeMismatch (ClrType typeof<int>, typeid arg)))
-  //| _ -> err()
-
-and apply f arg = applyCore Map.empty f arg
-and applyForce f = apply f >> Result.bind force
 
 and private createUserFuncObj def env =
   let addTupleToEnv names (obj : obj) env =
