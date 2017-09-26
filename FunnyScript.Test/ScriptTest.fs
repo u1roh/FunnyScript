@@ -89,10 +89,12 @@ let testScript = test "scripting test" {
 
 let typeTest = test "type test" {
 //  do! "1 :? int" ==> true
+  do! "1 :? System.Int32" ==> true
 //  do! "1 :? float" ==> false
 //  do! "1.0 :? float" ==> true
-  do! "(x -> x * x) :? function" ==> true
+  do! "(x -> x * x) :? std.function" ==> true
 //  do! "true :? bool" ==> true
+  //do! "[1, 2, 3] :? array" ==> true
 }
 
 let listTest = test "list test" {

@@ -2,6 +2,8 @@
 open System
 open System.Collections
 
+let private applyForce f = Eval.apply f >> Result.bind Eval.force
+
 let private toFunc1 f = box (FuncObj.create (f >> Result.mapError ErrInfo.Create))
 let private toFunc2 f = toFunc1 (f >> toFunc1 >> Ok)
 
@@ -22,10 +24,6 @@ let private numOp intf floatf =
       | _, None -> Error (TypeMismatch (ClrType typeof<float>, typeid y))
   toFunc2 f
 
-let private arith intf floatf =
-  numOp (fun x y -> intf   x y |> box<int>)
-        (fun x y -> floatf x y |> box<float>)
-
 let private compare intf floatf =
   numOp (fun x y -> intf   x y |> box<bool>)
         (fun x y -> floatf x y |> box<bool>)
@@ -40,9 +38,6 @@ let private logical op =
     | _, Error e -> Error e
   toFunc2 f
 
-let private trace arg =
-  printfn "%A" arg; Ok null
-
 let private castModule =
   let rec castToInt (x : obj) =
     match x with
@@ -54,13 +49,6 @@ let private castModule =
   [
     "int", toFunc1 castToInt
   ] |> Map.ofList |> box
-
-let private deftype id members =
-  let members =
-    members
-    |> List.map (fun (name, f) -> name, FuncObj.create f)
-    |> Map.ofList
-  typeName id, box { Id = id; ExtMembers = members }
 
 let private stdlib1 =
   [
@@ -125,7 +113,7 @@ let private stdlib1 =
       match handlers with
       | :? (obj[]) as handlers ->
         handlers |> Array.tryPick (fun f ->
-          match Eval.applyForce f x with
+          match applyForce f x with
           | Error { Err = Unmatched } -> None
           | result -> Some result)
         |> Option.defaultValue (error Unmatched)
@@ -134,7 +122,7 @@ let private stdlib1 =
     "extend", FuncObj.ofFun2 extendType :> obj
 
     "array", toFunc2 (fun len f ->
-      let f = Eval.applyForce f >> function Ok x -> x | Error e -> raiseErrInfo e
+      let f = applyForce f >> function Ok x -> x | Error e -> raiseErrInfo e
       match len with
       | :? int as len -> Array.init len f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<int>, typeid len)))
@@ -150,20 +138,20 @@ let private stdlib1 =
       | a -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid a)))
 
     "foreach", toFunc2 (fun f src ->
-      let f = Eval.applyForce f >> ignore
+      let f = applyForce f >> ignore
       match src with
       | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.iter f; Ok null
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     "map", toFunc2 (fun f src ->
-      let f = Eval.applyForce f >> function Ok x -> x | Error e -> raiseErrInfo e
+      let f = applyForce f >> function Ok x -> x | Error e -> raiseErrInfo e
       match src with
       | FunnyArray src -> src |> FunnyArray.map f |> box |> Ok
       | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.map f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     "choose", toFunc2 (fun f src ->
-      let f = Eval.applyForce f >> function
+      let f = applyForce f >> function
         | Ok null -> None | Ok x -> Some x
         | Error { Err = Unmatched } -> None | Error e -> raiseErrInfo e
       match src with
@@ -172,22 +160,14 @@ let private stdlib1 =
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     "fold", FuncObj.create3 (fun acc0 f src ->
-      let f acc x = acc |> Result.bind (Eval.applyForce f) |> Result.bind (fun f -> x |> Eval.applyForce f)
+      let f acc x = acc |> Result.bind (applyForce f) |> Result.bind (fun f -> x |> applyForce f)
       match src with
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.fold f (Ok acc0)
       | _ -> error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src))) |> box
 
-    deftype (ClrType typeof<unit>)   []
-    deftype (ClrType typeof<bool>)   []
-    deftype (ClrType typeof<int>)    []
-    deftype (ClrType typeof<float>)  []
-    deftype (ClrType typeof<Record>) []
-    deftype (ClrType typeof<IFuncObj>) []
-//    deftype ListType [
-//        "head",     asList (fun x -> x.Head)
-//        "tail",     asList (fun x -> List x.Tail)
-//      ]
-    deftype (ClrType typeof<FunnyType>) []
+    "record",   { Id = ClrType typeof<Record>;    ExtMembers = Map.empty } :> obj
+    "function", { Id = ClrType typeof<IFuncObj>;  ExtMembers = Map.empty } :> obj
+    "type",     { Id = ClrType typeof<FunnyType>; ExtMembers = Map.empty } :> obj
 
     "Cast", castModule
 //    "List", listModule

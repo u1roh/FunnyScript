@@ -65,7 +65,7 @@ and IntervalBound = {
   }
 
 and TypeId =
-  | UserType of name:string * ctor:IFuncObj * members:Map<string, IFuncObj>
+  | UserType of ctor:IFuncObj * members:Map<string, IFuncObj>
   | ClrType  of System.Type
 
 and FunnyType = {
@@ -126,6 +126,14 @@ module FuncObj =
     create2 (execute [] flist)
 
 
+module Type =
+  let create ctor members =
+    { Id = UserType (ctor, members); ExtMembers = Map.empty }
+
+  let extend members (t : FunnyType) =
+    t.ExtMembers <- (t.ExtMembers, members) ||> Map.fold (fun vtbl name m -> vtbl |> Map.add name m)
+
+
 let makeClass (ctor : obj) (vtbl : obj) =
   match ctor, vtbl with
     | (:? IFuncObj as ctor), (:? Record as vtbl) -> Ok (ctor, vtbl)
@@ -137,14 +145,12 @@ let makeClass (ctor : obj) (vtbl : obj) =
       else error ClassDefError)
   |> Result.map (fun (ctor, members) ->
     let members = members |> Map.map (fun _ m -> match m with :? IFuncObj as m -> m | _ -> failwith "fatal error")
-    box { Id = UserType ("", ctor, members); ExtMembers = Map.empty })
+    box (Type.create ctor members))
 
 let extendType (t : FunnyType) (vtbl : Record) =
   let members, invalids = vtbl |> Map.partition (fun _ m -> match m with :? IFuncObj -> true | _ -> false)
   if not invalids.IsEmpty then error ClassDefError else
-    t.ExtMembers <-
-      (t.ExtMembers, members) ||> Map.fold (fun vtbl name m ->
-        match m with :? IFuncObj as m -> vtbl |> Map.add name m | _ -> vtbl)
+    t |> Type.extend (members |> Map.map (fun _ m -> m :?> IFuncObj))
     Ok null
 
 let rec typeid (obj : obj) =
@@ -153,18 +159,6 @@ let rec typeid (obj : obj) =
   | :? IFuncObj as f -> ClrType typeof<IFuncObj>
   | null -> ClrType typeof<unit>
   | _ -> ClrType (obj.GetType())
-
-let typeName id =
-  match id with
-  | UserType (x, _, _) -> x
-  | ClrType t ->
-    if t = typeof<int>    then "int"      else
-    if t = typeof<float>  then "float"    else
-    if t = typeof<bool>   then "bool"     else
-    if t = typeof<IFuncObj>   then "function" else
-    if t = typeof<Record>     then "record"   else
-    if t = typeof<FunnyType>  then "type"     else
-    t.FullName
 
 let toMutable obj =
   let mutable obj = obj
