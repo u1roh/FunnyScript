@@ -7,6 +7,25 @@ let private applyForce f = Eval.apply f >> Result.bind Eval.force
 let private toFunc1 f = box (FuncObj.create (f >> Result.mapError ErrInfo.Create))
 let private toFunc2 f = toFunc1 (f >> toFunc1 >> Ok)
 
+type private NumOperands =
+  | IntOperands of int * int
+  | FloatOperands of float * float
+  static member Of (x : obj, y : obj) =
+    let error = error (MiscError "not numeric")
+    match x with
+    | :? int as x ->
+      match y with
+      | :? int   as y -> IntOperands (x, y) |> Ok
+      | :? float as y -> FloatOperands (float x, y) |> Ok
+      | _ -> error
+    | :? float as x ->
+      match y with
+      | :? int   as y -> FloatOperands (x, float y) |> Ok
+      | :? float as y -> FloatOperands (x, y) |> Ok
+      | _ -> error
+    | _ -> error
+      
+
 let private tryToFloat (obj : obj) =
   match obj with
   | :? float as x -> Some x
@@ -53,27 +72,35 @@ let private castModule =
 let private stdlib1 =
   [
     "+", FuncObj.ofList2 [
-      FuncObj.ofFun2 (fun (x : int) (y : int) -> x + y)
-      FuncObj.ofFun2 (fun (x : float) (y : float) -> x + y)
+      FuncObj.create2 (fun x y ->
+        NumOperands.Of (x, y) |> Result.map (function
+          | IntOperands   (x, y) -> x + y |> box
+          | FloatOperands (x, y) -> x + y |> box))
       FuncObj.ofFun2 (fun (x : string) (y : string) -> x + y)
       CLR.createOperatorFuncObj "op_Addition"
     ] :> obj
 
     "-", FuncObj.ofList2 [
-      FuncObj.ofFun2 (fun (x : int) (y : int) -> x - y)
-      FuncObj.ofFun2 (fun (x : float) (y : float) -> x - y)
+      FuncObj.create2 (fun x y ->
+        NumOperands.Of (x, y) |> Result.map (function
+          | IntOperands   (x, y) -> x - y |> box
+          | FloatOperands (x, y) -> x - y |> box))
       CLR.createOperatorFuncObj "op_Subtraction"
     ] :> obj
 
     "*", FuncObj.ofList2 [
-      FuncObj.ofFun2 (fun (x : int) (y : int) -> x * y)
-      FuncObj.ofFun2 (fun (x : float) (y : float) -> x * y)
+      FuncObj.create2 (fun x y ->
+        NumOperands.Of (x, y) |> Result.map (function
+          | IntOperands   (x, y) -> x * y |> box
+          | FloatOperands (x, y) -> x * y |> box))
       CLR.createOperatorFuncObj "op_Multiply"
     ] :> obj
 
     "/", FuncObj.ofList2 [
-      FuncObj.ofFun2 (fun (x : int) (y : int) -> x / y)
-      FuncObj.ofFun2 (fun (x : float) (y : float) -> x / y)
+      FuncObj.create2 (fun x y ->
+        NumOperands.Of (x, y) |> Result.map (function
+          | IntOperands   (x, y) -> x / y |> box
+          | FloatOperands (x, y) -> x / y |> box))
       CLR.createOperatorFuncObj "op_Division"
     ] :> obj
 

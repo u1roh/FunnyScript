@@ -24,6 +24,8 @@ let literalTest = test "literal test" {
 
 let testScript = test "scripting test" {
   do! "1 + 2 * (3 + 4)" ==> 15
+  do! "1 + 3.14" ==> 1.0 + 3.14
+  do! "3.14 * 2" ==> 6.28
   do! "a := 1 + 2; b := 3 + 4; a * b" ==> 21
   do! "f := a -> a + 1; f 2" ==> 3
   do! "f := | @ + 1; f 2" ==> 3
