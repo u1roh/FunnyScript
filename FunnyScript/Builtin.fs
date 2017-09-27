@@ -164,11 +164,11 @@ let private stdlib1 =
       | :? IEnumerable as a -> Ok (Seq.cast<obj> a |> Seq.length |> box)
       | a -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid a)))
 
-    "foreach", toFunc2 (fun f src ->
-      let f = applyForce f >> ignore
-      match src with
-      | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.iter f; Ok null
-      | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
+    "foreach", FuncObj.create2 (fun f -> Eval.cast<IEnumerable> >> Result.bind (fun src ->
+        let f = applyForce f
+        Seq.cast<obj> src
+        |> Seq.tryPick (f >> function Error e -> Some (Error e) | _ -> None)
+        |> Option.defaultValue (Ok null))) :> obj
 
     "map", toFunc2 (fun f src ->
       let f = applyForce f >> function Ok x -> x | Error e -> raiseErrInfo e
