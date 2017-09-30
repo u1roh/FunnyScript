@@ -191,6 +191,13 @@ let private stdlib1 =
       match src with
       | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.fold f (Ok acc0)
       | _ -> error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src))) |> box
+      
+    "filter", FuncObj.create2 (fun pred src ->
+      let pred = applyForce pred >> Result.bind Obj.cast<bool> >> function Ok x -> x | Error e -> raiseErrInfo e
+      match src with
+      | FunnyArray src -> src |> FunnyArray.filter pred |> box |> Ok
+      | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.filter pred |> box |> Ok
+      | _ -> error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src))) :> obj
 
     "record",   { Id = ClrType typeof<Record>;    ExtMembers = Map.empty } :> obj
     "function", { Id = ClrType typeof<IFuncObj>;  ExtMembers = Map.empty } :> obj

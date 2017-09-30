@@ -49,6 +49,15 @@ module FunnyArray =
   let choose f a =
     a |> map f |> Array.choose id
 
+  let filter pred a =
+    let pred = a |> map pred
+    let count = pred |> Seq.fold (fun n pred -> if pred then n + 1 else n) 0
+    let dst = Array.create<obj> count null
+    let mutable k = 0
+    a |> Seq.cast<obj> |> Seq.iteri (fun i x -> if pred.[i] then dst.[k] <- x; k <- k + 1)
+    dst
+    
+
 
 [<AutoOpen>]
 module Data =
