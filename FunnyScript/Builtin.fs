@@ -199,6 +199,14 @@ let private stdlib1 =
       | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.filter pred |> box |> Ok
       | _ -> error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src))) :> obj
 
+    "forall", FuncObj.create2 (fun pred src ->
+      let pred = applyForce pred >> Result.bind Obj.cast<bool> >> function Ok x -> x | Error e -> raiseErrInfo e
+      src |> Obj.cast<IEnumerable> |> Result.map (Seq.cast<obj> >> Seq.forall pred >> box)) :> obj
+
+    "exists", FuncObj.create2 (fun pred src ->
+      let pred = applyForce pred >> Result.bind Obj.cast<bool> >> function Ok x -> x | Error e -> raiseErrInfo e
+      src |> Obj.cast<IEnumerable> |> Result.map (Seq.cast<obj> >> Seq.exists pred >> box)) :> obj
+
     "record",   { Id = ClrType typeof<Record>;    ExtMembers = Map.empty } :> obj
     "function", { Id = ClrType typeof<IFuncObj>;  ExtMembers = Map.empty } :> obj
     "type",     { Id = ClrType typeof<FunnyType>; ExtMembers = Map.empty } :> obj
