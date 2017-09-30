@@ -44,7 +44,7 @@ type Env private (data : AST.Env) =
     this.Add (name, FuncObj.ofFun (fun a b -> f.Invoke (a, b)) |> box)
 
   member this.Eval expr =
-    data |> Eval.eval expr |> Result.bind Eval.force
+    data |> Eval.eval expr |> Result.bind Obj.force
 
   member this.Run (streamName, source) =
     Parser.parse streamName source

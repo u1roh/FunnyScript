@@ -2,7 +2,7 @@
 open System
 open System.Collections
 
-let private applyForce f = Eval.apply f >> Result.bind Eval.force
+let private applyForce f = Obj.apply f >> Result.bind Obj.force
 
 let private toFunc1 f = box (FuncObj.create (f >> Result.mapError ErrInfo.Create))
 let private toFunc2 f = toFunc1 (f >> toFunc1 >> Ok)
@@ -111,8 +111,8 @@ let private stdlib1 =
     "<=", compare (<=) (<=)
     ">",  compare (>)  (>)
     ">=", compare (>=) (>=)
-    "|>",  FuncObj.create2 (fun arg f -> Eval.apply f arg) |> box
-    "|?>", FuncObj.create2 (fun arg f -> if arg = null then Ok null else Eval.apply f arg) |> box
+    "|>",  FuncObj.create2 (fun arg f -> Obj.apply f arg) |> box
+    "|?>", FuncObj.create2 (fun arg f -> if arg = null then Ok null else Obj.apply f arg) |> box
     "&&", logical (&&)
     "||", logical (||)
     ":?", FuncObj.ofFun2 (fun o (t : FunnyType) -> t.Id = typeid o) :> obj
@@ -164,7 +164,7 @@ let private stdlib1 =
       | :? IEnumerable as a -> Ok (Seq.cast<obj> a |> Seq.length |> box)
       | a -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid a)))
 
-    "foreach", FuncObj.create2 (fun f -> Eval.cast<IEnumerable> >> Result.bind (fun src ->
+    "foreach", FuncObj.create2 (fun f -> Obj.cast<IEnumerable> >> Result.bind (fun src ->
         let f = applyForce f
         Seq.cast<obj> src
         |> Seq.tryPick (f >> function Error e -> Some (Error e) | _ -> None)

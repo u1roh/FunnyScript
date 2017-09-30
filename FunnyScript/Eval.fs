@@ -2,29 +2,6 @@
 open System
 open System.Collections
 
-let rec force (obj : obj) =
-  match obj with
-  | :? Lazy<Result> as x -> x.Force() |> Result.bind force
-  | :? IMutable as x -> force x.Value
-  | _ -> Ok obj
-
-// mutable はそのままキープ
-let rec forceLet (obj : obj) =
-  match obj with
-  | :? Lazy<Result> as x -> x.Force() |> Result.bind forceLet
-  | _ -> Ok obj
-
-let rec forceMutable (obj : obj) =
-  match obj with
-  | :? Lazy<Result> as x -> x.Force() |> Result.bind forceMutable
-  | :? IMutable as x -> Ok x
-  | _ -> error NotMutable
-    
-let cast<'a> (obj : obj) =
-  match obj with
-  | :? 'a as obj -> Ok obj
-  | _ -> error (TypeMismatch (ClrType typeof<'a>, typeid obj))
-
 module internal Env =
   let tryGet id (env : Env) =
     env |> Map.tryFind id |> function Some x -> x | _ -> error (IdentifierNotFound id)
@@ -50,49 +27,6 @@ type private IUserFuncObj =
   inherit IFuncObj
   abstract InitSelfName : string -> unit
 
-let applyCore env (f : obj) (arg : obj) =
-  let err() = error (NotApplyable (f, arg))
-  match f with
-  | :? IFuncObj as f -> f.Apply (arg, env)
-  | :? int as a ->
-    match arg with
-    | :? int   as b -> Ok <| box (a * b)
-    | :? float as b -> Ok <| box (float a * b)
-    | _ -> err()
-  | :? float as a ->
-    match arg with
-    | :? int   as b -> Ok <| box (a * float b)
-    | :? float as b -> Ok <| box (a * b)
-    | _ -> err()
-  | x ->
-    x |> CLR.tryApplyIndexer arg |> Option.defaultWith (fun () ->
-      match x, arg with
-      | (:? IEnumerable as x), (:? int as i) -> Ok (x |> Seq.cast<obj> |> Seq.item i)
-      | _ -> error (TypeMismatch (ClrType typeof<int>, typeid arg)))
-  //| _ -> err()
-
-let apply f arg = applyCore Map.empty f arg
-
-let private findMember (obj : obj) name =
-  let notFound = error (IdentifierNotFound name)
-  let toResult x = match x with Some x -> Ok x | _ -> notFound
-  match obj with
-  | :? Record as r -> r |> Map.tryFind name |> toResult
-  | :? Instance as x ->
-    match x.Type with
-    | { Id = UserType (_, mems); ExtMembers = exts } ->
-      mems |> Map.tryFind name |> Option.map (fun f -> apply (box f) x.Data)
-      |> Option.orElseWith (fun () -> exts |> Map.tryFind name |> Option.map (fun f -> apply (box f) x))
-      |> Option.defaultValue notFound
-    | _ -> error (MiscError "fatal error")
-  | :? FunnyType as t ->
-    match t.Id with
-    | ClrType t -> t |> CLR.tryGetStaticMember name |> toResult
-    | UserType (ctor, _) when name = "new" ->
-      FuncObj.create (FuncObj.invoke ctor >> Result.bind force >> Result.map (fun x -> box { Data = x; Type = t })) |> box |> Ok
-    | _ -> error (IdentifierNotFound name)
-  | o -> o |> CLR.tryGetInstanceMember name |> toResult
-
 let private findExtMember (env : Env) (o : obj) name =
   env |> Env.findExtMember o name
   |> function
@@ -100,22 +34,14 @@ let private findExtMember (env : Env) (o : obj) name =
     | _ -> error (IdentifierNotFound name)
 
 let rec eval expr env =
-  let forceEval expr env =
-    env |> eval expr |> Result.bind force
-
-  let forceEvalAs expr env =
-    env |> forceEval expr |> Result.bind cast<_>
-
-  let tryGet id = env |> Env.tryGet id
-
   //Result.mapError (fun e -> { e with StackTrace = (expr, env) :: e.StackTrace }) <|
   match expr with
   | Trace (expr, pos) -> eval expr env |> Result.mapError (fun e -> { e with StackTrace = pos :: e.StackTrace })
   | Obj x -> Ok x
-  | Ref x -> tryGet x
+  | Ref x -> env |> Env.tryGet x
   | RefMember (expr, name) ->
     env |> forceEval expr |> Result.bind (fun obj ->
-      match findMember obj name with
+      match Obj.findMember obj name with
       | Error { Err = IdentifierNotFound _ } -> findExtMember env obj name
       | result -> result)
   | Let (name, value, succ) ->
@@ -127,19 +53,19 @@ let rec eval expr env =
   | FuncDef def -> createUserFuncObj def env |> box |> Ok
   | Apply (f, arg) ->
     env |> forceEval f   |> Result.bind (fun f ->
-    env |> forceEval arg |> Result.bind (applyCore env f))
+    env |> forceEval arg |> Result.bind (Obj.applyCore env f))
   | LogicalAnd (expr1, expr2) ->
-    env |> forceEval expr1 |> Result.bind cast<bool>
+    env |> forceEval expr1 |> Result.bind Obj.cast<bool>
     |> Result.bind (function
       | false -> box false |> Ok
-      | true  -> env |> forceEval expr2 |> Result.bind cast<bool> |> Result.map box)
+      | true  -> env |> forceEval expr2 |> Result.bind Obj.cast<bool> |> Result.map box)
   | LogicalOr (expr1, expr2) ->
-    env |> forceEval expr1 |> Result.bind cast<bool>
+    env |> forceEval expr1 |> Result.bind Obj.cast<bool>
     |> Result.bind (function
       | true -> box true |> Ok
-      | false -> env |> forceEval expr2 |> Result.bind cast<bool> |> Result.map box)
+      | false -> env |> forceEval expr2 |> Result.bind Obj.cast<bool> |> Result.map box)
   | If (cond, thenExpr, elseExpr) ->
-    env |> forceEval cond |> Result.bind cast<bool>
+    env |> forceEval cond |> Result.bind Obj.cast<bool>
     |> Result.bind (fun x -> env |> eval (if x then thenExpr else elseExpr))
   | NewRecord fields ->
     env |> recordEval fields
@@ -161,17 +87,17 @@ let rec eval expr env =
       | (:? float as value1), (:? int   as value2) -> [| value1 .. float value2 |] |> box |> Ok
       | _ -> error (MiscError "not numeric type") ))
   | Interval (lower, upper) ->
-    env |> forceEval lower.Expr |> Result.bind cast<int> |> Result.bind (fun lowerVal ->
-    env |> forceEval upper.Expr |> Result.bind cast<int> |> Result.bind (fun upperVal ->
+    env |> forceEval lower.Expr |> Result.bind Obj.cast<int> |> Result.bind (fun lowerVal ->
+    env |> forceEval upper.Expr |> Result.bind Obj.cast<int> |> Result.bind (fun upperVal ->
       { min = if lower.IsOpen then lowerVal + 1 else lowerVal
         max = if upper.IsOpen then upperVal - 1 else upperVal }
       |> box |> Ok))
   | Substitute (expr1, expr2) ->
-    env |> eval expr1 |> Result.bind forceMutable
+    env |> eval expr1 |> Result.bind Obj.forceMutable
     |> Result.bind (fun dst -> env |> eval expr2 |> Result.map (fun newval -> dst, newval))
     |> Result.map (fun (dst, newval) -> dst.Value <- newval; newval)
   | Open (record, succ) ->
-    env |> forceEval record |> Result.bind cast<Record>
+    env |> forceEval record |> Result.bind Obj.cast<Record>
     |> Result.bind (fun r -> env |> Env.openRecord r |> eval succ)
   | Load (asm, succ) ->
     env |> CLR.loadAssembly (Reflection.Assembly.LoadFrom asm) |> eval succ
@@ -184,11 +110,14 @@ let rec eval expr env =
         | ExnError  e -> box e
         | MiscError e -> box e
         | _ -> box e
-      env |> forceEval handler |> Result.bind (fun f -> apply f e)
+      env |> forceEval handler |> Result.bind (fun f -> Obj.apply f e)
     | x -> x
 
+and forceEval expr env : Result =
+  env |> eval expr |> Result.bind Obj.force
+
 and letEval name expr env =
-  let value = env |> eval expr |> Result.bind forceLet
+  let value = env |> eval expr |> Result.bind Obj.forceLet
   let env = env |> Map.add name value
   match value with Ok (:? IUserFuncObj as f) -> f.InitSelfName name | _ -> ()  // to enable recursive call
   value, env
