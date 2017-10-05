@@ -45,7 +45,6 @@ and Expr =
   | FuncDef of FuncDef
   | NewRecord of (string * Expr) list
   | NewArray of Expr[]
-  | ArrayByRange of Expr * Expr
   | Interval of IntervalBound * IntervalBound
   | If of condition:Expr * thenExpr:Expr * elseExpr:Expr
   | Substitute of Expr * Expr

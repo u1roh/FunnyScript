@@ -106,11 +106,7 @@ let pExpr =
     between_ws '{' '}' (many (pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';'))
     |>> NewRecord
   let pList =
-    between_ws '[' ']'
-      (choice [
-        attempt (pExpr .>> str_ws ".." .>>. pExpr |>> ArrayByRange)
-        sepByComma pExpr |>> (List.toArray >> NewArray)
-      ])
+    between_ws '[' ']' (sepByComma pExpr |>> (List.toArray >> NewArray))
   let pTuple =
     between_ws '(' ')' (sepByComma pExpr)
     |>> function

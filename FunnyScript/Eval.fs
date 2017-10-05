@@ -77,15 +77,6 @@ let rec eval expr env =
     match err with
     | Some err -> error err
     | _ -> items |> Array.choose (function Ok x -> Some x | _ -> None) |> box |> Ok
-  | ArrayByRange (expr1, expr2) ->
-    env |> forceEval expr1 |> Result.bind (fun value1 ->
-    env |> forceEval expr2 |> Result.bind (fun value2 ->
-      match value1, value2 with
-      | (:? int as value1),   (:? int   as value2) -> [| value1 .. value2 |] |> box |> Ok
-      | (:? float as value1), (:? float as value2) -> [| value1 .. value2 |] |> box |> Ok
-      | (:? int as value1),   (:? float as value2) -> [| float value1 .. value2 |] |> box |> Ok
-      | (:? float as value1), (:? int   as value2) -> [| value1 .. float value2 |] |> box |> Ok
-      | _ -> error (MiscError "not numeric type") ))
   | Interval (lower, upper) ->
     env |> forceEval lower.Expr |> Result.bind Obj.cast<int> |> Result.bind (fun lowerVal ->
     env |> forceEval upper.Expr |> Result.bind Obj.cast<int> |> Result.bind (fun upperVal ->
