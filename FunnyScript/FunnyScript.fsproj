@@ -67,6 +67,7 @@
     <Compile Include="Eval.fs" />
     <Compile Include="Builtin.fs" />
     <Compile Include="Script.fs" />
+    <Compile Include="Inspection.fs" />
     <None Include="App.config" />
     <Content Include="packages.config" />
   </ItemGroup>

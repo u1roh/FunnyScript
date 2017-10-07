@@ -32,6 +32,26 @@ namespace FunnyScript.Gui
 		class ViewModel
 		{
 			public ObservableCollection<Item> Items { get; } = new ObservableCollection<Item>();
+			public ObservableCollection<Inspection.Item> InspectionItems { get; } = new ObservableCollection<Inspection.Item>();
+
+			Item selected;
+
+			public Item SelectedItem
+			{
+				get { return selected; }
+				set
+				{
+					if (value != selected)
+					{
+						selected = value;
+						this.InspectionItems.Clear();
+						if (value != null)
+						{
+							foreach(var item in Inspection.getItems(value.Obj)) this.InspectionItems.Add(item);
+						}
+					}
+				}
+			}
 		}
 
 		public ObjListView()
