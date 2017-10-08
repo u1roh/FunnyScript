@@ -37,8 +37,11 @@ namespace FunnyScript.Gui
 			output.Items.Clear();
 			var result = editor.Run();
 			var text = Script.getResultString(result);
+			var obj = result.IsOk ?
+				((Result<object, Script.Error>.Ok)result).Item :
+				((Result<object, Script.Error>.Error)result).Item;
 			int endpos = text.IndexOf('\n');
-			output.Items.Add(new ObjListView.Item(result, endpos == -1 ? text : text.Substring(0, endpos)));
+			output.Items.Add(new ObjListView.Item(obj, endpos == -1 ? text : text.Substring(0, endpos)));
 			Console.WriteLine("{0}", text);
 		}
   }
