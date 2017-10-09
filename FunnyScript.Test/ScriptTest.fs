@@ -127,6 +127,7 @@ let listTest = test "list test" {
   do! "[2, 4, 6, 7] |> exists (| @ % 2 == 0)" ==> true
   do! "[2, 4, 6, 7] |> exists (| @ % 2 == 1)" ==> true
   do! "[2, 4, 6, 8] |> forall (| @ % 2 == 1)" ==> false
+  do! "[1, 2, 3] + [4, 5]" ==> [|1; 2; 3; 4; 5|]
 
   do! "\"hello\" 1" ==> 'e'
   do! "\"hello\"[2]" ==> 'l'

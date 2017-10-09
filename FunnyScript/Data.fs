@@ -57,6 +57,8 @@ module FunnyArray =
     a |> Seq.cast<obj> |> Seq.iteri (fun i x -> if pred.[i] then dst.[k] <- x; k <- k + 1)
     dst
     
+  let append (a : IFunnyArray) (b : IFunnyArray) =
+    Array.init (a.Count + b.Count) (fun i -> if i < a.Count then a.[i] else b.[i - a.Count])
 
 
 [<AutoOpen>]

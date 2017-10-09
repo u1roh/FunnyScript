@@ -69,6 +69,11 @@ let private castModule =
     "int", toFunc1 castToInt
   ] |> Map.ofList |> box
 
+let private asArray x =
+  match x with
+  | FunnyArray x -> Ok x
+  | _ -> error (TypeMismatch (ClrType typeof<IFunnyArray>, typeid x))
+
 let private stdlib1 =
   [
     "+", FuncObj.ofList2 [
@@ -77,6 +82,9 @@ let private stdlib1 =
           | IntOperands   (x, y) -> x + y |> box
           | FloatOperands (x, y) -> x + y |> box))
       FuncObj.ofFun2 (fun (x : string) (y : string) -> x + y)
+      FuncObj.create2 (fun x y ->
+        asArray x |> Result.bind (fun x ->
+        asArray y |> Result.map  (fun y -> FunnyArray.append x y |> box)))
       CLR.createOperatorFuncObj "op_Addition"
     ] :> obj
 
