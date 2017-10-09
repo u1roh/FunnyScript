@@ -1,6 +1,6 @@
 ﻿module FunnyScript.Inspection
 open System
-open System.Collections.Generic
+open System.Collections
  
 type Item = {
     Caption : string
@@ -28,18 +28,16 @@ let rec getItems (target : obj) =
       if caption.Length <= maxlen then caption else caption.Substring(0, maxlen-3) + "..."
     { Caption = caption; Description = tooltip; Items = getItems target }
 
-  let isHiddenProperty (prop : Reflection.PropertyInfo) =
-      prop.DeclaringType = typeof<Array> && prop.Name <> "Length" // Array 型のプロパティは Length 以外は隠す
-
   let ofProperties target =
-    let targetType = target.GetType()
-    let isList = (targetType.IsGenericType && targetType.GetGenericTypeDefinition() = typeof<int list>.GetGenericTypeDefinition())
-    if isList then Seq.empty else
-      targetType.GetProperties ()
-      |> Seq.filter (isHiddenProperty >> not)
+    match target with
+    | FunnyArray a -> seq{ yield { Item.Empty with Caption = sprintf "length = %d" a.Count }}
+    | _ -> Seq.empty
+    |> Seq.append
+      (target.GetType().GetProperties ()
+      |> Seq.filter (fun prop -> prop.DeclaringType <> typeof<Array>) // Array 型のプロパティは隠す（FunnyArray型として扱うため）
       |> Seq.filter (fun prop -> let getter = prop.GetMethod in getter <> null && not getter.IsStatic && getter.GetParameters().Length = 0)
       |> Seq.choose (fun prop -> try Some (prop.Name, prop.GetValue target) with _ -> None)
-      |> Seq.map (fun (name, value) -> create name value)
+      |> Seq.map (fun (name, value) -> create name value))
 
   let ofSeqItems target =
     let maxN = 10
@@ -56,7 +54,7 @@ let rec getItems (target : obj) =
   let propItems = ofProperties target
   let enumItems =
     match target with
-    | :? Collections.IEnumerable as target -> target |> Seq.cast<obj> |> ofSeqItems
+    | :? IEnumerable as target -> target |> Seq.cast<obj> |> ofSeqItems
     | _ -> Seq.empty
   let headerItems =
     seq {
