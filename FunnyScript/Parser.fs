@@ -74,6 +74,7 @@ let pPattern =
     choice [
       pIdentifier |>> Pattern.Identifier
       between_ws '(' ')' (sepByComma pPattern) |>> Pattern.Tuple
+      between_ws '{' '}' (sepEndBy (pIdentifier .>> str_ws ":=" .>>. pPattern) (char_ws ';')) |>> Pattern.Record
     ]
   pPattern
 
@@ -110,7 +111,6 @@ let pExpr =
   let pRecord =
     let pRecItem = pIdentifier .>> str_ws ":=" .>>. pExpr
     between_ws '{' '}' (sepEndBy pRecItem (char_ws ';'))
-    //between_ws '{' '}' (many (pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';'))
     |>> NewRecord
   let pList =
     between_ws '[' ']' (sepByComma pExpr |>> (List.toArray >> NewArray))

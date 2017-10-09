@@ -396,6 +396,12 @@ let patternMatchTest = test "pattern match test" {
     ];
     f (3, 6)
   """ ==> 9
+
+  do! """
+    { name := "Jack"; age := 32 } |> { name := n } -> n + " the Ripper"
+  """ ==> "Jack the Ripper"
+
+  do! "{ a := { b := (1, 2); c := 3 }; d := 4 } |> { a := { b := (x, y) }} -> x + y" ==> 3
 }
 
 let extendTest = test "extend test" {

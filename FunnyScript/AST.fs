@@ -56,10 +56,9 @@ and Expr =
 and Pattern =
   | Identifier of string
   | Tuple of Pattern list
-  //| Record of list<string * Pattern>
+  | Record of list<string * Pattern>
 
 and FuncDef = {
-    //Args : string list
     Args : Pattern
     Body : Expr
   }

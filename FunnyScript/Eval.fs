@@ -21,6 +21,14 @@ module internal Env =
         |> List.fold (fun env (item, obj) -> env |> Result.bind (matchWith item obj)) (Ok env)
       | [item], _ -> env |> matchWith item obj
       | _ -> error Unmatched
+    | Record items ->
+      match obj with
+      | :? Record as r ->
+        (Ok env, items) ||> List.fold (fun env (name, item) ->
+          env |> Result.bind (fun env ->
+          r |> Map.tryFind name |> (function Some obj -> Ok obj | _ -> error Unmatched) |> Result.bind (fun obj ->
+            env |> matchWith item obj)))
+      | _ -> error Unmatched
 
   let findFunnyType (typeName : string) (env : Env) =
     let typeName = typeName.Split '.'
