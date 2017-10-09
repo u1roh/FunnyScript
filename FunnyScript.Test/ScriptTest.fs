@@ -37,6 +37,7 @@ let testScript = test "scripting test" {
   do! "fac := n -> if n == 0 => 1 else n * fac (n - 1); fac 4" ==> 24
   do! "r := { a := 10; b := 2 + 3; }; r.b" ==> 5
   do! "{ a := 10; b := 2 + 3; }.b" ==> 5
+  do! "{ a := x := 3; x + 10; b := -2 - 4 }.a" ==> 13  // 最後のセミコロンは省略可能
   do! "r := { f := n -> n * 2; }; r.f 2" ==> 4
   do! "r := { f := n -> n * 2; g := n -> f (n + 1); }; (r.g 2)" ==> 6
   do! "f := x -> y -> x + y; 10 |> f 5" ==> 15
