@@ -66,10 +66,19 @@ let private str_ws   s = skipString s >>. spaces
 let private char_ws  c = skipChar   c >>. spaces
 let private char_ws1 c = skipChar   c >>. spaces1
 let private between_ws c1 c2 p = between (char_ws c1) (char_ws c2) p
+let private sepByComma p = sepBy p (char_ws ',')
+
+let pPattern =
+  let pPattern, pPatternRef = createParserForwardedToRef<Pattern, unit>()
+  pPatternRef :=
+    choice [
+      pIdentifier |>> Pattern.Identifier
+      between_ws '(' ')' (sepByComma pPattern) |>> Pattern.Tuple
+    ]
+  pPattern
 
 let pExpr =
   let pExpr, pExprRef = createParserForwardedToRef<Expr, unit>()
-  let sepByComma p = sepBy p (char_ws ',')
 
   let pLet =
     opt pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';' .>>. pExpr
@@ -94,14 +103,10 @@ let pExpr =
       elseExpr |> Option.defaultValue (Ref "unmatched")
       |> List.foldBack (fun (cond, thenExpr) elseExpr -> If (cond, thenExpr, elseExpr)) ifList
   let pLambda =
-    choice [
-      pIdentifier |>> (fun x -> [x])
-      between_ws '(' ')' (sepByComma pIdentifier)
-    ]
-    .>> str_ws "->" .>>. pExpr
+    pPattern .>> str_ws "->" .>>. pExpr
     |>> (fun (args, body) -> FuncDef { Args = args; Body = body })
   let pLambda2 =
-    attempt (char_ws1 '|') >>. pExpr |>> fun expr -> FuncDef { Args = ["@"]; Body = expr }
+    attempt (char_ws1 '|') >>. pExpr |>> fun expr -> FuncDef { Args = Identifier "@"; Body = expr }
   let pRecord =
     between_ws '{' '}' (many (pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';'))
     |>> NewRecord
@@ -136,7 +141,7 @@ let pExpr =
     |>> fun (mems, args) ->
       let self = (Ref "__SELF__", mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
       let body = (self, args) ||> List.fold (fun f arg -> Apply (f, arg))
-      FuncDef { Args = ["__SELF__"]; Body = body }
+      FuncDef { Args = Identifier "__SELF__"; Body = body }
   let opp = new OperatorPrecedenceParser<Expr,unit,unit>()
   opp.TermParser <- pSyntaxSugarLambdaTerm <|> pTerm
 

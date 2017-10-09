@@ -53,8 +53,14 @@ and Expr =
   | OnError of target:Expr * handler:Expr
   | Trace of Expr * Position
 
+and Pattern =
+  | Identifier of string
+  | Tuple of Pattern list
+  //| Record of list<string * Pattern>
+
 and FuncDef = {
-    Args : string list
+    //Args : string list
+    Args : Pattern
     Body : Expr
   }
 

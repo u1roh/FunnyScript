@@ -9,6 +9,19 @@ module internal Env =
   let openRecord (record : Record) env =
     (env, record) ||> Seq.fold (fun env x -> env |> Map.add x.Key (Ok x.Value))
 
+  let rec matchWith pattern (obj : obj) env =
+    match pattern with
+    | Identifier name -> env |> Map.add name (Ok obj) |> Ok
+    | Tuple items ->
+      match items, obj with
+      | [], null -> env |> Ok
+      | _, FunnyArray a when a.Count = items.Length ->
+        items
+        |> List.mapi (fun i item -> item, a.[i])
+        |> List.fold (fun env (item, obj) -> env |> Result.bind (matchWith item obj)) (Ok env)
+      | [item], _ -> env |> matchWith item obj
+      | _ -> error Unmatched
+
   let findFunnyType (typeName : string) (env : Env) =
     let typeName = typeName.Split '.'
     if typeName.Length = 0 then None else env |> Map.tryFind typeName.[0]
@@ -122,23 +135,11 @@ and recordEval fields env =
 
 
 and private createUserFuncObj def env =
-  let addTupleToEnv names (obj : obj) env =
-    match names with
-    | []     -> env |> Ok
-    | [name] -> env |> Map.add name (Ok obj) |> Ok
-    | _ ->
-      match obj with
-      | :? (obj[]) as items when items.Length = names.Length ->
-        names
-        |> List.mapi (fun i name -> name, items.[i])
-        |> List.fold (fun env (name, obj) -> env |> Map.add name (Ok obj)) env
-        |> Ok
-      | _ -> error Unmatched
   let mutable env = env
   let mutable named = false
   { new IUserFuncObj with
     member __.Apply (arg, _) =
-      lazy (env |> addTupleToEnv def.Args arg |> Result.bind (eval def.Body)) |> box |> Ok
+      lazy (env |> Env.matchWith def.Args arg |> Result.bind (eval def.Body)) |> box |> Ok
     member self.InitSelfName name = 
       if not named then
         env <- env |> Map.add name (Ok (box self)) // to enable recursive call

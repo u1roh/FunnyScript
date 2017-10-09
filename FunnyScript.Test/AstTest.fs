@@ -14,7 +14,7 @@ let a2 =
 
 let a3 =
   Let ("b", Obj (box 10),
-    Let ("f", FuncDef { Args = ["a"]; Body = binaryOp ("+", Ref "a", Ref "b") },
+    Let ("f", FuncDef { Args = Identifier "a"; Body = binaryOp ("+", Ref "a", Ref "b") },
       Apply (Ref "f", Obj (box 3))))
 
 let record =
@@ -50,12 +50,12 @@ let testAST = test "FunnyScript AST test" {
     If (binaryOp ("==", Obj (box 3), a1), Obj "equal", Obj "not equal")
     |> eval |> assertEquals (Ok (box "equal"))
   do!
-    Let ("hoge", FuncDef ({ Args = ["a"]; Body = binaryOp ("+", Obj (box 100), Ref "a") }),
+    Let ("hoge", FuncDef ({ Args = Identifier "a"; Body = binaryOp ("+", Obj (box 100), Ref "a") }),
       Apply (Ref "hoge", Obj (box 22)))
     |> eval |> assertEquals (Ok (box 122))
   do!
     let body = If (binaryOp ("==", Ref "n", Obj (box 0)), Obj (box 1), binaryOp ("*", Ref "n", Apply (Ref "fac", binaryOp ("-", Ref "n", Obj(box 1)))))
-    Let ("fac", FuncDef ({ Args = ["n"]; Body = body }),
+    Let ("fac", FuncDef ({ Args = Identifier "n"; Body = body }),
       Apply (Ref "fac", Obj (box 4)))
     |> eval |> assertEquals (Ok (box 24))
   do!
