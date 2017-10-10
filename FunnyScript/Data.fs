@@ -32,9 +32,10 @@ type IMutable =
 type Record = Map<string, obj>
 
 type Pattern =
-  | Identifier of string
+  | Any
   | Tuple of Pattern list
   | Record of list<string * Pattern>
+  | Named of string * Pattern
 with
   static member Empty = Tuple[]
     
@@ -84,22 +85,23 @@ module Data =
 [<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
 module Pattern =
   let tryMatchWith (obj : obj) pattern =
-    let rec execute pattern (obj : obj) env =
+    let rec execute pattern (obj : obj) matched =
       match pattern with
-      | Identifier name -> env |> Map.add name obj |> Some
+      | Named (name, pattern) -> matched |> execute pattern obj |> Option.map (Map.add name obj)
+      | Any -> Some matched
       | Tuple items ->
         match items, obj with
-        | [], null -> env |> Some
+        | [], null -> matched |> Some
         | _, FunnyArray a when a.Count = items.Length ->
           items
           |> List.mapi (fun i item -> item, a.[i])
           |> List.fold (fun env (item, obj) -> env |> Option.bind (execute item obj)) (Some env)
-        | [item], _ -> env |> execute item obj
+        | [item], _ -> matched |> execute item obj
         | _ -> None
       | Record items ->
         match obj with
         | :? Record as r ->
-          (Some env, items) ||> List.fold (fun env (name, item) ->
+          (Some matched, items) ||> List.fold (fun env (name, item) ->
             env |> Option.bind (fun env ->
             r |> Map.tryFind name |> Option.bind (fun obj ->
               env |> execute item obj)))

@@ -70,11 +70,16 @@ let private sepByComma p = sepBy p (char_ws ',')
 
 let pPattern =
   let pPattern, pPatternRef = createParserForwardedToRef<Pattern, unit>()
-  pPatternRef :=
+  let pPatternTerm =
     choice [
-      pIdentifier |>> Pattern.Identifier
+      char_ws '_' |>> fun _ -> Pattern.Any
       between_ws '(' ')' (sepByComma pPattern) |>> Pattern.Tuple
       between_ws '{' '}' (sepEndBy (pIdentifier .>> str_ws ":=" .>>. pPattern) (char_ws ';')) |>> Pattern.Record
+    ]
+  pPatternRef :=
+    choice [
+      opt (char_ws ':') >>. pPatternTerm
+      pIdentifier .>>. opt (char_ws ':' >>. pPatternTerm) |>> fun (name, pat) -> Named (name, pat |> Option.defaultValue Any)
     ]
   pPattern
 
@@ -107,7 +112,7 @@ let pExpr =
     pPattern .>> str_ws "->" .>>. pExpr
     |>> (fun (args, body) -> FuncDef { Args = args; Body = body })
   let pLambda2 =
-    attempt (char_ws1 '|') >>. pExpr |>> fun expr -> FuncDef { Args = Identifier "@"; Body = expr }
+    attempt (char_ws1 '|') >>. pExpr |>> fun expr -> FuncDef { Args = Named ("@", Any); Body = expr }
   let pRecord =
     let pRecItem = pIdentifier .>> str_ws ":=" .>>. pExpr
     between_ws '{' '}' (sepEndBy pRecItem (char_ws ';'))
@@ -120,6 +125,8 @@ let pExpr =
       | [] -> Obj null
       | [expr] -> expr
       | tuple  -> tuple |> List.toArray |> NewArray
+  let pCase =
+    char_ws '#' |>> fun _ -> NewCase None
   let pRange =
     between (pchar '~') (pchar '~')
       ((pchar '[' <|> pchar '(') .>> spaces
@@ -131,7 +138,7 @@ let pExpr =
       let upper = { Expr = upper; IsOpen = brace2 = ')' }
       Interval (lower, upper)
   let pTermItem =
-    choice [ attempt pLambda; pLambda2; pAtom; pList; pTuple; pRecord; pRange ]
+    choice [ attempt pLambda; pLambda2; pAtom; pList; pTuple; pRecord; pCase; pRange ]
     .>>. many (attempt (char_ws '.' >>. pIdentifier))
     |>> fun (expr, mems) -> (expr, mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
   let pTerm =
@@ -143,7 +150,7 @@ let pExpr =
     |>> fun (mems, args) ->
       let self = (Ref "__SELF__", mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
       let body = (self, args) ||> List.fold (fun f arg -> Apply (f, arg))
-      FuncDef { Args = Identifier "__SELF__"; Body = body }
+      FuncDef { Args = Named ("__SELF__", Any); Body = body }
   let opp = new OperatorPrecedenceParser<Expr,unit,unit>()
   opp.TermParser <- pSyntaxSugarLambdaTerm <|> pTerm
 

@@ -403,6 +403,7 @@ let patternMatchTest = test "pattern match test" {
   """ ==> "Jack the Ripper"
 
   do! "{ a := { b := (1, 2); c := 3 }; d := 4 } |> { a := { b := (x, y) }} -> x + y" ==> 3
+  do! "{ a := { b := (1, 2); c := 3 }; d := 4 } |> (x : { a := { b := (_, _) }; d := _ }) -> x.a.b 1 + x.d" ==> 6
 }
 
 let extendTest = test "extend test" {
@@ -426,3 +427,20 @@ let evalTest = test "eval test" {
     eval "a + b"
   """ ==> 17
 }
+
+(*
+let caseTest = test "case test" {
+  do! """
+    CaseA := #;
+    a := CaseA;
+    a |> CaseA -> 123
+  """ ==> 123
+
+  do! """
+    CaseA := #; CaseB := # (_, _);
+    Hoge := #{ CaseA; CaseB (_, _) };
+    a := CaseA;
+    a |> CaseB -> 123
+  """ ==>! Unmatched
+}
+*)
