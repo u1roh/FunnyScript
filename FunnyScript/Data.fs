@@ -95,16 +95,16 @@ module Pattern =
         | _, FunnyArray a when a.Count = items.Length ->
           items
           |> List.mapi (fun i item -> item, a.[i])
-          |> List.fold (fun env (item, obj) -> env |> Option.bind (execute item obj)) (Some env)
+          |> List.fold (fun matched (item, obj) -> matched |> Option.bind (execute item obj)) (Some matched)
         | [item], _ -> matched |> execute item obj
         | _ -> None
       | Record items ->
         match obj with
         | :? Record as r ->
-          (Some matched, items) ||> List.fold (fun env (name, item) ->
-            env |> Option.bind (fun env ->
+          (Some matched, items) ||> List.fold (fun matched (name, item) ->
+            matched |> Option.bind (fun matched ->
             r |> Map.tryFind name |> Option.bind (fun obj ->
-              env |> execute item obj)))
+              matched |> execute item obj)))
         | _ -> None
     Map.empty |> execute pattern obj
 
