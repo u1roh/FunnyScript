@@ -29,6 +29,8 @@ let applyCore env (f : obj) (arg : obj) =
   let err() = error (NotApplyable (f, arg))
   match f with
   | :? IFuncObj as f -> f.Apply (arg, env)
+  | :? Case as c ->
+    error (NotImplemented "apply for Case")
   | :? int as a ->
     match arg with
     | :? int   as b -> Ok <| box (a * b)

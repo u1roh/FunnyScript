@@ -9,26 +9,10 @@ module internal Env =
   let openRecord (record : Record) env =
     (env, record) ||> Seq.fold (fun env x -> env |> Map.add x.Key (Ok x.Value))
 
-  let rec matchWith pattern (obj : obj) env =
-    match pattern with
-    | Identifier name -> env |> Map.add name (Ok obj) |> Ok
-    | Tuple items ->
-      match items, obj with
-      | [], null -> env |> Ok
-      | _, FunnyArray a when a.Count = items.Length ->
-        items
-        |> List.mapi (fun i item -> item, a.[i])
-        |> List.fold (fun env (item, obj) -> env |> Result.bind (matchWith item obj)) (Ok env)
-      | [item], _ -> env |> matchWith item obj
-      | _ -> error Unmatched
-    | Record items ->
-      match obj with
-      | :? Record as r ->
-        (Ok env, items) ||> List.fold (fun env (name, item) ->
-          env |> Result.bind (fun env ->
-          r |> Map.tryFind name |> (function Some obj -> Ok obj | _ -> error Unmatched) |> Result.bind (fun obj ->
-            env |> matchWith item obj)))
-      | _ -> error Unmatched
+  let matchWith pattern (obj : obj) env =
+    pattern |> Pattern.tryMatchWith obj
+    |> Option.map (Map.fold (fun env name obj -> env |> Map.add name (Ok obj)) env)
+    |> function Some env -> Ok env | _ -> error Unmatched
 
   let findFunnyType (typeName : string) (env : Env) =
     let typeName = typeName.Split '.'
@@ -98,6 +82,8 @@ let rec eval expr env =
     match err with
     | Some err -> error err
     | _ -> items |> Array.choose (function Ok x -> Some x | _ -> None) |> box |> Ok
+  | NewCase pattern ->
+    error (NotImplemented "eval for NewCase")
   | Interval (lower, upper) ->
     env |> forceEval lower.Expr |> Result.bind Obj.cast<int> |> Result.bind (fun lowerVal ->
     env |> forceEval upper.Expr |> Result.bind Obj.cast<int> |> Result.bind (fun upperVal ->

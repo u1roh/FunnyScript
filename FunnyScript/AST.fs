@@ -45,6 +45,7 @@ and Expr =
   | FuncDef of FuncDef
   | NewRecord of (string * Expr) list
   | NewArray of Expr[]
+  | NewCase of Pattern option
   | Interval of IntervalBound * IntervalBound
   | If of condition:Expr * thenExpr:Expr * elseExpr:Expr
   | Substitute of Expr * Expr
@@ -52,11 +53,6 @@ and Expr =
   | Load of asm:string * succ:Expr
   | OnError of target:Expr * handler:Expr
   | Trace of Expr * Position
-
-and Pattern =
-  | Identifier of string
-  | Tuple of Pattern list
-  | Record of list<string * Pattern>
 
 and FuncDef = {
     Args : Pattern

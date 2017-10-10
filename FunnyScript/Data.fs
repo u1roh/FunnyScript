@@ -31,6 +31,18 @@ type IMutable =
 
 type Record = Map<string, obj>
 
+type Pattern =
+  | Identifier of string
+  | Tuple of Pattern list
+  | Record of list<string * Pattern>
+with
+  static member Empty = Tuple[]
+    
+type Case (pat : Pattern) =
+  new () = Case Pattern.Empty
+  member __.Pattern = pat
+
+type CaseValue = CaseValue of Case * obj
 
 module FunnyArray =
   let ofArray (a : Array) =
@@ -60,7 +72,6 @@ module FunnyArray =
   let append (a : IFunnyArray) (b : IFunnyArray) =
     Array.init (a.Count + b.Count) (fun i -> if i < a.Count then a.[i] else b.[i - a.Count])
 
-
 [<AutoOpen>]
 module Data =
   let (|FunnyArray|_|) (a : obj) =
@@ -68,6 +79,32 @@ module Data =
     | :? IFunnyArray as a -> Some a
     | :? Array as a -> Some (FunnyArray.ofArray a)
     | _ -> None
+
+
+[<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
+module Pattern =
+  let tryMatchWith (obj : obj) pattern =
+    let rec execute pattern (obj : obj) env =
+      match pattern with
+      | Identifier name -> env |> Map.add name obj |> Some
+      | Tuple items ->
+        match items, obj with
+        | [], null -> env |> Some
+        | _, FunnyArray a when a.Count = items.Length ->
+          items
+          |> List.mapi (fun i item -> item, a.[i])
+          |> List.fold (fun env (item, obj) -> env |> Option.bind (execute item obj)) (Some env)
+        | [item], _ -> env |> execute item obj
+        | _ -> None
+      | Record items ->
+        match obj with
+        | :? Record as r ->
+          (Some env, items) ||> List.fold (fun env (name, item) ->
+            env |> Option.bind (fun env ->
+            r |> Map.tryFind name |> Option.bind (fun obj ->
+              env |> execute item obj)))
+        | _ -> None
+    Map.empty |> execute pattern obj
 
 
 // 下記はまだ迷っているのでコメントアウト
