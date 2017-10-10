@@ -35,6 +35,7 @@ type Pattern =
   | Any
   | Tuple of Pattern list
   | Record of list<string * Pattern>
+  | Case of string * Pattern
   | Named of string * Pattern
 with
   static member Empty = Tuple[]
@@ -84,7 +85,7 @@ module Data =
 
 [<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
 module Pattern =
-  let tryMatchWith (obj : obj) pattern =
+  let tryMatchWith (env : string -> obj option) (obj : obj) pattern =
     let rec execute pattern (obj : obj) matched =
       match pattern with
       | Named (name, pattern) -> matched |> execute pattern obj |> Option.map (Map.add name obj)
@@ -106,6 +107,16 @@ module Pattern =
             r |> Map.tryFind name |> Option.bind (fun obj ->
               matched |> execute item obj)))
         | _ -> None
+      | Case (case, pattern) ->
+        printfn "Case (%A, %A), obj = %A" case pattern obj
+        if pattern = Pattern.Empty && env case = Some obj then Some matched else
+        env case
+        |> Option.bind (function :? Case as case -> Some case | _ -> None)
+        |> Option.bind (fun case ->
+          printfn "case = %A" case
+          match obj with :? CaseValue as obj -> Some obj | _ -> None
+          |> Option.bind (function CaseValue (c, obj) when c = case -> Some obj | _ -> None))
+        |> Option.bind (fun obj -> matched |> execute pattern obj)
     Map.empty |> execute pattern obj
 
 

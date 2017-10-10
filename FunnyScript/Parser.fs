@@ -75,6 +75,7 @@ let pPattern =
       char_ws '_' |>> fun _ -> Pattern.Any
       between_ws '(' ')' (sepByComma pPattern) |>> Pattern.Tuple
       between_ws '{' '}' (sepEndBy (pIdentifier .>> str_ws ":=" .>>. pPattern) (char_ws ';')) |>> Pattern.Record
+      char_ws '#' >>. pIdentifier .>>. opt pPattern |>> fun (case, pat) -> Pattern.Case (case, pat |> Option.defaultValue Pattern.Empty)
     ]
   pPatternRef :=
     choice [

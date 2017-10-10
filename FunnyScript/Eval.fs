@@ -10,7 +10,7 @@ module internal Env =
     (env, record) ||> Seq.fold (fun env x -> env |> Map.add x.Key (Ok x.Value))
 
   let matchWith pattern (obj : obj) env =
-    pattern |> Pattern.tryMatchWith obj
+    pattern |> Pattern.tryMatchWith (fun name -> env |> Map.tryFind name |> Option.bind Result.toOption) obj
     |> Option.map (Map.fold (fun env name obj -> env |> Map.add name (Ok obj)) env)
     |> function Some env -> Ok env | _ -> error Unmatched
 
@@ -83,7 +83,9 @@ let rec eval expr env =
     | Some err -> error err
     | _ -> items |> Array.choose (function Ok x -> Some x | _ -> None) |> box |> Ok
   | NewCase pattern ->
-    error (NotImplemented "eval for NewCase")
+    match pattern with
+    | None -> Case () |> box |> Ok
+    | _ -> error (NotImplemented "eval for NewCase")
   | Interval (lower, upper) ->
     env |> forceEval lower.Expr |> Result.bind Obj.cast<int> |> Result.bind (fun lowerVal ->
     env |> forceEval upper.Expr |> Result.bind Obj.cast<int> |> Result.bind (fun upperVal ->

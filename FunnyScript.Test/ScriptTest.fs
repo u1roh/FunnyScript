@@ -428,19 +428,16 @@ let evalTest = test "eval test" {
   """ ==> 17
 }
 
-(*
 let caseTest = test "case test" {
   do! """
     CaseA := #;
     a := CaseA;
-    a |> CaseA -> 123
+    a |> #CaseA -> 123
   """ ==> 123
 
   do! """
-    CaseA := #; CaseB := # (_, _);
-    Hoge := #{ CaseA; CaseB (_, _) };
+    CaseA := #; CaseB := #;
     a := CaseA;
-    a |> CaseB -> 123
+    a |> #CaseB -> 123
   """ ==>! Unmatched
 }
-*)
