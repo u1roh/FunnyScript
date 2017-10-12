@@ -83,6 +83,15 @@ let error e =
   Error { Err = e; StackTrace = [] }
 
 
+[<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
+module Env =
+  let get id (env : Env) =
+    env |> Map.tryFind id |> function Some x -> x | _ -> error (IdentifierNotFound id)
+
+  let tryGet id (env : Env) =
+    env |> Map.tryFind id |> Option.bind Result.toOption
+  
+
 module FuncObj =
   let create f = {
     new IFuncObj with

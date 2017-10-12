@@ -108,12 +108,10 @@ module Pattern =
               matched |> execute item obj)))
         | _ -> None
       | Case (case, pattern) ->
-        printfn "Case (%A, %A), obj = %A" case pattern obj
         if pattern = Pattern.Empty && env case = Some obj then Some matched else
         env case
         |> Option.bind (function :? Case as case -> Some case | _ -> None)
         |> Option.bind (fun case ->
-          printfn "case = %A" case
           match obj with :? CaseValue as obj -> Some obj | _ -> None
           |> Option.bind (function CaseValue (c, obj) when c = case -> Some obj | _ -> None))
         |> Option.bind (fun obj -> matched |> execute pattern obj)

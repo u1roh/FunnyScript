@@ -440,4 +440,13 @@ let caseTest = test "case test" {
     a := CaseA;
     a |> #CaseB -> 123
   """ ==>! Unmatched
+
+  do! """
+    Add := # (_, _); Mul := # { width := _; height := _ };
+    f := match [
+      #Add (a, b) -> a + b,
+      #Mul { width := x; height := y } -> x y
+    ];
+    [Add (1, 2), Mul{ width := 3; height := 4 }, Add (5, 6)] |> map f
+  """ ==> [| 3; 12; 11 |]
 }

@@ -30,7 +30,8 @@ let applyCore env (f : obj) (arg : obj) =
   match f with
   | :? IFuncObj as f -> f.Apply (arg, env)
   | :? Case as c ->
-    error (NotImplemented "apply for Case")
+    c.Pattern |> Pattern.tryMatchWith (fun name -> env |> Env.tryGet name) arg
+    |> function Some _ -> CaseValue (c, arg) |> box |> Ok | _ -> error Unmatched
   | :? int as a ->
     match arg with
     | :? int   as b -> Ok <| box (a * b)

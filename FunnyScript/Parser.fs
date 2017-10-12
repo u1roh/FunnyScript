@@ -127,7 +127,7 @@ let pExpr =
       | [expr] -> expr
       | tuple  -> tuple |> List.toArray |> NewArray
   let pCase =
-    char_ws '#' |>> fun _ -> NewCase None
+    char_ws '#' >>. opt pPattern |>> NewCase
   let pRange =
     between (pchar '~') (pchar '~')
       ((pchar '[' <|> pchar '(') .>> spaces

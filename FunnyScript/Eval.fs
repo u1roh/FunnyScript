@@ -3,14 +3,11 @@ open System
 open System.Collections
 
 module internal Env =
-  let tryGet id (env : Env) =
-    env |> Map.tryFind id |> function Some x -> x | _ -> error (IdentifierNotFound id)
-
   let openRecord (record : Record) env =
     (env, record) ||> Seq.fold (fun env x -> env |> Map.add x.Key (Ok x.Value))
 
   let matchWith pattern (obj : obj) env =
-    pattern |> Pattern.tryMatchWith (fun name -> env |> Map.tryFind name |> Option.bind Result.toOption) obj
+    pattern |> Pattern.tryMatchWith (fun name -> env |> Env.tryGet name) obj
     |> Option.map (Map.fold (fun env name obj -> env |> Map.add name (Ok obj)) env)
     |> function Some env -> Ok env | _ -> error Unmatched
 
@@ -43,7 +40,7 @@ let rec eval expr env =
   match expr with
   | Trace (expr, pos) -> eval expr env |> Result.mapError (fun e -> { e with StackTrace = pos :: e.StackTrace })
   | Obj x -> Ok x
-  | Ref x -> env |> Env.tryGet x
+  | Ref x -> env |> Env.get x
   | RefMember (expr, name) ->
     env |> forceEval expr |> Result.bind (fun obj ->
       match Obj.findMember obj name with
@@ -83,9 +80,7 @@ let rec eval expr env =
     | Some err -> error err
     | _ -> items |> Array.choose (function Ok x -> Some x | _ -> None) |> box |> Ok
   | NewCase pattern ->
-    match pattern with
-    | None -> Case () |> box |> Ok
-    | _ -> error (NotImplemented "eval for NewCase")
+    pattern |> Option.map Case |> Option.defaultWith Case |> box |> Ok
   | Interval (lower, upper) ->
     env |> forceEval lower.Expr |> Result.bind Obj.cast<int> |> Result.bind (fun lowerVal ->
     env |> forceEval upper.Expr |> Result.bind Obj.cast<int> |> Result.bind (fun upperVal ->
