@@ -34,6 +34,7 @@ type Record = Map<string, obj>
 type Pattern =
   | Any
   | Tuple of Pattern list
+  | Array of Pattern list
   | Record of list<string * Pattern>
   | Case of string * Pattern
   | Named of string * Pattern
@@ -93,11 +94,18 @@ module Pattern =
       | Tuple items ->
         match items, obj with
         | [], null -> matched |> Some
-        | _, FunnyArray a when a.Count = items.Length ->
+        | _, FunnyArray a when a.Count >= 2 && a.Count = items.Length ->
           items
           |> List.mapi (fun i item -> item, a.[i])
           |> List.fold (fun matched (item, obj) -> matched |> Option.bind (execute item obj)) (Some matched)
         | [item], _ -> matched |> execute item obj
+        | _ -> None
+      | Array items ->
+        match obj with
+        | FunnyArray a when a.Count = items.Length ->
+          items
+          |> List.mapi (fun i item -> item, a.[i])
+          |> List.fold (fun matched (item, obj) -> matched |> Option.bind (execute item obj)) (Some matched)
         | _ -> None
       | Record items ->
         match obj with

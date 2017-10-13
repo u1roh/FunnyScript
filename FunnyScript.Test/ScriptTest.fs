@@ -404,6 +404,14 @@ let patternMatchTest = test "pattern match test" {
 
   do! "{ a := { b := (1, 2); c := 3 }; d := 4 } |> { a := { b := (x, y) }} -> x + y" ==> 3
   do! "{ a := { b := (1, 2); c := 3 }; d := 4 } |> (x : { a := { b := (_, _) }; d := _ }) -> x.a.b 1 + x.d" ==> 6
+
+  do! "[] |> () -> 0" ==>! Unmatched
+  do! "[] |> [] -> 0" ==> 0
+
+  do! "[1] |> (x) -> x" ==> [| 1 |]
+  do! "[1] |> [x] -> x" ==> 1
+
+  do! "[1, 2] |> [x, y] -> x + y" ==> 3
 }
 
 let extendTest = test "extend test" {

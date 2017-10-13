@@ -73,7 +73,8 @@ let pPattern =
   let pPatternTerm =
     choice [
       char_ws '_' |>> fun _ -> Pattern.Any
-      between_ws '(' ')' (sepByComma pPattern) |>> Pattern.Tuple
+      between_ws '(' ')' (sepByComma pPattern) |>> function [p] -> p | items -> Pattern.Tuple items
+      between_ws '[' ']' (sepByComma pPattern) |>> Pattern.Array
       between_ws '{' '}' (sepEndBy (pIdentifier .>> str_ws ":=" .>>. pPattern) (char_ws ';')) |>> Pattern.Record
       char_ws '#' >>. pIdentifier .>>. opt pPattern |>> fun (case, pat) -> Pattern.Case (case, pat |> Option.defaultValue Pattern.Empty)
     ]
