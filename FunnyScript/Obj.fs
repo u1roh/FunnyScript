@@ -25,6 +25,11 @@ let cast<'a> (obj : obj) =
   | :? 'a as obj -> Ok obj
   | _ -> error (TypeMismatch (ClrType typeof<'a>, typeid obj))
 
+let toFunnyArray (obj : obj) =
+  match obj with
+  | FunnyArray a -> Ok a
+  | _ -> error (TypeMismatch (ClrType typeof<IFunnyArray>, typeid obj))
+
 let applyCore env (f : obj) (arg : obj) =
   let err() = error (NotApplyable (f, arg))
   match f with

@@ -48,21 +48,37 @@ type Case (pat : Pattern) =
 type CaseValue = CaseValue of Case * obj
 
 module FunnyArray =
-  let ofArray (a : Array) =
+  let ofCollection getItem (a : ICollection) =
     { new IFunnyArray with
-        member __.Count = a.Length
-        member __.Item with get i = a.GetValue i
+        member __.Count = a.Count
+        member __.Item with get i = getItem i
         member __.GetEnumerator() = a.GetEnumerator()
         member __.IsSynchronized = a.IsSynchronized
         member __.SyncRoot = a.SyncRoot
         member __.CopyTo (a, i) = a.CopyTo (a, i)
     }
 
+  let ofArray (a : Array) =
+    ofCollection a.GetValue a
+
+  let ofObj (a : obj) =
+    match a with
+    | :? IFunnyArray as a -> Some a
+    | :? Array as a -> Some (ofArray a)
+    | :? ArrayList as a -> Some (ofCollection (fun i -> a.[i]) a)
+    | _ -> None
+
+  let toArray (a : IFunnyArray) =
+    Array.init a.Count (fun i -> a.[i])
+
   let map f (a : IFunnyArray) =
     Array.init a.Count (fun i -> f a.[i])
 
   let choose f a =
     a |> map f |> Array.choose id
+
+  let collect (f : obj -> IFunnyArray) a =
+    a |> map f |> Array.collect toArray
 
   let filter pred a =
     let pred = a |> map pred
@@ -77,11 +93,7 @@ module FunnyArray =
 
 [<AutoOpen>]
 module Data =
-  let (|FunnyArray|_|) (a : obj) =
-    match a with
-    | :? IFunnyArray as a -> Some a
-    | :? Array as a -> Some (FunnyArray.ofArray a)
-    | _ -> None
+  let (|FunnyArray|_|) (a : obj) = FunnyArray.ofObj a
 
 
 [<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]

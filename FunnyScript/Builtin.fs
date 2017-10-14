@@ -3,6 +3,7 @@ open System
 open System.Collections
 
 let private applyForce f = Obj.apply f >> Result.bind Obj.force
+let private getOrRaise r = match r with Ok x -> x | Error e -> raiseErrInfo e
 
 let private toFunc1 f = box (FuncObj.create (f >> Result.mapError ErrInfo.Create))
 let private toFunc2 f = toFunc1 (f >> toFunc1 >> Ok)
@@ -157,7 +158,7 @@ let private stdlib1 =
     "extend", FuncObj.ofFun2 extendType :> obj
 
     "array", toFunc2 (fun len f ->
-      let f = applyForce f >> function Ok x -> x | Error e -> raiseErrInfo e
+      let f = applyForce f >> getOrRaise
       match len with
       | :? int as len -> Array.init len f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<int>, typeid len)))
@@ -179,7 +180,7 @@ let private stdlib1 =
         |> Option.defaultValue (Ok null))) :> obj
 
     "map", toFunc2 (fun f src ->
-      let f = applyForce f >> function Ok x -> x | Error e -> raiseErrInfo e
+      let f = applyForce f >> getOrRaise
       match src with
       | FunnyArray src -> src |> FunnyArray.map f |> box |> Ok
       | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.map f |> box |> Ok
@@ -192,6 +193,13 @@ let private stdlib1 =
       match src with
       | FunnyArray src -> src |> FunnyArray.choose f |> box |> Ok
       | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.choose f |> box |> Ok
+      | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
+
+    "collect", toFunc2 (fun f src ->
+      let f = applyForce f >> getOrRaise
+      match src with
+      | FunnyArray src -> src |> FunnyArray.collect (f >> Obj.toFunnyArray >> getOrRaise) |> box |> Ok
+      | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.collect (f >> Obj.cast<seq<obj>> >> getOrRaise) |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
 
     "fold", FuncObj.create3 (fun acc0 f src ->
