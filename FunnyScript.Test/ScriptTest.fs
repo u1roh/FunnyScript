@@ -412,6 +412,10 @@ let patternMatchTest = test "pattern match test" {
   do! "[1] |> [x] -> x" ==> 1
 
   do! "[1, 2] |> [x, y] -> x + y" ==> 3
+  do! "[1, 2, 3] |> [x, ...] -> x" ==> 1
+  do! "[1, 2, 3] |> [..., x] -> x" ==> 3
+  do! "[1, 2, 3, 4, 5] |> [x, ..., y] -> [x, y]" ==> [| 1; 5 |]
+  do! "~[0, 10)~ |> [x, ..., y] -> [x, y]" ==> [| 0; 9 |]
 }
 
 let extendTest = test "extend test" {

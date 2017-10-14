@@ -34,7 +34,7 @@ type Record = Map<string, obj>
 type Pattern =
   | Any
   | Tuple of Pattern list
-  | Array of Pattern list
+  | Array of Pattern list * Pattern list option
   | Record of list<string * Pattern>
   | Case of string * Pattern
   | Named of string * Pattern
@@ -88,6 +88,8 @@ module Data =
 module Pattern =
   let tryMatchWith (env : string -> obj option) (obj : obj) pattern =
     let rec execute pattern (obj : obj) matched =
+      let foldMatchedMap items map =
+        items |> List.fold (fun matched (item, obj) -> matched |> Option.bind (execute item obj)) map
       match pattern with
       | Named (name, pattern) -> matched |> execute pattern obj |> Option.map (Map.add name obj)
       | Any -> Some matched
@@ -95,17 +97,20 @@ module Pattern =
         match items, obj with
         | [], null -> matched |> Some
         | _, FunnyArray a when a.Count >= 2 && a.Count = items.Length ->
-          items
-          |> List.mapi (fun i item -> item, a.[i])
-          |> List.fold (fun matched (item, obj) -> matched |> Option.bind (execute item obj)) (Some matched)
+          Some matched |> foldMatchedMap (items |> List.mapi (fun i item -> item, a.[i]))
         | [item], _ -> matched |> execute item obj
         | _ -> None
-      | Array items ->
+      | Array (items, None) ->
         match obj with
         | FunnyArray a when a.Count = items.Length ->
-          items
-          |> List.mapi (fun i item -> item, a.[i])
-          |> List.fold (fun matched (item, obj) -> matched |> Option.bind (execute item obj)) (Some matched)
+          Some matched |> foldMatchedMap (items |> List.mapi (fun i item -> item, a.[i]))
+        | _ -> None
+      | Array (heads, Some tails) ->
+        match obj with
+        | FunnyArray a when a.Count >= heads.Length + tails.Length ->
+          let heads = heads |> List.mapi (fun i item -> item, a.[i])
+          let tails = tails |> List.rev |> List.mapi (fun i item -> item, a.[a.Count - 1 - i])
+          Some matched |> foldMatchedMap heads |> foldMatchedMap tails
         | _ -> None
       | Record items ->
         match obj with

@@ -70,12 +70,21 @@ let private sepByComma p = sepBy p (char_ws ',')
 
 let pPattern =
   let pPattern, pPatternRef = createParserForwardedToRef<Pattern, unit>()
+  let sepByNone optionList =
+    ([[]], optionList) ||> List.fold (fun lists item ->
+      match item with
+      | Some item -> (item :: lists.Head) :: lists.Tail
+      | _ -> [] :: lists)
   let pPatternTerm =
     choice [
       char_ws '_' |>> fun _ -> Pattern.Any
-      between_ws '(' ')' (sepByComma pPattern) |>> function [p] -> p | items -> Pattern.Tuple items
-      between_ws '[' ']' (sepByComma pPattern) |>> Pattern.Array
       between_ws '{' '}' (sepEndBy (pIdentifier .>> str_ws ":=" .>>. pPattern) (char_ws ';')) |>> Pattern.Record
+      between_ws '(' ')' (sepByComma pPattern) |>> function [p] -> p | items -> Pattern.Tuple items
+      between_ws '[' ']' (sepByComma ((pPattern |>> Some) <|> (str_ws "..." |>> fun _ -> None)))
+        >>= (sepByNone >> function
+          | [ptns] -> preturn (Pattern.Array (ptns, None))
+          | [ptns2; ptns1] -> preturn (Pattern.Array (ptns1, Some ptns2))
+          | _ -> fail "invalid array pattern")
       char_ws '#' >>. pIdentifier .>>. opt pPattern |>> fun (case, pat) -> Pattern.Case (case, pat |> Option.defaultValue Pattern.Empty)
     ]
   pPatternRef :=
