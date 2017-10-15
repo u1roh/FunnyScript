@@ -43,7 +43,7 @@ let pLiteralString =
   |>> String.concat ""
 
 let reservedWords =
-  [ "do"; "if"; "else" ] |> Set.ofList
+  [ "do"; "if"; "else"; "in" ] |> Set.ofList
 
 let pIdentifier =
   choice [
@@ -192,6 +192,11 @@ let pExpr =
     prefixOp "-" 10
     InfixOperator("<-", spaces, 1, Associativity.Right, fun x y -> Substitute (x, y)) :> Operator<_, _, _>
   ] |> List.iter opp.AddOperator
+
+  [ "∪"; "∩"; "∈"; "∋"; "⊂"; "⊃"; "in" ]
+  |> List.map (fun op -> binaryOp op 1)
+  |> List.iter opp.AddOperator
+
   pExprRef :=
     choice [
       pDo

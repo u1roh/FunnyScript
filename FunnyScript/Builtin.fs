@@ -209,19 +209,41 @@ let private stdlib1 =
       | _ -> error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src))) |> box
       
     "filter", FuncObj.create2 (fun pred src ->
-      let pred = applyForce pred >> Result.bind Obj.cast<bool> >> function Ok x -> x | Error e -> raiseErrInfo e
+      let pred = applyForce pred >> Result.bind Obj.cast<bool> >> getOrRaise
       match src with
       | FunnyArray src -> src |> FunnyArray.filter pred |> box |> Ok
       | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.filter pred |> box |> Ok
       | _ -> error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src))) :> obj
 
+    "distinct", FuncObj.create (fun src ->
+      match src with
+      | FunnyArray src -> src |> FunnyArray.distinct |> box |> Ok
+      | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.distinct |> box |> Ok
+      | _ -> error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src))) :> obj
+
     "forall", FuncObj.create2 (fun pred src ->
-      let pred = applyForce pred >> Result.bind Obj.cast<bool> >> function Ok x -> x | Error e -> raiseErrInfo e
+      let pred = applyForce pred >> Result.bind Obj.cast<bool> >> getOrRaise
       src |> Obj.cast<IEnumerable> |> Result.map (Seq.cast<obj> >> Seq.forall pred >> box)) :> obj
 
     "exists", FuncObj.create2 (fun pred src ->
-      let pred = applyForce pred >> Result.bind Obj.cast<bool> >> function Ok x -> x | Error e -> raiseErrInfo e
+      let pred = applyForce pred >> Result.bind Obj.cast<bool> >> getOrRaise
       src |> Obj.cast<IEnumerable> |> Result.map (Seq.cast<obj> >> Seq.exists pred >> box)) :> obj
+
+    "∪", FuncObj.create2 (fun a b ->
+      a |> Obj.toFunnyArray |> Result.bind (fun a ->
+      b |> Obj.toFunnyArray |> Result.map  (fun b ->
+        FunnyArray.append a b |> Array.distinct |> box))) :> obj
+
+    "∩", FuncObj.create2 (fun a b ->
+      a |> Obj.toFunnyArray |> Result.bind (fun a ->
+      b |> Obj.toFunnyArray |> Result.map  (fun b ->
+        a |> FunnyArray.filter (fun x -> b |> Seq.cast<obj> |> Seq.exists ((=) x)) |> box))) :> obj
+
+    "∈", FuncObj.create2 (fun elm set ->
+      match set with
+      | :? IntInterval as set -> elm |> Obj.cast<int> |> Result.map (set.contains >> box)
+      | :? IEnumerable as set -> set |> Seq.cast<obj> |> Seq.exists ((=) elm) |> box |> Ok
+      | _ -> error (TypeMismatch (ClrType typeof<IEnumerable>, typeid set))) :> obj
 
     "record",   { Id = ClrType typeof<Record>;    ExtMembers = Map.empty } :> obj
     "function", { Id = ClrType typeof<IFuncObj>;  ExtMembers = Map.empty } :> obj
@@ -235,6 +257,8 @@ let private stdlib1 =
 let private stdlib2 =
   """
   rec := f -> x -> f (rec f) x; // Yコンビネータ
+  `∋` := set -> elm -> elm ∈ set;
+  `in` := `∈`;
   """
   |> Parser.parseModule "stdlib"
   |> function Ok lib -> lib | _ -> failwith "parse error in stdlib"
