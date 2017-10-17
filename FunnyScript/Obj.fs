@@ -30,6 +30,11 @@ let toFunnyArray (obj : obj) =
   | FunnyArray a -> Ok a
   | _ -> error (TypeMismatch (ClrType typeof<IFunnyArray>, typeid obj))
 
+let toSeq (obj : obj) =
+  match obj with
+  | Seq a -> Ok a
+  | _ -> error (TypeMismatch (ClrType typeof<IFunnyArray>, typeid obj))
+
 let applyCore env (f : obj) (arg : obj) =
   let err() = error (NotApplyable (f, arg))
   match f with

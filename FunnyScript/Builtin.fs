@@ -164,13 +164,13 @@ let private stdlib1 =
       | _ -> Error (TypeMismatch (ClrType typeof<int>, typeid len)))
 
     "isEmpty", toFunc1 (function
-      | :? ICollection as a -> Ok <| box (a.Count = 0)
-      | :? IEnumerable as a -> Ok <| box (Seq.cast<obj> a |> Seq.isEmpty)
+      | :? ICollection as a -> ok (a.Count = 0)
+      | :? IEnumerable as a -> ok (Seq.cast<obj> a |> Seq.isEmpty)
       | a -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid a)))
 
     "length", toFunc1 (function
-      | :? ICollection as a -> Ok (box a.Count)
-      | :? IEnumerable as a -> Ok (Seq.cast<obj> a |> Seq.length |> box)
+      | :? ICollection as a -> ok a.Count
+      | Seq a -> ok (a |> Seq.length)
       | a -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid a)))
 
     "foreach", FuncObj.create2 (fun f -> Obj.cast<IEnumerable> >> Result.bind (fun src ->
@@ -179,12 +179,19 @@ let private stdlib1 =
         |> Seq.tryPick (f >> function Error e -> Some (Error e) | _ -> None)
         |> Option.defaultValue (Ok null))) :> obj
 
-    "map", toFunc2 (fun f src ->
+//    "map", toFunc2 (fun f src ->
+//      let f = applyForce f >> getOrRaise
+//      match src with
+//      | FunnyArray src -> src |> FunnyArray.map f |> box |> Ok
+//      | Seq src -> src |> Seq.map f |> box |> Ok
+//      | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
+
+    "map", FuncObj.create (fun f ->
       let f = applyForce f >> getOrRaise
-      match src with
-      | FunnyArray src -> src |> FunnyArray.map f |> box |> Ok
-      | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.map f |> box |> Ok
-      | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
+      FuncObj.ofList [
+        FuncObj.create (Obj.toFunnyArray >> Result.map (FunnyArray.map f >> box))
+        FuncObj.create (Obj.toSeq >> Result.map (Seq.map f >> box))
+      ] |> box |> Ok) :> obj
 
     "choose", toFunc2 (fun f src ->
       let f = applyForce f >> function

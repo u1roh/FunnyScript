@@ -97,6 +97,7 @@ module FunnyArray =
 [<AutoOpen>]
 module Data =
   let (|FunnyArray|_|) (a : obj) = FunnyArray.ofObj a
+  let (|Seq|_|) = function (:? IEnumerable as a : obj) -> a |> Seq.cast<obj> |> Some | _ -> None
 
 
 [<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]

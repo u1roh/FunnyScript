@@ -79,8 +79,8 @@ type private ErrInfoException (e : ErrInfo) =
 
 let raiseErrInfo e = raise (ErrInfoException e)
 
-let error e =
-  Error { Err = e; StackTrace = [] }
+let ok x = Ok (box x)
+let error e = Error { Err = e; StackTrace = [] }
 
 
 [<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
