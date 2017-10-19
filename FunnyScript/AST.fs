@@ -112,13 +112,12 @@ module FuncObj =
   let ofFun2 f = ofFun (f >> ofFun)
   let ofFun3 f = ofFun (f >> ofFun2)
 
-  let invoke (f : obj) arg =
-    match f with
-    | :? IFuncObj as f -> f.Apply (arg, Map.empty)
-    | _ -> error (NotApplyable (f, arg))
+  let invoke (f : IFuncObj) arg = f.Apply (arg, Map.empty)
 
   let invoke2 f arg1 arg2 =
-    invoke f arg1 |> Result.bind (fun f -> invoke f arg2)
+    invoke f arg1
+    |> Result.bind (function :? IFuncObj as f -> Ok f | f -> error (NotApplyable (f, arg2)))
+    |> Result.bind (fun f -> invoke f arg2)
 
   let ofList flist =
     let rec execute errors flist arg =

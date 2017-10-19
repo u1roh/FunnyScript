@@ -8,6 +8,11 @@ let private getOrRaise r = match r with Ok x -> x | Error e -> raiseErrInfo e
 let private toFunc1 f = box (FuncObj.create (f >> Result.mapError ErrInfo.Create))
 let private toFunc2 f = toFunc1 (f >> toFunc1 >> Ok)
 
+module private FuncObj =
+  let forArray f = FuncObj.create (Obj.toFunnyArray >> Result.map (f >> box))
+  let forSeq   f = FuncObj.create (Obj.toSeq        >> Result.map (f >> box))
+
+
 type private NumOperands =
   | IntOperands of int * int
   | FloatOperands of float * float
@@ -163,15 +168,15 @@ let private stdlib1 =
       | :? int as len -> Array.init len f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<int>, typeid len)))
 
-    "isEmpty", toFunc1 (function
-      | :? ICollection as a -> ok (a.Count = 0)
-      | :? IEnumerable as a -> ok (Seq.cast<obj> a |> Seq.isEmpty)
-      | a -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid a)))
+    "isEmpty", FuncObj.ofList [
+      FuncObj.ofFun (fun (a : ICollection) -> a.Count = 0)
+      FuncObj.forSeq Seq.isEmpty
+    ] :> obj
 
-    "length", toFunc1 (function
-      | :? ICollection as a -> ok a.Count
-      | Seq a -> ok (a |> Seq.length)
-      | a -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid a)))
+    "length", FuncObj.ofList [
+      FuncObj.ofFun (fun (a : ICollection) -> a.Count)
+      FuncObj.forSeq Seq.length
+    ] :> obj
 
     "foreach", FuncObj.create2 (fun f -> Obj.cast<IEnumerable> >> Result.bind (fun src ->
         let f = applyForce f
@@ -179,62 +184,52 @@ let private stdlib1 =
         |> Seq.tryPick (f >> function Error e -> Some (Error e) | _ -> None)
         |> Option.defaultValue (Ok null))) :> obj
 
-//    "map", toFunc2 (fun f src ->
-//      let f = applyForce f >> getOrRaise
-//      match src with
-//      | FunnyArray src -> src |> FunnyArray.map f |> box |> Ok
-//      | Seq src -> src |> Seq.map f |> box |> Ok
-//      | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
-
     "map", FuncObj.create (fun f ->
       let f = applyForce f >> getOrRaise
       FuncObj.ofList [
-        FuncObj.create (Obj.toFunnyArray >> Result.map (FunnyArray.map f >> box))
-        FuncObj.create (Obj.toSeq >> Result.map (Seq.map f >> box))
-      ] |> box |> Ok) :> obj
+        FuncObj.forArray (FunnyArray.map f)
+        FuncObj.forSeq   (Seq.map f)
+      ] |> ok) :> obj
 
-    "choose", toFunc2 (fun f src ->
+    "choose", FuncObj.create (fun f ->
       let f = applyForce f >> function
         | Ok null -> None | Ok x -> Some x
         | Error { Err = Unmatched } -> None | Error e -> raiseErrInfo e
-      match src with
-      | FunnyArray src -> src |> FunnyArray.choose f |> box |> Ok
-      | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.choose f |> box |> Ok
-      | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
+      FuncObj.ofList [
+        FuncObj.forArray (FunnyArray.choose f)
+        FuncObj.forSeq   (Seq.choose f)
+      ] |> ok) :> obj
 
-    "collect", toFunc2 (fun f src ->
+    "collect", FuncObj.create (fun f ->
       let f = applyForce f >> getOrRaise
-      match src with
-      | FunnyArray src -> src |> FunnyArray.collect (f >> Obj.toFunnyArray >> getOrRaise) |> box |> Ok
-      | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.collect (f >> Obj.cast<seq<obj>> >> getOrRaise) |> box |> Ok
-      | _ -> Error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src)))
+      FuncObj.ofList [
+        FuncObj.forArray (FunnyArray.collect (f >> Obj.toFunnyArray >> getOrRaise))
+        FuncObj.forSeq   (Seq.collect (f >> Obj.toSeq >> getOrRaise))
+      ] |> ok) :> obj
 
     "fold", FuncObj.create3 (fun acc0 f src ->
       let f acc x = acc |> Result.bind (applyForce f) |> Result.bind (fun f -> x |> applyForce f)
-      match src with
-      | (:? IEnumerable as src) -> Seq.cast<obj> src |> Seq.fold f (Ok acc0)
-      | _ -> error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src))) |> box
+      src |> Obj.toSeq |> Result.bind (Seq.fold f (Ok acc0))) :> obj
       
-    "filter", FuncObj.create2 (fun pred src ->
+    "filter", FuncObj.create (fun pred ->
       let pred = applyForce pred >> Result.bind Obj.cast<bool> >> getOrRaise
-      match src with
-      | FunnyArray src -> src |> FunnyArray.filter pred |> box |> Ok
-      | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.filter pred |> box |> Ok
-      | _ -> error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src))) :> obj
+      FuncObj.ofList [
+        FuncObj.forArray (FunnyArray.filter pred)
+        FuncObj.forSeq   (Seq.filter pred)
+      ] |> ok) :> obj
 
-    "distinct", FuncObj.create (fun src ->
-      match src with
-      | FunnyArray src -> src |> FunnyArray.distinct |> box |> Ok
-      | :? IEnumerable as src -> Seq.cast<obj> src |> Seq.distinct |> box |> Ok
-      | _ -> error (TypeMismatch (ClrType typeof<IEnumerable>, typeid src))) :> obj
+    "distinct", FuncObj.ofList [
+        FuncObj.forArray FunnyArray.distinct
+        FuncObj.forSeq   Seq.distinct
+      ] :> obj
 
     "forall", FuncObj.create2 (fun pred src ->
       let pred = applyForce pred >> Result.bind Obj.cast<bool> >> getOrRaise
-      src |> Obj.cast<IEnumerable> |> Result.map (Seq.cast<obj> >> Seq.forall pred >> box)) :> obj
+      src |> Obj.toSeq |> Result.map (Seq.forall pred >> box)) :> obj
 
     "exists", FuncObj.create2 (fun pred src ->
       let pred = applyForce pred >> Result.bind Obj.cast<bool> >> getOrRaise
-      src |> Obj.cast<IEnumerable> |> Result.map (Seq.cast<obj> >> Seq.exists pred >> box)) :> obj
+      src |> Obj.toSeq |> Result.map (Seq.exists pred >> box)) :> obj
 
     "∪", FuncObj.create2 (fun a b ->
       a |> Obj.toFunnyArray |> Result.bind (fun a ->
@@ -246,11 +241,10 @@ let private stdlib1 =
       b |> Obj.toFunnyArray |> Result.map  (fun b ->
         a |> FunnyArray.filter (fun x -> b |> Seq.cast<obj> |> Seq.exists ((=) x)) |> box))) :> obj
 
-    "∈", FuncObj.create2 (fun elm set ->
-      match set with
-      | :? IntInterval as set -> elm |> Obj.cast<int> |> Result.map (set.contains >> box)
-      | :? IEnumerable as set -> set |> Seq.cast<obj> |> Seq.exists ((=) elm) |> box |> Ok
-      | _ -> error (TypeMismatch (ClrType typeof<IEnumerable>, typeid set))) :> obj
+    "∈", FuncObj.ofList [
+        FuncObj.ofFun2 (fun (set : IntInterval) (elm : int) -> set.contains elm)
+        FuncObj.create (fun elm -> FuncObj.forSeq (Seq.exists ((=) elm)) |> ok)
+      ] :> obj
 
     "record",   { Id = ClrType typeof<Record>;    ExtMembers = Map.empty } :> obj
     "function", { Id = ClrType typeof<IFuncObj>;  ExtMembers = Map.empty } :> obj
