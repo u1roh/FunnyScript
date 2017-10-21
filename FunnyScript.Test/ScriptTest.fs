@@ -334,7 +334,10 @@ let openTest = test "open test" {
 }
 
 let castTest = test "cast test" {
-  do! "Cast.int 3.14" ==> 3
+  do! "3.14 |> as System.Int32" ==> 3
+  do! "0 |> as System.Double" ==> 0.0
+  do! "\"123\" |> as System.Int32" ==> 123
+  do! "\"3.14\" |> as System.Double" ==> 3.14
 }
 
 let pipelineTest = test "pipeline test" {

@@ -63,18 +63,25 @@ let private logical op =
     | _, Error e -> Error e
   toFunc2 f
 
-let private castModule =
-  let rec castToInt (x : obj) =
+module private Cast =
+  let rec toInt (x : obj) =
     match x with
-    | :? int -> x |> Ok
-    | :? float as x -> int x |> box |> Ok
-    | :? bool  as x -> box (if x then 1 else 0) |> Ok
-    | :? IMutable as x -> castToInt x.Value
-    | _ -> Error (MiscError "casting to int failed")
-  [
-    "int", toFunc1 castToInt
-  ] |> Map.ofList |> box
+    | :? int -> x
+    | :? float as x -> int x |> box
+    | :? bool  as x -> box (if x then 1 else 0)
+    | :? string as x -> let ret, x = Int32.TryParse x in if ret then box x else null
+    | :? IMutable as x -> toInt x.Value
+    | _ -> null
 
+  let rec toFloat (x : obj) =
+    match x with
+    | :? float -> x
+    | :? float32 as x -> float x |> box
+    | :? int as x -> float x |> box
+    | :? string as x -> let ret, x = Double.TryParse x in if ret then box x else null
+    | :? IMutable as x -> toFloat x.Value
+    | _ -> null
+  
 let private asArray x =
   match x with
   | FunnyArray x -> Ok x
@@ -161,6 +168,23 @@ let private stdlib1 =
       | _ -> error (TypeMismatch (ClrType typeof<IFuncObj[]>, typeid handlers))) |> box
 
     "extend", FuncObj.ofFun2 extendType :> obj
+
+//    "as", FuncObj.ofFun (function
+//      | { Id = ClrType t } ->
+//        if t = typeof<int> then FuncObj.create (Cast.toInt >> ok)
+//        else FuncObj.create (fun _ -> Ok null)
+//      | _ -> FuncObj.create (fun _ -> Ok null)
+//    ) :> obj
+
+    "as",
+      (let castFuncs =
+        [ ClrType typeof<int>,    FuncObj.create (Cast.toInt   >> ok)
+          ClrType typeof<float>,  FuncObj.create (Cast.toFloat >> ok)
+        ] |> dict
+      FuncObj.ofFun (fun (t : FunnyType) ->
+        let contains, f = castFuncs.TryGetValue t.Id
+        if contains then f else FuncObj.create (fun _ -> Ok null)
+      ) :> obj)
 
     "array", toFunc2 (fun len f ->
       let f = applyForce f >> getOrRaise
@@ -249,9 +273,6 @@ let private stdlib1 =
     "record",   { Id = ClrType typeof<Record>;    ExtMembers = Map.empty } :> obj
     "function", { Id = ClrType typeof<IFuncObj>;  ExtMembers = Map.empty } :> obj
     "type",     { Id = ClrType typeof<FunnyType>; ExtMembers = Map.empty } :> obj
-
-    "Cast", castModule
-//    "List", listModule
 
   ] |> List.map (fun (name, obj) -> name, Obj obj)
 
