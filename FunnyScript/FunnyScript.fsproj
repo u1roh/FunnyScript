@@ -62,6 +62,7 @@
     <Compile Include="Data.fs" />
     <Compile Include="AST.fs" />
     <Compile Include="Parser.fs" />
+    <Compile Include="Pattern.fs" />
     <Compile Include="CLR.fs" />
     <Compile Include="Obj.fs" />
     <Compile Include="Eval.fs" />

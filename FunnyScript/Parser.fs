@@ -86,11 +86,12 @@ let pPattern =
           | [ptns2; ptns1] -> preturn (Pattern.Array (ptns1, Some ptns2))
           | _ -> fail "invalid array pattern")
       char_ws '#' >>. pIdentifier .>>. opt pPattern |>> fun (case, pat) -> Pattern.Case (case, pat |> Option.defaultValue Pattern.Empty)
+      pIdentifier |>> Typed
     ]
   pPatternRef :=
     choice [
-      opt (char_ws ':') >>. pPatternTerm
       pIdentifier .>>. opt (char_ws ':' >>. pPatternTerm) |>> fun (name, pat) -> Named (name, pat |> Option.defaultValue Any)
+      opt (char_ws ':') >>. pPatternTerm
     ]
   pPattern
 

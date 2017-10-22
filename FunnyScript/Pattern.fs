@@ -8,7 +8,6 @@ let tryMatchWith (env : string -> obj option) (obj : obj) pattern =
     match pattern with
     | Named (name, pattern) -> matched |> execute pattern obj |> Option.map (Map.add name obj)
     | Any -> Some matched
-    | Guard pred -> if pred.Invoke obj then Some matched else None
     | Tuple items ->
       match items, obj with
       | [], null -> matched |> Some
@@ -36,21 +35,18 @@ let tryMatchWith (env : string -> obj option) (obj : obj) pattern =
           r |> Map.tryFind name |> Option.bind (fun obj ->
             matched |> execute item obj)))
       | _ -> None
+    | Typed typeName ->
+      env typeName
+      |> Option.bind (function :? FunnyType as t -> Some t | _ -> None)
+      |> Option.bind (function
+        | { Id = ClrType t } -> if t.IsAssignableFrom (obj.GetType()) then Some matched else None
+        | t -> match obj with :? Instance as obj when obj.Type = t -> Some matched | _ -> None)
     | Case (case, pattern) ->
       if pattern = Pattern.Empty && env case = Some obj then Some matched else
       env case
+      |> Option.bind (function :? Case as case -> Some case | _ -> None)
       |> Option.bind (fun case ->
-        match case, obj with
-        | (:? Case as case), (:? CaseValue as obj) ->
-          let (CaseValue (c, obj)) = obj
-          if c = case then Some obj else None
-        | _ -> None)
+        match obj with :? CaseValue as obj -> Some obj | _ -> None
+        |> Option.bind (function CaseValue (c, obj) when c = case -> Some obj | _ -> None))
       |> Option.bind (fun obj -> matched |> execute pattern obj)
-
-//        env case
-//        |> Option.bind (function :? Case as case -> Some case | _ -> None)
-//        |> Option.bind (fun case ->
-//          match obj with :? CaseValue as obj -> Some obj | _ -> None
-//          |> Option.bind (function CaseValue (c, obj) when c = case -> Some obj | _ -> None))
-//        |> Option.bind (fun obj -> matched |> execute pattern obj)
   Map.empty |> execute pattern obj

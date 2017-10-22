@@ -420,6 +420,12 @@ let patternMatchTest = test "pattern match test" {
   do! "[1, 2, 3] |> [..., x] -> x" ==> 3
   do! "[1, 2, 3, 4, 5] |> [x, ..., y] -> [x, y]" ==> [| 1; 5 |]
   do! "~[0, 10)~ |> [x, ..., y] -> [x, y]" ==> [| 0; 9 |]
+
+  do! "open System; 3.14 |> :Double -> true" ==> true
+  do! "open System; 3.14 |> :Int32  -> true" ==>! Unmatched
+  do! "open System.Collections; [1, 2, 3] |> a:IEnumerable -> a" ==> [|1; 2; 3|]
+  do! "Hoge := class (a -> a) {}; Hoge() |> :Hoge -> 111" ==> 111
+  do! "Hoge := class (a -> a) {}; Hoge() |> :Int32 -> 111" ==>! Unmatched
 }
 
 let extendTest = test "extend test" {
