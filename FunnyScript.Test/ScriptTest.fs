@@ -163,22 +163,22 @@ let operatorTest = test "operator test" {
 
   do! """
   open System.Numerics;
-  a := Complex.new (1.0, 2.0);
-  b := Complex.new (3.0, 4.0);
+  a := Complex (1.0, 2.0);
+  b := Complex (3.0, 4.0);
   a + b
   """ ==> Numerics.Complex (4.0, 6.0)
 
   do! """
   open System.Numerics;
-  a := Complex.new (1.0, 2.0);
-  b := Complex.new (3.0, 4.0);
+  a := Complex (1.0, 2.0);
+  b := Complex (3.0, 4.0);
   a - b
   """ ==> Numerics.Complex (-2., -2.)
 
   do! """
   open System.Numerics;
-  a := Complex.new (1.0, 2.0);
-  Complex.new (2.0, 0.0) * a
+  a := Complex (1.0, 2.0);
+  Complex (2.0, 0.0) * a
   """ ==> Numerics.Complex (2.0, 4.0)
 }
 
@@ -204,9 +204,9 @@ let clrTest = test "CLR reflection test" {
   do! "System.Math.Abs (-1.0)" ==> 1.0
   do! "System.Console.WriteLine \"[test] Hello, System.Console.WriteLine\"" ==> null
   do! "System.Console.WriteLine (\"[test] int = {0}, float = {1}\", 123, 3.14)" ==> null
-  do! "s := System.Collections.Stack.new(); do s.Push 123; s.Peek ()" ==> 123
-  do! "s := System.Collections.Stack.new(); do s.Push 123; s.Count" ==> 1
-  do! "s := System.Collections.Stack.new(); s.Count" ==> 0
+  do! "s := System.Collections.Stack(); do s.Push 123; s.Peek ()" ==> 123
+  do! "s := System.Collections.Stack(); do s.Push 123; s.Count" ==> 1
+  do! "s := System.Collections.Stack(); s.Count" ==> 0
   do! "System.String.Format (\"int val = {0}\", 987)" ==> "int val = 987"
 }
 
@@ -231,7 +231,7 @@ let mutableTest = test "mutable test" {
     hoge.piyo
     """ ==> 2
   do! """
-    timer := System.Timers.Timer.new();
+    timer := System.Timers.Timer();
     do timer.Enabled <- true;
     timer.Enabled
     """ ==> true
@@ -239,14 +239,14 @@ let mutableTest = test "mutable test" {
 
 let methodChainTest = test "method chain test" {
   do! """
-    sb := System.Text.StringBuilder.new();
+    sb := System.Text.StringBuilder();
     sb.Append "a"
     |> sb -> sb.Append "b"
     |> sb -> sb.Append "c"
     |> sb -> sb.ToString()
     """ ==> "abc"
   do! """
-    sb := System.Text.StringBuilder.new();
+    sb := System.Text.StringBuilder();
     sb.Append "x"
     |> .Append "y"
     |> .Append "z"
@@ -257,32 +257,32 @@ let methodChainTest = test "method chain test" {
 let classTest = test "class test" {
   do! """
     Adder := class (n -> n) { add := this -> n -> this + n; };
-    a := Adder.new 8;
+    a := Adder 8;
     a.add 2
   """ ==> 10
 
   do! """
     Adder := class (n -> n) { add := | n -> @ + n; };
-    a := Adder.new 7;
+    a := Adder 7;
     a.add 5
   """ ==> 12
 
   do! """
     Person := class ((first, last) -> { first_name := first; last_name := last; }) {
       fullname := self ->
-        System.Text.StringBuilder.new()
+        System.Text.StringBuilder()
         |> .Append self.first_name
         |> .Append " "
         |> .Append self.last_name
         |> .ToString();
       fullname2 := |
-        System.Text.StringBuilder.new()
+        System.Text.StringBuilder()
         |> .Append @.first_name
         |> .Append " "
         |> .Append @.last_name
         |> .ToString();
     };
-    charlie := Person.new ("Charlie", "Parker");
+    charlie := Person ("Charlie", "Parker");
     charlie.fullname2
   """ ==> "Charlie Parker"
 }
@@ -431,7 +431,7 @@ let extendTest = test "extend test" {
   do! """
   Vector := class ((x, y) -> { x := x; y := y; }) { len2 := | @.x @.x + @.y @.y; };
   do extend Vector { len := | System.Math.Sqrt @.len2; };
-  v := Vector.new (1.0, 2.0);
+  v := Vector (1.0, 2.0);
   v.len
   """ ==> sqrt 5.
 }

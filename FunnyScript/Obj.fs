@@ -39,9 +39,6 @@ let applyCore env (f : obj) (arg : obj) =
   let err() = error (NotApplyable (f, arg))
   match f with
   | :? IFuncObj as f -> f.Apply (arg, env)
-  | :? Case as c ->
-    c.Pattern |> Pattern.tryMatchWith (fun name -> env |> Env.tryGet name) arg
-    |> function Some _ -> CaseValue (c, arg) |> box |> Ok | _ -> error Unmatched
   | :? int as a ->
     match arg with
     | :? int   as b -> Ok <| box (a * b)
@@ -52,6 +49,17 @@ let applyCore env (f : obj) (arg : obj) =
     | :? int   as b -> Ok <| box (a * float b)
     | :? float as b -> Ok <| box (a * b)
     | _ -> err()
+  | :? FunnyType as t ->
+    match t.Id with
+    | ClrType t ->
+      CLR.tryGetConstructor t
+      |> function Some ctor -> Ok ctor | _ -> err()
+      |> Result.bind (fun ctor -> ctor.Apply (arg, env))
+    | UserType (ctor, _) ->
+      ctor.Apply (arg, env) |> Result.bind force |> Result.map (fun x -> box { Data = x; Type = t })
+  | :? Case as c ->
+    c.Pattern |> Pattern.tryMatchWith (fun name -> env |> Env.tryGet name) arg
+    |> function Some _ -> CaseValue (c, arg) |> box |> Ok | _ -> error Unmatched
   | x ->
     x |> CLR.tryApplyIndexer arg |> Option.defaultWith (fun () ->
       match x, arg with
@@ -76,7 +84,5 @@ let findMember (obj : obj) name =
   | :? FunnyType as t ->
     match t.Id with
     | ClrType t -> t |> CLR.tryGetStaticMember name |> toResult
-    | UserType (ctor, _) when name = "new" ->
-      FuncObj.create (FuncObj.invoke ctor >> Result.bind force >> Result.map (fun x -> box { Data = x; Type = t })) |> box |> Ok
-    | _ -> error (IdentifierNotFound name)
+    | _ -> notFound
   | o -> o |> CLR.tryGetInstanceMember name |> toResult

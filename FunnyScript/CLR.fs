@@ -40,7 +40,7 @@ let loadSystemAssembly env =
 
 
 
-let private toFunc1 f = box (FuncObj.create (f >> Result.mapError ErrInfo.Create))
+let private toFunc1 f = FuncObj.create (f >> Result.mapError ErrInfo.Create)
 
 type private Method = {
     Invoke : obj[] -> obj
@@ -103,17 +103,15 @@ let private tryGetMember name self (t : Type) =
       |> Array.choose (function :? MethodInfo as x -> Method.OfMethod (x, Option.toObj self) |> Some | _ -> None)
       |> function
         | [||]    -> None
-        | methods -> Some <| toFunc1 (invokeMethod methods))
+        | methods -> Some <| box (toFunc1 (invokeMethod methods)))
 
-let private tryGetConstructor (t : Type) =
+let tryGetConstructor (t : Type) =
   t.GetConstructors() |> Array.map Method.OfConstructor |> function
     | [||]  -> None
     | ctors -> Some <| toFunc1 (invokeMethod ctors)
 
 let tryGetStaticMember name t =
-  if name = "new"
-    then tryGetConstructor t
-    else tryGetMember name None t
+  tryGetMember name None t
 
 let tryGetInstanceMember name self =
   tryGetMember name (Some self) (self.GetType())
