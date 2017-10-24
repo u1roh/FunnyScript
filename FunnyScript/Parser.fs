@@ -20,7 +20,7 @@ let pLiteralNumber =
     //NumberLiteralOptions.AllowPlusSign |||
     NumberLiteralOptions.AllowFraction |||
     NumberLiteralOptions.AllowExponent
-  numberLiteral numfmt "number" .>> spaces
+  numberLiteral numfmt "literal number" .>> spaces
   |>> (fun x -> (if x.IsInteger then box (int32 x.String) else box (float x.String)) |> Obj)
 
 let pLiteralString =
@@ -41,6 +41,7 @@ let pLiteralString =
   |> between (pchar '"') (pchar '"')
   .>> spaces
   |>> String.concat ""
+  <?> "literal string"
 
 let reservedWords =
   [ "do"; "if"; "else"; "in" ] |> Set.ofList
@@ -51,7 +52,7 @@ let pIdentifier =
       >>= fun s -> if reservedWords |> Set.contains s then fail (sprintf "'%s' is reserved word." s) else (fun stream -> Reply s))
     many (noneOf "`") |> between (skipChar '`') (skipChar '`') .>> spaces |>> (List.toArray >> String)
     pstring "@" .>> spaces
-  ]
+  ] <?> "identifier"
 
 let pAtom =
   choice [
@@ -98,7 +99,7 @@ let pExpr =
       choice [
         pPatternTerm
         pIdentifier .>>. opt pPatternTerm |>> fun (name, pat) -> XNamed (name, pat |> Option.defaultValue XAny)
-      ]
+      ] <?> "pattern"
     pPatternInBracket <|> (pIdentifier |>> function "_" -> XAny | name -> XNamed (name, XAny))
 
   let pLet =
@@ -126,34 +127,41 @@ let pExpr =
   let pLambda =
     pPattern .>> str_ws "->" .>>. pExpr
     |>> (fun (args, body) -> FuncDef { Args = args; Body = body })
+    <?> "lambda"
   let pLambda2 =
     attempt (char_ws1 '|') >>. pExpr |>> fun expr -> FuncDef { Args = XNamed ("@", XAny); Body = expr }
+    <?> "lambda"
   let pRecord =
     let pRecItem = pIdentifier .>> str_ws ":=" .>>. pExpr
     between_ws '{' '}' (sepEndBy pRecItem (char_ws ';'))
     |>> NewRecord
-  let pList =
+    <?> "record"
+  let pArray =
     between_ws '[' ']' (sepByComma pExpr |>> (List.toArray >> NewArray))
+    <?> "array"
   let pTuple =
     between_ws '(' ')' (sepByComma pExpr)
     |>> function
       | [] -> Obj null
       | [expr] -> expr
       | tuple  -> tuple |> List.toArray |> NewArray
+    <?> "tuple"
   let pCase =
     char_ws '#' >>. opt pPattern |>> NewCase
+    <?> "case"
   let pRange =
     between (pchar '~') (pchar '~')
       ((pchar '[' <|> pchar '(') .>> spaces
       .>>. pExpr .>> char_ws ',' .>>. pExpr
       .>>. (pchar ']' <|> pchar ')'))
     .>> spaces
+    <?> "interval"
     |>> fun (((brace1, lower), upper), brace2) ->
       let lower = { Expr = lower; IsOpen = brace1 = '(' }
       let upper = { Expr = upper; IsOpen = brace2 = ')' }
       Interval (lower, upper)
   let pTermItem =
-    choice [ attempt pLambda; pLambda2; pAtom; pList; pTuple; pRecord; pCase; pRange ]
+    choice [ attempt pLambda; pLambda2; pAtom; pArray; pTuple; pRecord; pCase; pRange ]
     .>>. many (attempt (char_ws '.' >>. pIdentifier))
     |>> fun (expr, mems) -> (expr, mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
   let pTerm =
