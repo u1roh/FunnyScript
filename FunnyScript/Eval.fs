@@ -52,7 +52,7 @@ let rec eval expr env =
       env |> eval succ)
     else
       env |> letEval name value |> snd |> eval succ
-  | FuncDef def -> createUserFuncObj def env |> box |> Ok
+  | FuncDef def -> def.Args |> evalPattern env |> Result.map (fun arg -> createUserFuncObj arg def.Body env |> box)
   | Apply (f, arg) ->
     env |> forceEval f   |> Result.bind (fun f ->
     env |> forceEval arg |> Result.bind (Obj.applyCore env f))
@@ -74,13 +74,15 @@ let rec eval expr env =
   | NewArray exprs ->
     let items = exprs |> Array.map (fun expr -> env |> forceEval expr)
     let err =
-      items |> Array.choose (function Error { Err = e } -> Some e | _ -> None) |> Array.toList
-      |> function [] -> None | [e] -> Some e | es -> Some (ErrorList es)
+      items |> Array.choose (function Error e -> Some e | _ -> None) |> Array.toList
+      |> function [] -> None | [e] -> Some e | es -> Some (ErrorList es |> ErrInfo.Create)
     match err with
-    | Some err -> error err
+    | Some err -> Error err
     | _ -> items |> Array.choose (function Ok x -> Some x | _ -> None) |> box |> Ok
   | NewCase pattern ->
-    pattern |> Option.map Case |> Option.defaultWith Case |> box |> Ok
+    pattern
+    |> Option.map (evalPattern env >> Result.map (Case >> box))
+    |> Option.defaultWith (Case >> box >> Ok)
   | Interval (lower, upper) ->
     env |> forceEval lower.Expr |> Result.bind Obj.cast<int> |> Result.bind (fun lowerVal ->
     env |> forceEval upper.Expr |> Result.bind Obj.cast<int> |> Result.bind (fun upperVal ->
@@ -124,13 +126,32 @@ and recordEval fields env =
       x |> Result.map (fun x -> record |> Map.add name x, env)))
   |> Result.map (fst >> box)
 
+and private evalPattern env patexpr =
+  let rec execute patexpr =
+    match patexpr with
+    | XAny -> Any
+    | XTuple items -> items |> List.map execute |> Pattern.Tuple
+    | XArray (heads, tails) ->
+      let heads = heads |> List.map execute
+      let tails = tails |> Option.map (List.map execute)
+      Pattern.Array (heads, tails)
+    | XRecord items -> items |> List.map (fun (name, x) -> name, execute x) |> Record
+    | XTyped x ->
+      env |> eval x |> Result.bind (function
+        | :? FunnyType as t -> Ok (Typed t)
+        | x -> error (TypeMismatch (ClrType typeof<FunnyType>, typeid x)))
+      |> function Ok x -> x | Error e -> raiseErrInfo e
+    | XCase (caseName, pattern) -> Pattern.Case (caseName, execute pattern)
+    | XNamed (name, pattern) -> Named (name, execute pattern)
+  try execute patexpr |> Ok with :? ErrInfoException as e -> Error e.ErrInfo
 
-and private createUserFuncObj def env =
+
+and private createUserFuncObj argPattern body env =
   let mutable env = env
   let mutable named = false
   { new IUserFuncObj with
     member __.Apply (arg, _) =
-      lazy (env |> Env.matchWith def.Args arg |> Result.bind (eval def.Body)) |> box |> Ok
+      lazy (env |> Env.matchWith argPattern arg |> Result.bind (eval body)) |> box |> Ok
     member self.InitSelfName name = 
       if not named then
         env <- env |> Map.add name (Ok (box self)) // to enable recursive call

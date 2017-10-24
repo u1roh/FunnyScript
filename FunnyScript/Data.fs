@@ -31,23 +31,6 @@ type IMutable =
 
 type Record = Map<string, obj>
 
-type Pattern =
-  | Any
-  | Tuple of Pattern list
-  | Array of Pattern list * Pattern list option
-  | Record of list<string * Pattern>
-  | Typed of string
-  | Case of string * Pattern
-  | Named of string * Pattern
-with
-  static member Empty = Tuple[]
-    
-type Case (pat : Pattern) =
-  new () = Case Pattern.Empty
-  member __.Pattern = pat
-
-type CaseValue = CaseValue of Case * obj
-
 module FunnyArray =
   let ofCollection getItem (a : ICollection) =
     { new IFunnyArray with

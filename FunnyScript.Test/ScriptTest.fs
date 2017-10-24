@@ -407,7 +407,7 @@ let patternMatchTest = test "pattern match test" {
   """ ==> "Jack the Ripper"
 
   do! "{ a := { b := (1, 2); c := 3 }; d := 4 } |> { a := { b := (x, y) }} -> x + y" ==> 3
-  do! "{ a := { b := (1, 2); c := 3 }; d := 4 } |> (x : { a := { b := (_, _) }; d := _ }) -> x.a.b 1 + x.d" ==> 6
+  do! "{ a := { b := (1, 2); c := 3 }; d := 4 } |> (x { a := { b := (_, _) }; d := _ }) -> x.a.b 1 + x.d" ==> 6
 
   do! "[] |> () -> 0" ==>! Unmatched
   do! "[] |> [] -> 0" ==> 0
@@ -421,11 +421,14 @@ let patternMatchTest = test "pattern match test" {
   do! "[1, 2, 3, 4, 5] |> [x, ..., y] -> [x, y]" ==> [| 1; 5 |]
   do! "~[0, 10)~ |> [x, ..., y] -> [x, y]" ==> [| 0; 9 |]
 
-  do! "open System; 3.14 |> :Double -> true" ==> true
-  do! "open System; 3.14 |> :Int32  -> true" ==>! Unmatched
-  do! "open System.Collections; [1, 2, 3] |> a:IEnumerable -> a" ==> [|1; 2; 3|]
-  do! "Hoge := class (a -> a) {}; Hoge() |> :Hoge -> 111" ==> 111
-  do! "Hoge := class (a -> a) {}; Hoge() |> :Int32 -> 111" ==>! Unmatched
+  do! "3.14 |> (:System.Double) -> true" ==> true
+  do! "open System; 3.14 |> (:Int32)  -> true" ==>! Unmatched
+  do! "open System.Collections; [1, 2, 3] |> (a:IEnumerable) -> a" ==> [|1; 2; 3|]
+  do! "Hoge := class (a -> a) {}; Hoge() |> (:Hoge) -> 111" ==> 111
+  do! "Hoge := class (a -> a) {}; Hoge() |> (:System.Int32) -> 111" ==>! Unmatched
+  do! "(123, 4.56) |> (a : System.Int32, b : System.Double) -> a + b" ==> float 123 + 4.56
+  do! "{ a := 123; b := 4.56 } |> { a := a : System.Int32; b := : System.Double } -> a" ==> 123
+  do! "[1, 2.5, \"hoge\", 4, 6.3] |> [a:System.Int32, ..., b:System.Double] -> a + b" ==> 7.3
 }
 
 let extendTest = test "extend test" {
@@ -454,20 +457,20 @@ let caseTest = test "case test" {
   do! """
     CaseA := #;
     a := CaseA;
-    a |> #CaseA -> 123
+    a |> (#CaseA) -> 123
   """ ==> 123
 
   do! """
     CaseA := #; CaseB := #;
     a := CaseA;
-    a |> #CaseB -> 123
+    a |> (#CaseB) -> 123
   """ ==>! Unmatched
 
   do! """
     Add := # (_, _); Mul := # { width := _; height := _ };
     f := match [
-      #Add (a, b) -> a + b,
-      #Mul { width := x; height := y } -> x y
+      (#Add (a, b)) -> a + b,
+      (#Mul { width := x; height := y }) -> x y
     ];
     [Add (1, 2), Mul{ width := 3; height := 4 }, Add (5, 6)] |> map f
   """ ==> [| 3; 12; 11 |]

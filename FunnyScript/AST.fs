@@ -13,7 +13,7 @@ and Err =
   | UserError of obj
   | MiscError of string
   | ExnError of exn
-  | ErrorList of Err list
+  | ErrorList of ErrInfo list
   | NotMutable
   | ClassDefError
 
@@ -29,10 +29,27 @@ and Result = Result<obj, ErrInfo>
 and IFuncObj =
   abstract Apply : obj * Env -> Result
 
-and Instance = {
-    Data : obj
-    Type : FunnyType
-  }
+and Pattern =
+  | Any
+  | Tuple of Pattern list
+  | Array of Pattern list * Pattern list option
+  | Record of list<string * Pattern>
+  | Typed of FunnyType
+  | Case of string * Pattern
+  | Named of string * Pattern
+with
+  static member Empty = Tuple[]
+    
+and PatternExpr =
+  | XAny
+  | XTuple of PatternExpr list
+  | XArray of PatternExpr list * PatternExpr list option
+  | XRecord of list<string * PatternExpr>
+  | XTyped of Expr
+  | XCase of string * PatternExpr
+  | XNamed of string * PatternExpr
+with
+  static member Empty = XTuple[]
 
 and Expr =
   | Obj of obj
@@ -45,7 +62,7 @@ and Expr =
   | FuncDef of FuncDef
   | NewRecord of (string * Expr) list
   | NewArray of Expr[]
-  | NewCase of Pattern option
+  | NewCase of PatternExpr option
   | Interval of IntervalBound * IntervalBound
   | If of condition:Expr * thenExpr:Expr * elseExpr:Expr
   | Substitute of Expr * Expr
@@ -55,7 +72,7 @@ and Expr =
   | Trace of Expr * Position
 
 and FuncDef = {
-    Args : Pattern
+    Args : PatternExpr
     Body : Expr
   }
 
@@ -73,7 +90,18 @@ and FunnyType = {
     mutable ExtMembers : Map<string, IFuncObj>
   }
 
-type private ErrInfoException (e : ErrInfo) =
+type Instance = {
+    Data : obj
+    Type : FunnyType
+  }
+
+type Case (pat : Pattern) =
+  new () = Case Pattern.Empty
+  member __.Pattern = pat
+
+type CaseValue = CaseValue of Case * obj
+
+type ErrInfoException (e : ErrInfo) =
   inherit exn()
   member val ErrInfo = e
 
@@ -123,14 +151,14 @@ module FuncObj =
     let rec execute errors flist arg =
       match flist with
       | f :: flist -> match invoke f arg with Error e -> execute (e.Err :: errors) flist arg | x -> x
-      | [] -> error (ErrorList errors)
+      | [] -> errors |> List.map ErrInfo.Create |> ErrorList |> error
     create (execute [] flist)
 
   let ofList2 flist =
     let rec execute errors flist arg1 arg2 =
       match flist with
       | f :: flist -> match invoke2 f arg1 arg2 with Error e -> execute (e.Err :: errors) flist arg1 arg2 | x -> x
-      | [] -> error (ErrorList errors)
+      | [] -> errors |> List.map ErrInfo.Create |> ErrorList |> error
     create2 (execute [] flist)
 
 

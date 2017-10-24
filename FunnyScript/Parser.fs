@@ -68,35 +68,38 @@ let private char_ws1 c = skipChar   c >>. spaces1
 let private between_ws c1 c2 p = between (char_ws c1) (char_ws c2) p
 let private sepByComma p = sepBy p (char_ws ',')
 
-let pPattern =
-  let pPattern, pPatternRef = createParserForwardedToRef<Pattern, unit>()
-  let sepByNone optionList =
-    ([[]], optionList) ||> List.fold (fun lists item ->
-      match item with
-      | Some item -> (item :: lists.Head) :: lists.Tail
-      | _ -> [] :: lists)
-  let pPatternTerm =
-    choice [
-      char_ws '_' |>> fun _ -> Pattern.Any
-      between_ws '{' '}' (sepEndBy (pIdentifier .>> str_ws ":=" .>>. pPattern) (char_ws ';')) |>> Pattern.Record
-      between_ws '(' ')' (sepByComma pPattern) |>> function [p] -> p | items -> Pattern.Tuple items
-      between_ws '[' ']' (sepByComma ((pPattern |>> Some) <|> (str_ws "..." |>> fun _ -> None)))
-        >>= (sepByNone >> function
-          | [ptns] -> preturn (Pattern.Array (ptns, None))
-          | [ptns2; ptns1] -> preturn (Pattern.Array (ptns1, Some ptns2))
-          | _ -> fail "invalid array pattern")
-      char_ws '#' >>. pIdentifier .>>. opt pPattern |>> fun (case, pat) -> Pattern.Case (case, pat |> Option.defaultValue Pattern.Empty)
-      pIdentifier |>> Typed
-    ]
-  pPatternRef :=
-    choice [
-      pIdentifier .>>. opt (char_ws ':' >>. pPatternTerm) |>> fun (name, pat) -> Named (name, pat |> Option.defaultValue Any)
-      opt (char_ws ':') >>. pPatternTerm
-    ]
-  pPattern
-
 let pExpr =
   let pExpr, pExprRef = createParserForwardedToRef<Expr, unit>()
+
+  let pPattern =
+    let pPattern, pPatternRef = createParserForwardedToRef<PatternExpr, unit>()
+    let sepByNone optionList =
+      ([[]], optionList) ||> List.fold (fun lists item ->
+        match item with
+        | Some item -> (item :: lists.Head) :: lists.Tail
+        | _ -> [] :: lists)
+    let pPatternInBracket =
+      choice [
+        between_ws '{' '}' (sepEndBy (pIdentifier .>> str_ws ":=" .>>. pPattern) (char_ws ';')) |>> XRecord
+        between_ws '(' ')' (sepByComma pPattern) |>> function [p] -> p | items -> XTuple items
+        between_ws '[' ']' (sepByComma ((pPattern |>> Some) <|> (str_ws "..." |>> fun _ -> None)))
+          >>= (sepByNone >> function
+            | [ptns] -> preturn (XArray (ptns, None))
+            | [ptns2; ptns1] -> preturn (XArray (ptns1, Some ptns2))
+            | _ -> fail "invalid array pattern")
+      ]
+    let pPatternTerm =
+      choice [
+        pPatternInBracket
+        char_ws '#' >>. pIdentifier .>>. opt pPattern |>> fun (case, pat) -> XCase (case, pat |> Option.defaultValue PatternExpr.Empty)
+        char_ws ':' >>. pExpr |>> XTyped
+      ]
+    pPatternRef :=
+      choice [
+        pPatternTerm
+        pIdentifier .>>. opt pPatternTerm |>> fun (name, pat) -> XNamed (name, pat |> Option.defaultValue XAny)
+      ]
+    pPatternInBracket <|> (pIdentifier |>> function "_" -> XAny | name -> XNamed (name, XAny))
 
   let pLet =
     opt pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';' .>>. pExpr
@@ -124,7 +127,7 @@ let pExpr =
     pPattern .>> str_ws "->" .>>. pExpr
     |>> (fun (args, body) -> FuncDef { Args = args; Body = body })
   let pLambda2 =
-    attempt (char_ws1 '|') >>. pExpr |>> fun expr -> FuncDef { Args = Named ("@", Any); Body = expr }
+    attempt (char_ws1 '|') >>. pExpr |>> fun expr -> FuncDef { Args = XNamed ("@", XAny); Body = expr }
   let pRecord =
     let pRecItem = pIdentifier .>> str_ws ":=" .>>. pExpr
     between_ws '{' '}' (sepEndBy pRecItem (char_ws ';'))
@@ -162,7 +165,7 @@ let pExpr =
     |>> fun (mems, args) ->
       let self = (Ref "__SELF__", mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
       let body = (self, args) ||> List.fold (fun f arg -> Apply (f, arg))
-      FuncDef { Args = Named ("__SELF__", Any); Body = body }
+      FuncDef { Args = XNamed ("__SELF__", XAny); Body = body }
   let opp = new OperatorPrecedenceParser<Expr,unit,unit>()
   opp.TermParser <- pSyntaxSugarLambdaTerm <|> pTerm
 
