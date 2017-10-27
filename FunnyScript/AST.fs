@@ -8,6 +8,7 @@ and Err =
   | NotApplyable of f:obj * arg:obj
   | TypeMismatch of expected:TypeId * actual:TypeId
   | Unmatched
+  | NullReference
   | NotImplemented of string
   | ParseError of string
   | UserError of obj
@@ -109,6 +110,12 @@ let raiseErrInfo e = raise (ErrInfoException e)
 
 let ok x = Ok (box x)
 let error e = Error { Err = e; StackTrace = [] }
+
+
+[<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
+module Result =
+  let ofObj x =
+    if x = null then error NullReference else Ok x
 
 
 [<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]

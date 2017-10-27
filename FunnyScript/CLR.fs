@@ -135,7 +135,7 @@ let tryGetStaticMember name t =
   tryGetMember name None t
 
 let tryGetInstanceMember name self =
-  tryGetMember name (Some self) (self.GetType())
+  Option.ofObj self |> Option.bind (fun self -> tryGetMember name (Some self) (self.GetType()))
 
 let tryApplyIndexer (index : obj) (self : obj) =
   let indexer = self.GetType().GetProperty (match self with :? string -> "Chars" | _ -> "Item")

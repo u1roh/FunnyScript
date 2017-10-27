@@ -42,7 +42,7 @@ let rec eval expr env =
   | Obj x -> Ok x
   | Ref x -> env |> Env.get x
   | RefMember (expr, name) ->
-    env |> forceEval expr |> Result.bind (fun obj ->
+    env |> forceEval expr |> Result.bind Result.ofObj |> Result.bind (fun obj ->
       match Obj.findMember obj name with
       | Error { Err = IdentifierNotFound _ } -> findExtMember env obj name
       | result -> result)
