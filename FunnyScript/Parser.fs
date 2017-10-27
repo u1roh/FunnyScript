@@ -103,7 +103,7 @@ let pExpr =
     pPatternInBracket <|> (pIdentifier |>> function "_" -> XAny | name -> XNamed (name, XAny))
 
   let pLet =
-    opt pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';' .>>. pExpr
+    attempt (opt pIdentifier .>> str_ws ":=") .>>. pExpr .>> char_ws ';' .>>. pExpr
     |>> function
       | ((Some name, expr1), expr2) -> Let (name, expr1, expr2)
       | ((_, expr1), expr2)         -> Let (null, expr1, expr2)
@@ -125,7 +125,7 @@ let pExpr =
       elseExpr |> Option.defaultValue (Ref "unmatched")
       |> List.foldBack (fun (cond, thenExpr) elseExpr -> If (cond, thenExpr, elseExpr)) ifList
   let pLambda =
-    pPattern .>> str_ws "->" .>>. pExpr
+    attempt (pPattern .>> str_ws "->") .>>. pExpr
     |>> (fun (args, body) -> FuncDef { Args = args; Body = body })
     <?> "lambda"
   let pLambda2 =
@@ -161,8 +161,8 @@ let pExpr =
       let upper = { Expr = upper; IsOpen = brace2 = ')' }
       Interval (lower, upper)
   let pTermItem =
-    choice [ attempt pLambda; pLambda2; pAtom; pArray; pTuple; pRecord; pCase; pRange ]
-    .>>. many (attempt (char_ws '.' >>. pIdentifier))
+    choice [ pLambda; pLambda2; pAtom; pArray; pTuple; pRecord; pCase; pRange ]
+    .>>. many (attempt (char_ws '.') >>. pIdentifier)
     |>> fun (expr, mems) -> (expr, mems) ||> List.fold (fun expr mem -> RefMember (expr, mem))
   let pTerm =
     many1 pTermItem |>> fun items -> (List.head items, List.tail items) ||> List.fold (fun f arg -> Apply (f, arg))
@@ -215,7 +215,7 @@ let pExpr =
       pIf
       pOpen
       pLoad
-      attempt pLet
+      pLet
       opp.ExpressionParser
     ]
     |> trace |>> Trace
