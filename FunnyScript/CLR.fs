@@ -8,7 +8,7 @@ let private makeTypeConstructor (t : Type) =
     match args with
     | :? FunnyType as arg when argNum = 1 ->
       match arg with
-      | { Id = ClrType arg } -> ok { Id = ClrType (t.MakeGenericType [| arg |]); ExtMembers = Map.empty }
+      | { Id = ClrType arg } -> ok (FunnyType.ofClrType (t.MakeGenericType [| arg |]))
       | _ -> error (MiscError "Not CLR Type")
     | FunnyArray args when args.Count = argNum ->
       let args = args |> FunnyArray.map (function
@@ -17,7 +17,7 @@ let private makeTypeConstructor (t : Type) =
       let errors = args |> Array.choose Result.toErrorOption |> Array.toList
       if errors.Length > 0 then error (ErrorList errors) else
         let args = args |> Array.choose Result.toOption
-        ok { Id = ClrType (t.MakeGenericType args); ExtMembers = Map.empty }
+        ok (FunnyType.ofClrType (t.MakeGenericType args))
     | _ -> error (MiscError (sprintf "Failed to Construct Generic Type of %s" t.FullName)))
 
 let rec private typesToFunnyObjs (types : (string list * System.Type)[]) =
@@ -25,7 +25,7 @@ let rec private typesToFunnyObjs (types : (string list * System.Type)[]) =
   let leaves = leaves |> Array.map (snd >> fun t ->
     if t.IsGenericTypeDefinition && not t.IsNested
       then t.Name.Substring (0, t.Name.IndexOf '`'), box (makeTypeConstructor t)
-      else t.Name, box { Id = ClrType t; ExtMembers = Map.empty })
+      else t.Name, box (FunnyType.ofClrType t))
   branches
   |> Array.groupBy (fst >> List.head)
   |> Array.map (fun (name, items) ->

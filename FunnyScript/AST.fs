@@ -162,9 +162,13 @@ module FuncObj =
     create2 (execute [] flist)
 
 
-module Type =
+[<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
+module FunnyType =
   let create ctor members =
     { Id = UserType (ctor, members); ExtMembers = Map.empty }
+
+  let ofClrType t =
+    { Id = ClrType t; ExtMembers = Map.empty }
 
   let extend members (t : FunnyType) =
     t.ExtMembers <- (t.ExtMembers, members) ||> Map.fold (fun vtbl name m -> vtbl |> Map.add name m)
@@ -181,12 +185,12 @@ let makeClass (ctor : obj) (vtbl : obj) =
       else error ClassDefError)
   |> Result.map (fun (ctor, members) ->
     let members = members |> Map.map (fun _ m -> match m with :? IFuncObj as m -> m | _ -> failwith "fatal error")
-    box (Type.create ctor members))
+    box (FunnyType.create ctor members))
 
 let extendType (t : FunnyType) (vtbl : Record) =
   let members, invalids = vtbl |> Map.partition (fun _ m -> match m with :? IFuncObj -> true | _ -> false)
   if not invalids.IsEmpty then error ClassDefError else
-    t |> Type.extend (members |> Map.map (fun _ m -> m :?> IFuncObj))
+    t |> FunnyType.extend (members |> Map.map (fun _ m -> m :?> IFuncObj))
     Ok null
 
 let rec typeid (obj : obj) =

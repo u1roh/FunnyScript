@@ -2,6 +2,7 @@
 open Persimmon
 open FunnyScript
 open System
+open System.Collections.Generic
 
 let env = Script.Env.Default
 
@@ -474,4 +475,26 @@ let caseTest = test "case test" {
     ];
     [Add (1, 2), Mul{ width := 3; height := 4 }, Add (5, 6)] |> map f
   """ ==> [| 3; 12; 11 |]
+}
+
+let genericTypeTest = test "generic type test" {
+  do! "System.Collections.Generic.List System.Int32" ==> FunnyType.ofClrType typeof<List<int>>
+  do! "System.Collections.Generic.Dictionary (System.String, System.Int32)" ==> FunnyType.ofClrType typeof<Dictionary<string, int>>
+
+  do! """
+    open System;
+    open System.Collections.Generic;
+    a := List Int32 ();
+    do a.Add 123;
+    do a.Add 456;
+    a.ToArray()
+  """ ==> [| 123; 456 |]
+
+  do! """
+    open System;
+    open System.Collections.Generic;
+    a := Dictionary (String, Int32) ();
+    do a.Add ("hoge", 789);
+    a "hoge"
+  """ ==> 789
 }
