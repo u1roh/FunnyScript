@@ -35,8 +35,8 @@ let tryMatchWith (env : string -> obj option) (obj : obj) pattern =
           r |> Map.tryFind name |> Option.bind (fun obj ->
             matched |> execute item obj)))
       | _ -> None
-    | Typed { Id = ClrType t } -> if t.IsAssignableFrom (obj.GetType()) then Some matched else None
-    | Typed t -> match obj with :? Instance as obj when obj.Type = t -> Some matched | _ -> None
+    | Typed (ClrType t) -> if t.IsAssignableFrom (obj.GetType()) then Some matched else None
+    | Typed (FunnyClass t) -> match obj with :? Instance as obj when obj.Type = t -> Some matched | _ -> None
     | Case (case, pattern) ->
       if pattern = Pattern.Empty && env case = Some obj then Some matched else
       env case

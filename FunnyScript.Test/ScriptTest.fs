@@ -489,8 +489,8 @@ let caseTest = test "case test" {
 }
 
 let genericTypeTest = test "generic type test" {
-  do! "System.Collections.Generic.List System.Int32" ==> FunnyType.ofClrType typeof<List<int>>
-  do! "System.Collections.Generic.Dictionary (System.String, System.Int32)" ==> FunnyType.ofClrType typeof<Dictionary<string, int>>
+  do! "System.Collections.Generic.List System.Int32" ==> ClrType typeof<List<int>>
+  do! "System.Collections.Generic.Dictionary (System.String, System.Int32)" ==> ClrType typeof<Dictionary<string, int>>
 
   do! """
     open System;

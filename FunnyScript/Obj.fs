@@ -23,17 +23,17 @@ let rec forceMutable (obj : obj) =
 let cast<'a> (obj : obj) =
   match obj with
   | :? 'a as obj -> Ok obj
-  | _ -> error (TypeMismatch (ClrType typeof<'a>, typeid obj))
+  | _ -> error (TypeMismatch (ClrType typeof<'a>, FunnyType.ofObj obj))
 
 let toFunnyArray (obj : obj) =
   match obj with
   | FunnyArray a -> Ok a
-  | _ -> error (TypeMismatch (ClrType typeof<IFunnyArray>, typeid obj))
+  | _ -> error (TypeMismatch (ClrType typeof<IFunnyArray>, FunnyType.ofObj obj))
 
 let toSeq (obj : obj) =
   match obj with
   | Seq a -> Ok a
-  | _ -> error (TypeMismatch (ClrType typeof<IFunnyArray>, typeid obj))
+  | _ -> error (TypeMismatch (ClrType typeof<IFunnyArray>, FunnyType.ofObj obj))
 
 let applyCore env (f : obj) (arg : obj) =
   let err() = error (NotApplyable (f, arg))
@@ -50,13 +50,13 @@ let applyCore env (f : obj) (arg : obj) =
     | :? float as b -> Ok <| box (a * b)
     | _ -> err()
   | :? FunnyType as t ->
-    match t.Id with
+    match t with
     | ClrType t ->
       CLR.tryGetConstructor t
       |> function Some ctor -> Ok ctor | _ -> err()
       |> Result.bind (fun ctor -> ctor.Apply (arg, env))
-    | UserType (ctor, _) ->
-      ctor.Apply (arg, env) |> Result.bind force |> Result.map (fun x -> box { Data = x; Type = t })
+    | FunnyClass t ->
+      t.Ctor.Apply (arg, env) |> Result.bind force |> Result.map (fun x -> box { Data = x; Type = t })
   | :? Case as c ->
     c.Pattern |> Pattern.tryMatchWith (fun name -> env |> Env.tryGet name) arg
     |> function Some _ -> CaseValue (c, arg) |> box |> Ok | _ -> error Unmatched
@@ -64,7 +64,7 @@ let applyCore env (f : obj) (arg : obj) =
     x |> CLR.tryApplyIndexer arg |> Option.defaultWith (fun () ->
       match x, arg with
       | (:? IEnumerable as x), (:? int as i) -> Ok (x |> Seq.cast<obj> |> Seq.item i)
-      | _ -> error (TypeMismatch (ClrType typeof<int>, typeid arg)))
+      | _ -> error (TypeMismatch (ClrType typeof<int>, FunnyType.ofObj arg)))
   //| _ -> err()
 
 let apply f arg = applyCore Env.empty f arg
@@ -75,14 +75,11 @@ let findMember (obj : obj) name =
   match obj with
   | :? Record as r -> r |> Map.tryFind name |> toResult
   | :? Instance as x ->
-    match x.Type with
-    | { Id = UserType (_, mems); ExtMembers = exts } ->
-      mems |> Map.tryFind name |> Option.map (fun f -> apply (box f) x.Data)
-      |> Option.orElseWith (fun () -> exts |> Map.tryFind name |> Option.map (fun f -> apply (box f) x))
-      |> Option.defaultValue notFound
-    | _ -> error (MiscError "fatal error")
+    x.Type.Members |> Map.tryFind name |> Option.map (fun f -> apply (box f) x.Data)
+    |> Option.orElseWith (fun () -> x.Type.ExtMembers |> Map.tryFind name |> Option.map (fun f -> apply (box f) x))
+    |> Option.defaultValue notFound
   | :? FunnyType as t ->
-    match t.Id with
+    match t with
     | ClrType t -> t |> CLR.tryGetStaticMember name |> toResult
     | _ -> notFound
   | o -> o |> CLR.tryGetInstanceMember name |> toResult

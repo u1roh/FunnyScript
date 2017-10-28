@@ -45,8 +45,8 @@ let private numOp intf floatf =
     | _ ->
       match tryToFloat x, tryToFloat y with
       | Some x, Some y -> floatf x y |> Ok
-      | None, _ -> Error (TypeMismatch (ClrType typeof<float>, typeid x))
-      | _, None -> Error (TypeMismatch (ClrType typeof<float>, typeid y))
+      | None, _ -> Error (TypeMismatch (ClrType typeof<float>, FunnyType.ofObj x))
+      | _, None -> Error (TypeMismatch (ClrType typeof<float>, FunnyType.ofObj y))
   toFunc2 f
 
 let private compare intf floatf =
@@ -55,8 +55,8 @@ let private compare intf floatf =
 
 let private logical op =
   let f (x : obj) (y : obj) =
-    let x = match x with :? bool as x -> Ok x | _ -> Error (TypeMismatch (ClrType typeof<bool>, typeid x))
-    let y = match y with :? bool as y -> Ok y | _ -> Error (TypeMismatch (ClrType typeof<bool>, typeid y))
+    let x = match x with :? bool as x -> Ok x | _ -> Error (TypeMismatch (ClrType typeof<bool>, FunnyType.ofObj x))
+    let y = match y with :? bool as y -> Ok y | _ -> Error (TypeMismatch (ClrType typeof<bool>, FunnyType.ofObj y))
     match x, y with
     | Ok x, Ok y -> op x y |> box<bool> |> Ok
     | Error e, _ -> Error e
@@ -85,7 +85,7 @@ module private Cast =
 let private asArray x =
   match x with
   | FunnyArray x -> Ok x
-  | _ -> error (TypeMismatch (ClrType typeof<IFunnyArray>, typeid x))
+  | _ -> error (TypeMismatch (ClrType typeof<IFunnyArray>, FunnyType.ofObj x))
 
 let private stdlib1 =
   [
@@ -136,13 +136,13 @@ let private stdlib1 =
     "|?>", FuncObj.create2 (fun arg f -> if arg = null then Ok null else Obj.apply f arg) |> box
     "&&", logical (&&)
     "||", logical (||)
-    ":?", FuncObj.ofFun2 (fun o (t : FunnyType) -> t.Id = typeid o) :> obj
+    ":?", FuncObj.ofFun2 (fun o (t : FunnyType) -> t = FunnyType.ofObj o) :> obj
     "~!", FuncObj.ofFun not :> obj
     "~+", FuncObj.ofList [FuncObj.ofFun (fun (x : int) -> +x); FuncObj.ofFun (fun (x : float) -> +x)] :> obj
     "~-", FuncObj.ofList [FuncObj.ofFun (fun (x : int) -> -x); FuncObj.ofFun (fun (x : float) -> -x)] :> obj
-    //"::", toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> AST.List |> Ok | _ -> Error (TypeMismatch (ListType, typeid ls)))
+    //"::", toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> AST.List |> Ok | _ -> Error (TypeMismatch (ListType, FunnyType.ofObj ls)))
 
-    "class", FuncObj.create2 makeClass |> box
+    "class", FuncObj.create2 FunnyClass.create |> box
     "mutable", FuncObj.ofFun toMutable :> obj
     "error", FuncObj.create (fun x -> error (UserError x)) :> obj
 
@@ -165,16 +165,18 @@ let private stdlib1 =
           | Error { Err = Unmatched } -> None
           | result -> Some result)
         |> Option.defaultValue (error Unmatched)
-      | _ -> error (TypeMismatch (ClrType typeof<IFuncObj[]>, typeid handlers))) |> box
+      | _ -> error (TypeMismatch (ClrType typeof<IFuncObj[]>, FunnyType.ofObj handlers))) |> box
 
-    "extend", FuncObj.ofFun2 extendType :> obj
-
-//    "as", FuncObj.ofFun (function
-//      | { Id = ClrType t } ->
-//        if t = typeof<int> then FuncObj.create (Cast.toInt >> ok)
-//        else FuncObj.create (fun _ -> Ok null)
-//      | _ -> FuncObj.create (fun _ -> Ok null)
-//    ) :> obj
+    "extend", FuncObj.ofFun (function
+      | ClrType t ->
+        { new IFuncObj with
+          member __.Apply (a, env) =
+            match a with
+            | :? Record as a -> env |> Env.extendType t a
+            | x -> error (TypeMismatch (ClrType typeof<Record>, ClrType (x.GetType())))
+        } :> obj
+      | FunnyClass t -> FuncObj.ofFun (fun vtbl -> t |> FunnyClass.extend vtbl) :> obj
+      ) :> obj
 
     "as",
       (let castFuncs =
@@ -182,7 +184,7 @@ let private stdlib1 =
           ClrType typeof<float>,  FuncObj.create (Cast.toFloat >> ok)
         ] |> dict
       FuncObj.ofFun (fun (t : FunnyType) ->
-        let contains, f = castFuncs.TryGetValue t.Id
+        let contains, f = castFuncs.TryGetValue t
         if contains then f else FuncObj.create (fun _ -> Ok null)
       ) :> obj)
 
@@ -190,7 +192,7 @@ let private stdlib1 =
       let f = applyForce f >> getOrRaise
       match len with
       | :? int as len -> Array.init len f |> box |> Ok
-      | _ -> Error (TypeMismatch (ClrType typeof<int>, typeid len)))
+      | _ -> Error (TypeMismatch (ClrType typeof<int>, FunnyType.ofObj len)))
 
     "isEmpty", FuncObj.ofList [
       FuncObj.ofFun (fun (a : ICollection) -> a.Count = 0)
@@ -270,9 +272,9 @@ let private stdlib1 =
         FuncObj.create (fun elm -> FuncObj.forSeq (Seq.exists ((=) elm)) |> ok)
       ] :> obj
 
-    "record",   { Id = ClrType typeof<Record>;    ExtMembers = Map.empty } :> obj
-    "function", { Id = ClrType typeof<IFuncObj>;  ExtMembers = Map.empty } :> obj
-    "type",     { Id = ClrType typeof<FunnyType>; ExtMembers = Map.empty } :> obj
+    "record",   ClrType typeof<Record>    :> obj
+    "function", ClrType typeof<IFuncObj>  :> obj
+    "type",     ClrType typeof<FunnyType> :> obj
 
   ] |> List.map (fun (name, obj) -> name, Obj obj)
 

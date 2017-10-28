@@ -23,7 +23,7 @@ module internal Env =
   let findExtMember (o : obj) name env =
     let t = o.GetType()
     Seq.append (t |> Seq.unfold (fun t -> if t = null then None else Some (t, t.BaseType))) (t.GetInterfaces())
-    |> Seq.tryPick (fun t -> env |> findFunnyType t.FullName |> Option.bind (fun t -> t.ExtMembers |> Map.tryFind name))
+    |> Seq.tryPick (fun t -> env |> Env.findExtMember t name)
 
 type private IUserFuncObj =
   inherit IFuncObj
@@ -139,7 +139,7 @@ and private evalPattern env patexpr =
     | XTyped x ->
       env |> eval x |> Result.bind (function
         | :? FunnyType as t -> Ok (Typed t)
-        | x -> error (TypeMismatch (ClrType typeof<FunnyType>, typeid x)))
+        | x -> error (TypeMismatch (ClrType typeof<FunnyType>, FunnyType.ofObj x)))
       |> function Ok x -> x | Error e -> raiseErrInfo e
     | XCase (caseName, pattern) -> Pattern.Case (caseName, execute pattern)
     | XNamed (name, pattern) -> Named (name, execute pattern)

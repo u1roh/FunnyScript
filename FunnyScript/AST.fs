@@ -1,12 +1,16 @@
 ﻿[<AutoOpen>]
 module FunnyScript.AST
+open System.Collections.Generic
 
-type Env = private { Vals : Map<string, Result> }
+type Env = private {
+    Vals : Map<string, Result>
+    ExtMembers : Dictionary<System.Type, Map<string, IFuncObj>>
+  }
 
 and Err =
   | IdentifierNotFound of string
   | NotApplyable of f:obj * arg:obj
-  | TypeMismatch of expected:TypeId * actual:TypeId
+  | TypeMismatch of expected:FunnyType * actual:FunnyType
   | Unmatched
   | NullReference
   | NotImplemented of string
@@ -82,18 +86,19 @@ and IntervalBound = {
     IsOpen : bool
   }
 
-and TypeId =
-  | UserType of ctor:IFuncObj * members:Map<string, IFuncObj>
+and FunnyType =
   | ClrType  of System.Type
+  | FunnyClass of FunnyClass
 
-and FunnyType = {
-    Id : TypeId
+and FunnyClass = {
+    Ctor : IFuncObj
+    Members : Map<string, IFuncObj>
     mutable ExtMembers : Map<string, IFuncObj>
   }
 
 type Instance = {
     Data : obj
-    Type : FunnyType
+    Type : FunnyClass
   }
 
 type Case (pat : Pattern) =
@@ -121,10 +126,10 @@ module Result =
 [<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
 module Env =
   let empty =
-    { Vals = Map.empty }
+    { Vals = Map.empty; ExtMembers = Dictionary() }
 
   let add name value env =
-    { Vals = env.Vals |> Map.add name value }
+    { env with Vals = env.Vals |> Map.add name value }
 
   let tryFind name env =
     env.Vals |> Map.tryFind name
@@ -134,6 +139,20 @@ module Env =
 
   let tryGet id (env : Env) =
     env.Vals |> Map.tryFind id |> Option.bind Result.toOption
+
+  let findExtMember (t : System.Type) name (env : Env) =
+    let found, members = env.ExtMembers.TryGetValue t
+    if found then members |> Map.tryFind name else None
+
+  let extendType (t : System.Type) (vtbl : Record) (env : Env) =
+    let members, invalids = vtbl |> Map.partition (fun _ m -> match m with :? IFuncObj -> true | _ -> false)
+    if not invalids.IsEmpty then error ClassDefError else
+      let members = members |> Map.map (fun _ m -> m :?> IFuncObj)
+      let extMems =
+        let found, extMems = env.ExtMembers.TryGetValue t
+        if found then extMems else Map.empty
+      env.ExtMembers.[t] <- (extMems, members) ||> Map.fold (fun vtbl name m -> vtbl |> Map.add name m)
+      Ok null
   
 
 module FuncObj =
@@ -181,40 +200,39 @@ module FuncObj =
 [<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
 module FunnyType =
   let create ctor members =
-    { Id = UserType (ctor, members); ExtMembers = Map.empty }
+    FunnyClass { Ctor = ctor; Members = members; ExtMembers = Map.empty }
 
-  let ofClrType t =
-    { Id = ClrType t; ExtMembers = Map.empty }
+  let ofObj (obj : obj) =
+    match obj with
+    | :? Instance as obj -> FunnyClass obj.Type
+    | :? IFuncObj as f -> ClrType typeof<IFuncObj>
+    | :? FunnyType as t -> ClrType typeof<FunnyType>
+    | null -> ClrType typeof<unit>
+    | _ -> ClrType (obj.GetType())
 
-  let extend members (t : FunnyType) =
-    t.ExtMembers <- (t.ExtMembers, members) ||> Map.fold (fun vtbl name m -> vtbl |> Map.add name m)
 
-
-let makeClass (ctor : obj) (vtbl : obj) =
-  match ctor, vtbl with
-    | (:? IFuncObj as ctor), (:? Record as vtbl) -> Ok (ctor, vtbl)
-    | _ -> error ClassDefError
-  |> Result.bind (fun (ctor, vtbl) ->
+[<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
+module FunnyClass =
+  let extend (vtbl : Record) t =
     let members, invalids = vtbl |> Map.partition (fun _ m -> match m with :? IFuncObj -> true | _ -> false)
-    if invalids.IsEmpty
-      then Ok (ctor, members)
-      else error ClassDefError)
-  |> Result.map (fun (ctor, members) ->
-    let members = members |> Map.map (fun _ m -> match m with :? IFuncObj as m -> m | _ -> failwith "fatal error")
-    box (FunnyType.create ctor members))
+    if not invalids.IsEmpty then error ClassDefError else
+      let members = members |> Map.map (fun _ m -> m :?> IFuncObj)
+      t.ExtMembers <- (t.ExtMembers, members) ||> Map.fold (fun vtbl name m -> vtbl |> Map.add name m)
+      Ok null
 
-let extendType (t : FunnyType) (vtbl : Record) =
-  let members, invalids = vtbl |> Map.partition (fun _ m -> match m with :? IFuncObj -> true | _ -> false)
-  if not invalids.IsEmpty then error ClassDefError else
-    t |> FunnyType.extend (members |> Map.map (fun _ m -> m :?> IFuncObj))
-    Ok null
+  let create (ctor : obj) (vtbl : obj) =
+    match ctor, vtbl with
+      | (:? IFuncObj as ctor), (:? Record as vtbl) -> Ok (ctor, vtbl)
+      | _ -> error ClassDefError
+    |> Result.bind (fun (ctor, vtbl) ->
+      let members, invalids = vtbl |> Map.partition (fun _ m -> match m with :? IFuncObj -> true | _ -> false)
+      if invalids.IsEmpty
+        then Ok (ctor, members)
+        else error ClassDefError)
+    |> Result.map (fun (ctor, members) ->
+      let members = members |> Map.map (fun _ m -> match m with :? IFuncObj as m -> m | _ -> failwith "fatal error")
+      box (FunnyType.create ctor members))
 
-let rec typeid (obj : obj) =
-  match obj with
-  | :? Instance as obj -> obj.Type.Id
-  | :? IFuncObj as f -> ClrType typeof<IFuncObj>
-  | null -> ClrType typeof<unit>
-  | _ -> ClrType (obj.GetType())
 
 let toMutable obj =
   let mutable obj = obj
