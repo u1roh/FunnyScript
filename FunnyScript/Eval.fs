@@ -4,16 +4,16 @@ open System.Collections
 
 module internal Env =
   let openRecord (record : Record) env =
-    (env, record) ||> Seq.fold (fun env x -> env |> Map.add x.Key (Ok x.Value))
+    (env, record) ||> Seq.fold (fun env x -> env |> Env.add x.Key (Ok x.Value))
 
   let matchWith pattern (obj : obj) env =
     pattern |> Pattern.tryMatchWith (fun name -> env |> Env.tryGet name) obj
-    |> Option.map (Map.fold (fun env name obj -> env |> Map.add name (Ok obj)) env)
+    |> Option.map (Map.fold (fun env name obj -> env |> Env.add name (Ok obj)) env)
     |> function Some env -> Ok env | _ -> error Unmatched
 
   let findFunnyType (typeName : string) (env : Env) =
     let typeName = typeName.Split '.'
-    if typeName.Length = 0 then None else env |> Map.tryFind typeName.[0]
+    if typeName.Length = 0 then None else env |> Env.tryFind typeName.[0]
     |> Option.bind Result.toOption
     |> Option.bind (fun x ->
       (Some x, typeName.[1..]) ||> Seq.fold (fun obj item ->
@@ -32,7 +32,7 @@ type private IUserFuncObj =
 let private findExtMember (env : Env) (o : obj) name =
   env |> Env.findExtMember o name
   |> function
-    | Some f -> f.Apply(o, Map.empty)
+    | Some f -> f.Apply(o, Env.empty)
     | _ -> error (IdentifierNotFound name)
 
 let rec eval expr env =
@@ -115,7 +115,7 @@ and forceEval expr env : Result =
 
 and letEval name expr env =
   let value = env |> eval expr |> Result.bind Obj.forceLet
-  let env = env |> Map.add name value
+  let env = env |> Env.add name value
   match value with Ok (:? IUserFuncObj as f) -> f.InitSelfName name | _ -> ()  // to enable recursive call
   value, env
 
@@ -154,6 +154,6 @@ and private createUserFuncObj argPattern body env =
       lazy (env |> Env.matchWith argPattern arg |> Result.bind (eval body)) |> box |> Ok
     member self.InitSelfName name = 
       if not named then
-        env <- env |> Map.add name (Ok (box self)) // to enable recursive call
+        env <- env |> Env.add name (Ok (box self)) // to enable recursive call
         named <- true
   }

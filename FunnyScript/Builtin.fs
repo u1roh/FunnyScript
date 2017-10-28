@@ -286,8 +286,8 @@ let private stdlib2 =
   |> function Ok lib -> lib | _ -> failwith "parse error in stdlib"
 
 let load env =
-  let env = env |> Map.add "unmatched" (error Unmatched)
+  let env = env |> Env.add "unmatched" (error Unmatched)
   env |> Eval.recordEval (stdlib1 @ stdlib2)
   |> Result.map (fun r ->
-    env |> Map.add "std" (Ok r) |> Eval.Env.openRecord (r :?> Record))
+    env |> Env.add "std" (Ok r) |> Eval.Env.openRecord (r :?> Record))
   |> function Ok env -> env | Error { Err = e } -> failwith (sprintf "error in stdlib: %A" e)

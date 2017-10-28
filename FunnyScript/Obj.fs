@@ -67,7 +67,7 @@ let applyCore env (f : obj) (arg : obj) =
       | _ -> error (TypeMismatch (ClrType typeof<int>, typeid arg)))
   //| _ -> err()
 
-let apply f arg = applyCore Map.empty f arg
+let apply f arg = applyCore Env.empty f arg
 
 let findMember (obj : obj) name =
   let notFound = error (IdentifierNotFound name)

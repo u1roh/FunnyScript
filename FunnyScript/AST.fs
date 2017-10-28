@@ -1,7 +1,7 @@
 ﻿[<AutoOpen>]
 module FunnyScript.AST
 
-type Env = Map<string, Result>
+type Env = private { Vals : Map<string, Result> }
 
 and Err =
   | IdentifierNotFound of string
@@ -120,11 +120,20 @@ module Result =
 
 [<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
 module Env =
+  let empty =
+    { Vals = Map.empty }
+
+  let add name value env =
+    { Vals = env.Vals |> Map.add name value }
+
+  let tryFind name env =
+    env.Vals |> Map.tryFind name
+
   let get id (env : Env) =
-    env |> Map.tryFind id |> function Some x -> x | _ -> error (IdentifierNotFound id)
+    env.Vals |> Map.tryFind id |> function Some x -> x | _ -> error (IdentifierNotFound id)
 
   let tryGet id (env : Env) =
-    env |> Map.tryFind id |> Option.bind Result.toOption
+    env.Vals |> Map.tryFind id |> Option.bind Result.toOption
   
 
 module FuncObj =
@@ -147,7 +156,7 @@ module FuncObj =
   let ofFun2 f = ofFun (f >> ofFun)
   let ofFun3 f = ofFun (f >> ofFun2)
 
-  let invoke (f : IFuncObj) arg = f.Apply (arg, Map.empty)
+  let invoke (f : IFuncObj) arg = f.Apply (arg, Env.empty)
 
   let invoke2 f arg1 arg2 =
     invoke f arg1

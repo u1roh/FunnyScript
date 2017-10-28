@@ -8,7 +8,7 @@ type Error =
 
 type Env private (data : AST.Env) =
   static member Default =
-    Map.empty
+    Env.empty
     |> CLR.loadSystemAssembly
     |> CLR.loadAssembly typeof<Numerics.Complex>.Assembly
     |> CLR.loadAssembly typeof<unit>.Assembly
@@ -20,17 +20,17 @@ type Env private (data : AST.Env) =
 
   member this.LoadModule (name, m : list<string * Expr>) =
     let result = data |> Eval.eval (NewRecord m) 
-    data |> Map.add name result |> Env
+    data |> Env.add name result |> Env
 
   member this.LoadModule (name, moduleScript) =
     let result =
       Parser.parseModule name moduleScript
       |> Result.mapError (ParseError >> ErrInfo.Create)
       |> Result.bind (fun m -> data |> Eval.eval (NewRecord m))
-    data |> Map.add name result |> Env
+    data |> Env.add name result |> Env
 
   member this.Add (name, obj : obj) =
-    data |> Map.add name (Ok obj) |> Env
+    data |> Env.add name (Ok obj) |> Env
 
   member this.AddFunc (name, f : Func<'a, 'b>) =
     this.Add (name, FuncObj.ofFun f.Invoke |> box)

@@ -49,9 +49,9 @@ let loadAssembly (asm : System.Reflection.Assembly) (env : Env) =
   |> Array.map (fun t -> (if t.Namespace = null then [] else t.Namespace.Split '.' |> Array.toList), t)
   |> typesToFunnyObjs
   |> Array.fold (fun (env : Env) (name, item) ->
-    match env |> Map.tryFind name, item with
-    | Some (Ok (:? Record as r1)), (:? Record as r2) -> env |> Map.add name (mergeRecord r1 r2 |> box |> Ok)
-    | _ -> env |> Map.add name (Ok item)) env
+    match env |> Env.tryFind name, item with
+    | Some (Ok (:? Record as r1)), (:? Record as r2) -> env |> Env.add name (mergeRecord r1 r2 |> box |> Ok)
+    | _ -> env |> Env.add name (Ok item)) env
 
 let loadSystemAssembly env =
   env
