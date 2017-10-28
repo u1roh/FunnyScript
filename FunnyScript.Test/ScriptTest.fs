@@ -16,6 +16,11 @@ let (==>!) (script : string) error =
   | Error e -> fail (sprintf "unexpected error: %A" e)
   | Ok _ -> fail "Error expected, but succceeded"
 
+let shouldFail script =
+  match env.Run ("ScriptTest", script) with
+  | Ok _ -> fail "Error expected, but succceeded"
+  | _ -> pass ()
+
 let literalTest = test "literal test" {
   do! "1." ==> 1.0
   do! "-1" ==> -1
@@ -189,7 +194,12 @@ let identifierTest = test "identifier test" {
   do! "`I love F#` := 123; `I love F#`" ==> 123
   do! "`×` := x -> y -> x * y; `×` 3 5" ==> 15  // 掛け算の演算子なのだけどエックスと区別がつかない…
   do! "`+` := x -> y -> x - y; 7 + 3" ==> 4 // + 演算子を引き算に上書き
+  do! "_ := 0; 111" ==> 111 // '_' という識別子の「定義」は出来る
+  do! "_ := 0; _" |> shouldFail // '_' という識別子の「参照」は不可
+  do! "@ := 0; @" |> shouldFail // '@' という識別子の「定義」は不可
+  do! "222 |> |@" ==> 222 // '@' という識別子の「参照」は出来る
 }
+
 
 let clrTest = test "CLR reflection test" {
   do! "System :? record" ==> true

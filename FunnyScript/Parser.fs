@@ -14,6 +14,11 @@ let private trace parser =
   getPosition .>>. parser .>>. getPosition
   |>> fun ((pos1, x), pos2) -> x, { FilePath = pos1.StreamName; LineCol1 = lncol pos1; LineCol2 = lncol pos2 }
 
+let private str_ws   s = skipString s >>. spaces
+let private char_ws  c = skipChar   c >>. spaces
+let private between_ws c1 c2 p = between (char_ws c1) (char_ws c2) p
+let private sepByComma p = sepBy p (char_ws ',')
+
 let pLiteralNumber =
   let numfmt =
     //NumberLiteralOptions.AllowMinusSign |||
@@ -46,13 +51,15 @@ let pLiteralString =
 let reservedWords =
   [ "do"; "if"; "else"; "in" ] |> Set.ofList
 
-let pIdentifier =
-  choice [
-    attempt (regex @"[_\p{Ll}\p{Lu}\p{Lt}\p{Lo}]([_\p{Ll}\p{Lu}\p{Lt}\p{Lo}\p{Nd}\p{Lm}])*" .>> spaces
-      >>= fun s -> if reservedWords |> Set.contains s then fail (sprintf "'%s' is reserved word." s) else (fun stream -> Reply s))
-    many (noneOf "`") |> between (skipChar '`') (skipChar '`') .>> spaces |>> (List.toArray >> String)
-    pstring "@" .>> spaces
-  ] <?> "identifier"
+let pIdentifier, pIdentifierDef, pIdentifierRef =
+  let iddef =
+    choice [
+      attempt (regex @"[_\p{Ll}\p{Lu}\p{Lt}\p{Lo}]([_\p{Ll}\p{Lu}\p{Lt}\p{Lo}\p{Nd}\p{Lm}])*" .>> spaces
+        >>= fun s -> if reservedWords |> Set.contains s then fail (sprintf "'%s' is reserved word." s) else (fun stream -> Reply s))
+      many (noneOf "`") |> between (skipChar '`') (skipChar '`') .>> spaces |>> (List.toArray >> String)
+    ] <?> "identifier"
+  let id = iddef >>= function "_" -> fail "cannot refer '_'" | id -> preturn id
+  id, iddef, id <|> (pstring "@" .>> spaces)
 
 let pAtom =
   choice [
@@ -60,13 +67,8 @@ let pAtom =
     skipString "false" .>> spaces |>> (fun () -> box false |> Obj)
     pLiteralNumber
     pLiteralString |>> (box >> Obj)
-    pIdentifier |>> Ref
+    pIdentifierRef |>> Ref
   ]
-
-let private str_ws   s = skipString s >>. spaces
-let private char_ws  c = skipChar   c >>. spaces
-let private between_ws c1 c2 p = between (char_ws c1) (char_ws c2) p
-let private sepByComma p = sepBy p (char_ws ',')
 
 let pExpr =
   let pExpr, pExprRef = createParserForwardedToRef<Expr, unit>()
@@ -91,18 +93,18 @@ let pExpr =
     let pPatternTerm =
       choice [
         pPatternInBracket
-        char_ws '#' >>. pIdentifier .>>. opt pPattern |>> fun (case, pat) -> XCase (case, pat |> Option.defaultValue PatternExpr.Empty)
+        char_ws '#' >>. pIdentifierRef .>>. opt pPattern |>> fun (case, pat) -> XCase (case, pat |> Option.defaultValue PatternExpr.Empty)
         char_ws ':' >>. pExpr |>> XTyped
       ]
     pPatternRef :=
       choice [
         pPatternTerm
-        pIdentifier .>>. opt pPatternTerm |>> fun (name, pat) -> XNamed (name, pat |> Option.defaultValue XAny)
+        pIdentifierDef .>>. opt pPatternTerm |>> fun (name, pat) -> XNamed (name, pat |> Option.defaultValue XAny)
       ] <?> "pattern"
-    pPatternInBracket <|> (pIdentifier |>> function "_" -> XAny | name -> XNamed (name, XAny))
+    pPatternInBracket <|> (pIdentifierDef |>> function "_" -> XAny | name -> XNamed (name, XAny))
 
   let pLet =
-    attempt (opt pIdentifier .>> str_ws ":=") .>>. pExpr .>> char_ws ';' .>>. pExpr
+    attempt (opt pIdentifierDef .>> str_ws ":=") .>>. pExpr .>> char_ws ';' .>>. pExpr
     |>> function
       | ((Some name, expr1), expr2) -> Let (name, expr1, expr2)
       | ((_, expr1), expr2)         -> Let (null, expr1, expr2)
