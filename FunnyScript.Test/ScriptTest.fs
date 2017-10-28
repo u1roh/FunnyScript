@@ -30,6 +30,7 @@ let testScript = test "scripting test" {
   do! "a := 1 + 2; b := 3 + 4; a * b" ==> 21
   do! "f := a -> a + 1; f 2" ==> 3
   do! "f := | @ + 1; f 2" ==> 3
+  do! "f := |@ + 1; f 5" ==> 6  // '|' の後にスペースを空けなくてもOKに
   do! "f := a -> b -> a * b; f 3 4" ==> 12
   do! "f := | b -> @ * b; f 3 4" ==> 12
   do! "f := a -> | a * @; f 3 4" ==> 12

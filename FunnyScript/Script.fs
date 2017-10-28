@@ -11,6 +11,7 @@ type Env private (data : AST.Env) =
     Map.empty
     |> CLR.loadSystemAssembly
     |> CLR.loadAssembly typeof<Numerics.Complex>.Assembly
+    |> CLR.loadAssembly typeof<unit>.Assembly
     |> Builtin.load
     |> Env
 

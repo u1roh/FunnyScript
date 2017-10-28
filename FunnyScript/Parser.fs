@@ -65,7 +65,6 @@ let pAtom =
 
 let private str_ws   s = skipString s >>. spaces
 let private char_ws  c = skipChar   c >>. spaces
-let private char_ws1 c = skipChar   c >>. spaces1
 let private between_ws c1 c2 p = between (char_ws c1) (char_ws c2) p
 let private sepByComma p = sepBy p (char_ws ',')
 
@@ -116,9 +115,6 @@ let pExpr =
   let pLoad =
     str_ws "load" >>. pLiteralString .>> char_ws ';' .>>. pExpr
     |>> Load
-//  let pIf =
-//    (opt (char_ws '|') .>> char_ws '?') >>. pExpr .>> str_ws "=>" .>>. pExpr .>>. opt (char_ws '|' >>. pExpr)
-//    |>> fun ((cond, expr1), expr2) -> If (cond, expr1, expr2 |> Option.defaultValue (Ref "unmatched"))
   let pIf =
     many1 (str_ws "if" >>. pExpr .>> str_ws "=>" .>>. pExpr) .>>. opt (str_ws "else" >>. pExpr)
     |>> fun (ifList, elseExpr) ->
@@ -129,7 +125,8 @@ let pExpr =
     |>> (fun (args, body) -> FuncDef { Args = args; Body = body })
     <?> "lambda"
   let pLambda2 =
-    attempt (char_ws1 '|') >>. pExpr |>> fun expr -> FuncDef { Args = XNamed ("@", XAny); Body = expr }
+    attempt (skipChar '|' .>> followedBy (noneOf ">|!?") .>> spaces) >>. pExpr
+    |>> fun expr -> FuncDef { Args = XNamed ("@", XAny); Body = expr }
     <?> "lambda"
   let pRecord =
     let pRecItem = pIdentifier .>> str_ws ":=" .>>. pExpr
