@@ -1,6 +1,7 @@
 ﻿module FunnyScript.CLR
 open System
 open System.Reflection
+open System.Linq.Expressions
 
 let private makeTypeConstructor (t : Type) =
   let argNum = t.GetGenericArguments().Length
@@ -59,6 +60,35 @@ let loadSystemAssembly env =
   |> loadAssembly typeof<System.Timers.Timer>.Assembly
 
 
+type FunnyEvent (self : obj, event : EventInfo) =
+  static let rec force (obj : obj) =
+    match obj with
+    | :? Lazy<Result> as x -> x.Force() |> Result.bind force
+    | :? IMutable as x -> force x.Value
+    | _ -> Ok obj
+  member __.subscribe (handler : IFuncObj) =
+    let handler = Action<obj, obj>(fun sender e ->
+      handler.Apply (sender, Env.empty)
+      |> Result.bind force
+      |> Result.bind (function
+        | :? IFuncObj as f -> f.Apply (e, Env.empty) |> Result.bind force
+        | x -> error (TypeMismatch (ClrType typeof<IFuncObj>, FunnyType.ofObj x)))
+      |> function Error e -> printfn "%A" e | _ -> ())
+    let handler =
+      let sender = Expression.Parameter typeof<obj>
+      let arg    = Expression.Parameter typeof<obj>
+      let body   = Expression.Invoke (Expression.Constant handler, sender, arg)
+      (Expression.Lambda (event.EventHandlerType, body, sender, arg)).Compile()
+    event.AddEventHandler (self, handler)
+    { new IDisposable with member __.Dispose() = event.RemoveEventHandler (self, handler) }
+  interface IObservable<obj> with
+    member __.Subscribe observer =
+      let handler =
+        let arg = Expression.Parameter typeof<obj>
+        let body = Expression.Invoke (Expression.Constant observer.OnNext, arg)
+        (Expression.Lambda (event.EventHandlerType, body, arg)).Compile()
+      event.AddEventHandler (self, handler)
+      { new IDisposable with member __.Dispose() = event.RemoveEventHandler (self, handler) }
 
 
 let private toFunc1 f = FuncObj.create (f >> Result.mapError ErrInfo.Create)
@@ -110,14 +140,20 @@ let private ofField self (field : FieldInfo) =
         with get() = field.GetValue (Option.toObj self)
         and  set x = field.SetValue (Option.toObj self, x) }
 
+let private ofEvent self (event : EventInfo) =
+  FunnyEvent (Option.toObj self, event) :> obj
+
 let private tryGetMember name self (t : Type) =
   let members =
-    t.GetMembers (BindingFlags.Public ||| (if Option.isNone self then BindingFlags.Static else BindingFlags.Instance))
+    t.GetInterfaces()
+    |> Array.collect (fun t -> t.GetMembers())
+    |> Array.append (t.GetMembers (BindingFlags.Public ||| (if Option.isNone self then BindingFlags.Static else BindingFlags.Instance)))
     |> Array.filter (fun m -> m.Name = name)
   if members.Length = 0 then None else
     members |> Array.tryPick (function
       | :? PropertyInfo as x -> x |> ofProperty self |> Some
       | :? FieldInfo    as x -> x |> ofField    self |> Some
+      | :? EventInfo    as x -> x |> ofEvent    self |> Some
       | _ -> None)
     |> Option.orElseWith (fun () ->
       members
