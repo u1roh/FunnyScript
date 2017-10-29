@@ -35,7 +35,10 @@ namespace FunnyScript.Gui
           ( (FunnyEditor)self ).Load( e.NewValue as string );
         } ) );
 
-    Script.Env env = Script.Env.Default;
+    Script.Env env = Script.Env.Default
+      .LoadAssembly(typeof(System.Drawing.Graphics).Assembly)
+      .LoadAssembly(typeof(System.Windows.Forms.Form).Assembly);
+    
     Result<AST.Expr, string> expr;
     CompletionWindow completionWindow = null;
     bool keywordCompletion = true;

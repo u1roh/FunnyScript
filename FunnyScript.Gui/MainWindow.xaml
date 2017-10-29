@@ -5,10 +5,15 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:FunnyScript.Gui"
         mc:Ignorable="d"
-        Title="MainWindow" Height="600" Width="525">
+        Title="FunnyScript" Height="800" Width="525">
   <DockPanel>
     <Menu DockPanel.Dock="Top">
-      <MenuItem Header="Run" Click="MenuItem_Click"/>
+      <MenuItem Header="File">
+        <MenuItem Header="Open ..." Click="MenuItem_Open_Click"/>
+        <MenuItem Header="Save" Click="MenuItem_Save_Click"/>
+        <MenuItem Header="Save As ..." Click="MenuItem_SaveAs_Click"/>
+      </MenuItem>
+      <MenuItem Header="Run" Click="MenuItem_Run_Click"/>
     </Menu>
     <Grid>
       <Grid.RowDefinitions>

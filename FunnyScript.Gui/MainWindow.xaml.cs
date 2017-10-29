@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Microsoft.Win32;
 
 namespace FunnyScript.Gui
 {
@@ -20,19 +21,21 @@ namespace FunnyScript.Gui
   /// </summary>
   public partial class MainWindow : Window
   {
+    static readonly string DefaultFolder = System.IO.Path.GetDirectoryName(typeof(MainWindow).Assembly.Location);
+
     public MainWindow()
     {
       InitializeComponent();
-      editor.SourceFilePath = System.IO.Path.Combine( System.IO.Path.GetDirectoryName( typeof( MainWindow ).Assembly.Location ), "default.fny" );
+      editor.SourceFilePath = System.IO.Path.Combine( DefaultFolder, "default.fny" );
 			editor.SetFunc("dump", ( string name, object obj ) => { output.Add(name, obj); return obj; });
 			editor.SetAction("print", (string text) => output.Add(text));
       this.KeyDown += ( sender, e ) =>
       {
-        if ( e.Key == Key.F5 ) this.MenuItem_Click( sender, e );
+        if ( e.Key == Key.F5 ) this.MenuItem_Run_Click( sender, e );
       };
     }
 
-		private void MenuItem_Click( object sender, RoutedEventArgs e )
+		private void MenuItem_Run_Click( object sender, RoutedEventArgs e )
 		{
 			output.Items.Clear();
 			var result = editor.Run();
@@ -44,5 +47,28 @@ namespace FunnyScript.Gui
 			output.Items.Add(new ObjListView.Item(obj, endpos == -1 ? text : text.Substring(0, endpos)));
 			Console.WriteLine("{0}", text);
 		}
+
+    private void MenuItem_Open_Click( object sender, RoutedEventArgs e )
+    {
+      var dialog = new OpenFileDialog();
+      dialog.Filter = "Funny Script (*.fny)|*.fny";
+      dialog.InitialDirectory = DefaultFolder;
+      var result = dialog.ShowDialog(this);
+      if (result.HasValue && result.Value) editor.Load(dialog.FileName);
+    }
+
+    private void MenuItem_Save_Click( object sender, RoutedEventArgs e )
+    {
+      editor.Save(editor.SourceFilePath);
+    }
+
+    private void MenuItem_SaveAs_Click( object sender, RoutedEventArgs e )
+    {
+      var dialog = new SaveFileDialog();
+      dialog.Filter = "Funny Script (*.fny)|*.fny";
+      dialog.InitialDirectory = DefaultFolder;
+      var result = dialog.ShowDialog(this);
+      if (result.HasValue && result.Value) editor.Save(dialog.FileName);
+    }
   }
 }
