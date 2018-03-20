@@ -283,6 +283,8 @@ let private stdlib2 =
   rec := f -> x -> f (rec f) x; // Yコンビネータ
   `∋` := set -> elm -> elm ∈ set;
   `in` := `∈`;
+  Set := Microsoft.FSharp.Collections.FSharpSet System.Object;
+  Map := Microsoft.FSharp.Collections.FSharpMap (System.Object, System.Object);
   """
   |> Parser.parseModule "stdlib"
   |> function Ok lib -> lib | _ -> failwith "parse error in stdlib"

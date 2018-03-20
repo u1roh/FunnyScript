@@ -114,13 +114,19 @@ let private invokeMethod (overloadMethods : Method[]) (args : obj) =
         if args |> Array.mapi (fun i arg -> m.Params.[i].ParameterType.IsAssignableFrom (arg.GetType())) |> Array.forall id
           then invoke args
           else None
+      elif m.Params.Length = 1 && m.Params.[0].ParameterType.IsAssignableFrom (args.GetType()) then
+        invoke [| args |]
       else None
     | _ when m.Params.Length = 1 ->
       if m.Params.[0].ParameterType.IsAssignableFrom (args.GetType())
         then invoke [| args |]
         else None
     | _ -> None)
-  |> Option.defaultValue (Error (MiscError "Failed to resolve overloaded methods"))
+  //|> Option.defaultValue (Error (MiscError "Failed to resolve overloaded methods"))
+  |> Option.defaultWith (fun () ->
+    let msg = sprintf "Failed to resolve overloaded methods: args = %A, overloadMethods.Length = %d" args overloadMethods.Length
+    Error (MiscError msg))
+
 
 let private ofProperty self (prop : PropertyInfo) =
   if prop.SetMethod = null then
