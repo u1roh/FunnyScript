@@ -276,6 +276,12 @@ let private stdlib1 =
     "function", ClrType typeof<IFuncObj>  :> obj
     "type",     ClrType typeof<FunnyType> :> obj
 
+    "Map", [
+        "ofArray", FuncObj.forArray (FunnyArray.choose (function
+          | :? (obj[]) as a -> match a with [| (:? System.IComparable as key); value |] -> Some (key, value) | _ -> None
+          | _ -> None) >> Map.ofArray) :> obj
+      ] |> Map.ofList :> obj
+
   ] |> List.map (fun (name, obj) -> name, Obj obj)
 
 let private stdlib2 =
@@ -284,7 +290,6 @@ let private stdlib2 =
   `∋` := set -> elm -> elm ∈ set;
   `in` := `∈`;
   Set := Microsoft.FSharp.Collections.FSharpSet System.Object;
-  Map := Microsoft.FSharp.Collections.FSharpMap (System.Object, System.Object);
   """
   |> Parser.parseModule "stdlib"
   |> function Ok lib -> lib | _ -> failwith "parse error in stdlib"

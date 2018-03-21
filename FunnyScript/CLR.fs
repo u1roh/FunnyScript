@@ -104,28 +104,19 @@ type private Method = {
     { Invoke = fun args -> c.Invoke args
       Params = c.GetParameters() }
 
+let private tryInvokeMethod (m : Method) args =
+  if Array.length args = m.Params.Length &&
+     Array.zip m.Params args |> Array.forall (fun (param, arg) -> param.ParameterType.IsAssignableFrom (arg.GetType()))
+    then Some <| try m.Invoke args |> Ok with e -> Error (ExnError e)
+    else None
+
 let private invokeMethod (overloadMethods : Method[]) (args : obj) =
   overloadMethods |> Array.tryPick (fun m ->
-    let invoke args = (try m.Invoke args |> Ok with e -> Error (ExnError e)) |> Some
     match args with
-    | null -> if m.Params.Length = 0 then invoke [||] else None
-    | :? (obj[]) as args ->
-      if args.Length = m.Params.Length then
-        if args |> Array.mapi (fun i arg -> m.Params.[i].ParameterType.IsAssignableFrom (arg.GetType())) |> Array.forall id
-          then invoke args
-          else None
-      elif m.Params.Length = 1 && m.Params.[0].ParameterType.IsAssignableFrom (args.GetType()) then
-        invoke [| args |]
-      else None
-    | _ when m.Params.Length = 1 ->
-      if m.Params.[0].ParameterType.IsAssignableFrom (args.GetType())
-        then invoke [| args |]
-        else None
-    | _ -> None)
-  //|> Option.defaultValue (Error (MiscError "Failed to resolve overloaded methods"))
-  |> Option.defaultWith (fun () ->
-    let msg = sprintf "Failed to resolve overloaded methods: args = %A, overloadMethods.Length = %d" args overloadMethods.Length
-    Error (MiscError msg))
+    | :? (obj[]) as args -> tryInvokeMethod m args |> Option.orElseWith (fun () -> tryInvokeMethod m [| args |])
+    | null -> tryInvokeMethod m [||]
+    | args -> tryInvokeMethod m [| args |])
+  |> Option.defaultValue (Error (MiscError "Failed to resolve overloaded methods"))
 
 
 let private ofProperty self (prop : PropertyInfo) =

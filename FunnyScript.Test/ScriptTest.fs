@@ -516,8 +516,13 @@ let collectionTest = test "collection test" {
   a.Count
   """ ==> 3
 
-//  do! """
-//  a := Map [];
-//  a.Count
-//  """ ==> 1
+  do! """
+  a := Map.ofArray [("hoge", 123), ("piyo", 321)];
+  a.Count
+  """ ==> 2
+
+  do! """
+  a := Map.ofArray [("hoge", 123), ("piyo", 321)];
+  a "piyo"
+  """ ==> 321
 }
