@@ -276,11 +276,10 @@ let private stdlib1 =
     "function", ClrType typeof<IFuncObj>  :> obj
     "type",     ClrType typeof<FunnyType> :> obj
 
-    "Map", [
-        "ofArray", FuncObj.forArray (FunnyArray.choose (function
-          | :? (obj[]) as a -> match a with [| (:? System.IComparable as key); value |] -> Some (key, value) | _ -> None
-          | _ -> None) >> Map.ofArray) :> obj
-      ] |> Map.ofList :> obj
+    // Map（FSharpMap） のコンストラクタ
+    "Map", FuncObj.forSeq (Seq.choose (function
+      | :? (obj[]) as a -> match a with [| (:? System.IComparable as key); value |] -> Some (key, value) | _ -> None
+      | _ -> None) >> Map.ofSeq) :> obj
 
   ] |> List.map (fun (name, obj) -> name, Obj obj)
 
