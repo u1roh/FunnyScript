@@ -276,6 +276,11 @@ let private stdlib1 =
     "function", ClrType typeof<IFuncObj>  :> obj
     "type",     ClrType typeof<FunnyType> :> obj
 
+    // Map（FSharpMap） のコンストラクタ
+    "Map", FuncObj.forSeq (Seq.choose (function
+      | :? (obj[]) as a -> match a with [| (:? System.IComparable as key); value |] -> Some (key, value) | _ -> None
+      | _ -> None) >> Map.ofSeq) :> obj
+
   ] |> List.map (fun (name, obj) -> name, Obj obj)
 
 let private stdlib2 =
@@ -283,6 +288,7 @@ let private stdlib2 =
   rec := f -> x -> f (rec f) x; // Yコンビネータ
   `∋` := set -> elm -> elm ∈ set;
   `in` := `∈`;
+  Set := Microsoft.FSharp.Collections.FSharpSet System.Object;
   """
   |> Parser.parseModule "stdlib"
   |> function Ok lib -> lib | _ -> failwith "parse error in stdlib"

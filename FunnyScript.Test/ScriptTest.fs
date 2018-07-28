@@ -509,3 +509,21 @@ let genericTypeTest = test "generic type test" {
     a "hoge"
   """ ==> 789
 }
+
+let collectionTest = test "collection test" {
+  do! """
+  a := Set [1, 2, 3];
+  a.Count
+  """ ==> 3
+
+  do! """
+  a := Map [("hoge", 123), ("piyo", 321)];
+  a.Count
+  """ ==> 2
+
+  do! """
+  a := Map [("hoge", 123), ("piyo", 321)];
+  a := a.Add ("buzz", 111);
+  a "piyo" + a "buzz"
+  """ ==> 432
+}
