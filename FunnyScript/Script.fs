@@ -42,7 +42,7 @@ type Env private (data : AST.Env) =
     this.Add (name, FuncObj.ofFun f.Invoke |> box)
 
   member this.AddAction (name, f : Action<'a, 'b>) =
-    this.Add (name, FuncObj.ofFun (fun a b -> f.Invoke (a, b)) |> box)
+    this.Add (name, FuncObj.ofFun2 (fun a b -> f.Invoke (a, b)) |> box)
 
   member this.Eval expr =
     data |> Eval.eval expr |> Result.bind Obj.force
