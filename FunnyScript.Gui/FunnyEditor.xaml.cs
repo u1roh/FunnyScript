@@ -160,6 +160,11 @@ namespace FunnyScript.Gui
       env = env.Add( name, obj );
     }
 
+		public void SetFunc<TResult>(string name, Func<TResult> f)
+		{
+			env = env.AddFunc(name, f);
+		}
+
 		public void SetFunc<T, TResult>(string name, Func<T, TResult> f)
 		{
 			env = env.AddFunc(name, f);
@@ -168,6 +173,11 @@ namespace FunnyScript.Gui
 		public void SetFunc<T1, T2, TResult>(string name, Func<T1, T2, TResult> f)
 		{
 			env = env.AddFunc(name, f);
+		}
+
+		public void SetAction(string name, Action f)
+		{
+			env = env.AddAction(name, f);
 		}
 
 		public void SetAction<T>(string name, Action<T> f)
