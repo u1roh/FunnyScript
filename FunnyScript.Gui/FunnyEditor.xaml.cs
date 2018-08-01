@@ -35,10 +35,6 @@ namespace FunnyScript.Gui
           ( (FunnyEditor)self ).Load( e.NewValue as string );
         } ) );
 
-    Script.Env env = Script.Env.Default
-      .LoadAssembly(typeof(System.Drawing.Graphics).Assembly)
-      .LoadAssembly(typeof(System.Windows.Forms.Form).Assembly);
-    
     Result<AST.Expr, string> expr;
     CompletionWindow completionWindow = null;
     bool keywordCompletion = true;
@@ -126,6 +122,8 @@ namespace FunnyScript.Gui
       set { this.SetValue( SourceFilePathProperty, value ); }
     }
 
+    public string Text { get { return editor.Text; } set { editor.Text = value; } }
+
     public void Load( string path )
     {
       if ( path != null && File.Exists( path ) ) {
@@ -150,59 +148,10 @@ namespace FunnyScript.Gui
       }
     }
 
-    public void LoadAssembly( Assembly asm )
-    {
-      env = env.LoadAssembly( asm );
-    }
-
-    public void SetVariable( string name, object obj )
-    {
-      env = env.Add( name, obj );
-    }
-
-		public void SetFunc<TResult>(string name, Func<TResult> f)
-		{
-			env = env.AddFunc(name, f);
-		}
-
-		public void SetFunc<T, TResult>(string name, Func<T, TResult> f)
-		{
-			env = env.AddFunc(name, f);
-		}
-
-		public void SetFunc<T1, T2, TResult>(string name, Func<T1, T2, TResult> f)
-		{
-			env = env.AddFunc(name, f);
-		}
-
-		public void SetAction(string name, Action f)
-		{
-			env = env.AddAction(name, f);
-		}
-
-		public void SetAction<T>(string name, Action<T> f)
-		{
-			env = env.AddAction(name, f);
-		}
-
-		public void SetAction<T1, T2>(string name, Action<T1, T2> f)
-		{
-			env = env.AddAction(name, f);
-		}
-
     public void Parse()
     {
       expr = Parser.parse( "(noname)", editor.Text );
       if ( expr.IsOk ) this.Save( this.SourceFilePath );
-    }
-
-    public Result<object, Script.Error> Run( params Tuple<string, object>[] args )
-    {
-      var e = env;
-      foreach ( var arg in args ) e = e.Add( arg.Item1, arg.Item2 );
-      var result = e.Run( "(noname)", editor.Text );
-      if ( result.IsOk ) this.Save( this.SourceFilePath );
-      return result;
     }
   }
 }

@@ -53,14 +53,16 @@ type Env private (data : AST.Env) =
   member this.Eval expr =
     data |> Eval.eval expr |> Result.bind Obj.force
 
-  member this.Run (streamName, source) =
+  member this.Run (streamName, source, [<ParamArray>] args : (string * obj)[]) =
+    let mutable env = this;
+    for name, obj in args do env <- env.Add (name, obj)
     Parser.parse streamName source
     //|> Result.map (fun x -> DebugDump.dump 1 x; x)
     |> Result.mapError ParserError
-    |> Result.bind (this.Eval >> Result.mapError RuntimeError)
+    |> Result.bind (env.Eval >> Result.mapError RuntimeError)
 
-  member this.RunFile path =
-    this.Run (path, File.ReadAllText path)
+  member this.RunFile (path, [<ParamArray>] args) =
+    this.Run (path, File.ReadAllText path, args)
 
 
 let getRuntimeErrorString e =

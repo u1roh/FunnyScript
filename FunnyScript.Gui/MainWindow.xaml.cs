@@ -23,12 +23,17 @@ namespace FunnyScript.Gui
   {
     static readonly string DefaultFolder = System.IO.Path.GetDirectoryName(typeof(MainWindow).Assembly.Location);
 
+    Script.Env env = Script.Env.Default
+      .LoadAssembly(typeof(System.Drawing.Graphics).Assembly)
+      .LoadAssembly(typeof(System.Windows.Forms.Form).Assembly);
+    
     public MainWindow()
     {
       InitializeComponent();
       editor.SourceFilePath = System.IO.Path.Combine( DefaultFolder, "default.fny" );
-			editor.SetFunc("dump", ( string name, object obj ) => { output.Add(name, obj); return obj; });
-			editor.SetAction("print", (string text) => output.Add(text));
+      env = env
+        .AddFunc("dump", ( string name, object obj ) => { output.Add(name, obj); return obj; })
+        .AddAction("print", (string text) => output.Add(text));
       this.KeyDown += ( sender, e ) =>
       {
         if ( e.Key == Key.F5 ) this.MenuItem_Run_Click( sender, e );
@@ -38,7 +43,7 @@ namespace FunnyScript.Gui
 		private void MenuItem_Run_Click( object sender, RoutedEventArgs e )
 		{
 			output.Items.Clear();
-			var result = editor.Run();
+      var result = env.Run(System.IO.Path.GetFileName(editor.SourceFilePath), editor.Text);
 			var text = Script.getResultString(result);
 			var obj = result.IsOk ?
 				((Result<object, Script.Error>.Ok)result).Item :
