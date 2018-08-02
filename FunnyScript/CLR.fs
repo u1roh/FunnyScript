@@ -46,10 +46,18 @@ let rec private mergeRecord (r1 : Record) (r2 : Record) =
     | Some (:? Record as r1), (:? Record as r2) -> acc |> Map.add item.Key (mergeRecord r1 r2 |> box)
     | _ -> acc |> Map.add item.Key item.Value)
 
+let private getNamespace (t : Type) =
+  let ns = if t.Namespace = null then [] else t.Namespace.Split '.' |> Array.toList
+  let rec getNestNames (t : Type) =
+    if t.IsNested
+      then t.DeclaringType.Name :: getNestNames t.DeclaringType
+      else []
+  ns @ (getNestNames t |> List.rev)
+
 let loadAssembly (asm : System.Reflection.Assembly) (env : Env) =
   asm.GetTypes()
-  |> Array.filter (fun t -> not t.IsNested)
-  |> Array.map (fun t -> (if t.Namespace = null then [] else t.Namespace.Split '.' |> Array.toList), t)
+  |> Array.filter (fun t -> not (FSharpType.IsModule t) && (not t.IsNested || FSharpType.IsModule t.DeclaringType))
+  |> Array.map (fun t -> (getNamespace t), t)
   |> typesToFunnyObjs
   |> Array.fold (fun (env : Env) (name, item) ->
     match env |> Env.tryFind name, item with
