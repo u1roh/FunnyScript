@@ -47,6 +47,7 @@ let rec private mergeRecord (r1 : Record) (r2 : Record) =
 
 let loadAssembly (asm : System.Reflection.Assembly) (env : Env) =
   asm.GetTypes()
+  |> Array.filter (fun t -> not t.IsNested)
   |> Array.map (fun t -> (if t.Namespace = null then [] else t.Namespace.Split '.' |> Array.toList), t)
   |> typesToFunnyObjs
   |> Array.fold (fun (env : Env) (name, item) ->
@@ -151,6 +152,7 @@ let private tryGetMember name self (t : Type) =
       | :? PropertyInfo as x -> x |> ofProperty self |> Some
       | :? FieldInfo    as x -> x |> ofField    self |> Some
       | :? EventInfo    as x -> x |> ofEvent    self |> Some
+      | :? Type         as x -> ClrType x |> box |> Some
       | _ -> None)
     |> Option.orElseWith (fun () ->
       members
