@@ -24,6 +24,7 @@ namespace FunnyScript.Gui
     static readonly string DefaultFolder = System.IO.Path.GetDirectoryName(typeof(MainWindow).Assembly.Location);
 
     Script.Env env = Script.Env.Default
+      .LoadAssembly(typeof(AST).Assembly)
       .LoadAssembly(typeof(System.Drawing.Graphics).Assembly)
       .LoadAssembly(typeof(System.Windows.Forms.Form).Assembly);
     

@@ -2,6 +2,7 @@
 open System
 open System.Reflection
 open System.Linq.Expressions
+open FSharp.Reflection
 
 let private makeTypeConstructor (t : Type) =
   let argNum = t.GetGenericArguments().Length
@@ -162,9 +163,14 @@ let private tryGetMember name self (t : Type) =
         | methods -> Some <| box (toFunc1 (invokeMethod methods)))
 
 let tryGetConstructor (t : Type) =
-  t.GetConstructors() |> Array.map Method.OfConstructor |> function
-    | [||]  -> None
-    | ctors -> Some <| toFunc1 (invokeMethod ctors)
+  if t.IsNested && FSharpType.IsUnion t.DeclaringType then
+    let m = t.DeclaringType.GetMethod ("New" + t.Name)
+    let m = Method.OfMethod (m, null)
+    Some <| toFunc1 (invokeMethod [| m |])
+  else
+    t.GetConstructors() |> Array.map Method.OfConstructor |> function
+      | [||]  -> None
+      | ctors -> Some <| toFunc1 (invokeMethod ctors)
 
 let tryGetStaticMember name t =
   tryGetMember name None t
