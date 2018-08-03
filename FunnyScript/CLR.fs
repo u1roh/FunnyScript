@@ -114,11 +114,26 @@ type private Method = {
     { Invoke = fun args -> c.Invoke args
       Params = c.GetParameters() }
 
+let rec private tryConvert (t : Type) (arg : obj) =
+  if t.IsAssignableFrom (arg.GetType()) then Some arg
+  elif t.IsArray then
+    match arg with
+    | :? (obj[]) as src -> 
+      let mid = src |> Array.choose (tryConvert (t.GetElementType()))
+      if mid.Length <> src.Length then None else
+        let dst = Array.CreateInstance (t.GetElementType(), src.Length)
+        mid |> Array.iteri (fun i x -> dst.SetValue (x, i))
+        Some (box dst)
+    | _ -> None
+  else None
+
 let private tryInvokeMethod (m : Method) args =
-  if Array.length args = m.Params.Length &&
-     Array.zip m.Params args |> Array.forall (fun (param, arg) -> param.ParameterType.IsAssignableFrom (arg.GetType()))
-    then Some <| try m.Invoke args |> Ok with e -> Error (ExnError e)
-    else None
+  if Array.length args = m.Params.Length then
+    let args = Array.zip m.Params args |> Array.choose (fun (param, arg) -> arg |> tryConvert param.ParameterType)
+    if args.Length = m.Params.Length
+      then Some <| try m.Invoke args |> Ok with e -> Error (ExnError e)
+      else None
+  else None
 
 let private invokeMethod (overloadMethods : Method[]) (args : obj) =
   overloadMethods |> Array.tryPick (fun m ->

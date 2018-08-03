@@ -9,6 +9,10 @@ let env = Script.Env.Default.LoadAssembly (Reflection.Assembly.GetExecutingAssem
 type Hoge =
   | Piyo
   | Fuga of int
+  with
+  static member Piyopiyo (a : int[]) = 1234
+  static member Mofumofu (a : Hoge[]) =
+    a |> Array.choose (function Fuga i -> Some i | _ -> None) |> Array.sum
 
 
 let (==>) (script : string) expected =
@@ -225,6 +229,8 @@ let clrTest = test "CLR reflection test" {
   do! "s := System.Collections.Stack(); do s.Push 123; s.Count" ==> 1
   do! "s := System.Collections.Stack(); s.Count" ==> 0
   do! "System.String.Format (\"int val = {0}\", 987)" ==> "int val = 987"
+  do! "open FunnyScript.Test.ScriptTest; Hoge.Piyopiyo [1, 2, 3]" ==> 1234
+  do! "open FunnyScript.Test.ScriptTest; Hoge.Mofumofu [Hoge.Piyo, Hoge.Fuga 2, Hoge.Fuga 5]" ==> 2 + 5
 }
 
 let mutableTest = test "mutable test" {
