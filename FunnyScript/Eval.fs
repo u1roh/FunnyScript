@@ -7,7 +7,7 @@ module internal Env =
     (env, record) ||> Seq.fold (fun env x -> env |> Env.add x.Key (Ok x.Value))
 
   let matchWith pattern (obj : obj) env =
-    pattern |> Pattern.tryMatchWith (fun name -> env |> Env.tryGet name) obj
+    pattern |> Pattern.tryMatchWith obj
     |> Option.map (Map.fold (fun env name obj -> env |> Env.add name (Ok obj)) env)
     |> function Some env -> Ok env | _ -> error Unmatched
 
@@ -141,7 +141,10 @@ and private evalPattern env patexpr =
         | :? FunnyType as t -> Ok (Typed t)
         | x -> error (TypeMismatch (ClrType typeof<FunnyType>, FunnyType.ofObj x)))
       |> function Ok x -> x | Error e -> raiseErrInfo e
-    | XCase (caseName, pattern) -> Pattern.Case (caseName, execute pattern)
+    | XCase (caseExpr, pattern) ->
+      match env |> eval caseExpr with
+      | Ok caseObj -> Pattern.Case (caseObj, execute pattern)
+      | Error e -> raiseErrInfo e
     | XNamed (name, pattern) -> Named (name, execute pattern)
   try execute patexpr |> Ok with :? ErrInfoException as e -> Error e.ErrInfo
 

@@ -90,10 +90,14 @@ let pExpr =
             | [ptns2; ptns1] -> preturn (XArray (ptns1, Some ptns2))
             | _ -> fail "invalid array pattern")
       ]
+    let pCaseExpr =
+      (pIdentifierRef |>> Ref) <|> (between_ws '(' ')' pExpr)
+      .>>. (opt (char_ws '.' >>. sepBy1 pIdentifier (char_ws '.')) |>> Option.defaultValue [])
+      |>> fun (expr, mems) -> mems |> List.fold (fun expr mem -> RefMember (expr, mem)) expr
     let pPatternTerm =
       choice [
         pPatternInBracket
-        char_ws '#' >>. pIdentifierRef .>>. opt pPattern |>> fun (case, pat) -> XCase (case, pat |> Option.defaultValue PatternExpr.Empty)
+        char_ws '#' >>. pCaseExpr .>>. opt pPattern |>> fun (case, pat) -> XCase (case, pat |> Option.defaultValue PatternExpr.Empty)
         char_ws ':' >>. pExpr |>> XTyped
       ]
     pPatternRef :=

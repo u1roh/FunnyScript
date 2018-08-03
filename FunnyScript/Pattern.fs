@@ -1,7 +1,7 @@
 ﻿[<CompilationRepresentation (CompilationRepresentationFlags.ModuleSuffix)>]
 module FunnyScript.Pattern
 
-let tryMatchWith (env : string -> obj option) (obj : obj) pattern =
+let tryMatchWith (obj : obj) pattern =
   let rec execute pattern (obj : obj) matched =
     let foldMatchedMap items map =
       items |> List.fold (fun matched (item, obj) -> matched |> Option.bind (execute item obj)) map
@@ -37,12 +37,22 @@ let tryMatchWith (env : string -> obj option) (obj : obj) pattern =
       | _ -> None
     | Typed (ClrType t) -> if t.IsAssignableFrom (obj.GetType()) then Some matched else None
     | Typed (FunnyClass t) -> match obj with :? Instance as obj when obj.Type = t -> Some matched | _ -> None
-    | Case (case, pattern) ->
-      if pattern = Pattern.Empty && env case = Some obj then Some matched else
-      env case
-      |> Option.bind (function :? Case as case -> Some case | _ -> None)
+    | Case (caseObj, pattern) ->
+      if pattern = Pattern.Empty && caseObj = obj then Some matched else
+      match caseObj with
+        | :? Case as case -> Some case
+        | _ -> None
       |> Option.bind (fun case ->
         match obj with :? CaseValue as obj -> Some obj | _ -> None
         |> Option.bind (function CaseValue (c, obj) when c = case -> Some obj | _ -> None))
+      |> Option.orElseWith (fun () ->
+        match caseObj with
+          | :? FunnyType as t ->
+            match t with
+            | ClrType t when t.IsNested && Reflection.FSharpType.IsUnion t.DeclaringType && obj.GetType() = t -> 
+              let _, fields = Reflection.FSharpValue.GetUnionFields (obj, t.DeclaringType)
+              Some (if fields.Length = 1 then fields.[0] else box fields)
+            | _ -> None
+          | _ -> None)
       |> Option.bind (fun obj -> matched |> execute pattern obj)
   Map.empty |> execute pattern obj

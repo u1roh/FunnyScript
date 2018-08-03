@@ -4,7 +4,12 @@ open FunnyScript
 open System
 open System.Collections.Generic
 
-let env = Script.Env.Default
+let env = Script.Env.Default.LoadAssembly (Reflection.Assembly.GetExecutingAssembly())
+  
+type Hoge =
+  | Piyo
+  | Fuga of int
+
 
 let (==>) (script : string) expected =
   env.Run ("ScriptTest", script)
@@ -486,6 +491,25 @@ let caseTest = test "case test" {
     ];
     [Add (1, 2), Mul{ width := 3; height := 4 }, Add (5, 6)] |> map f
   """ ==> [| 3; 12; 11 |]
+  
+  do! """
+    Hoge := {
+      CaseA := #;
+      CaseB := # (_, _);
+    };
+    [Hoge.CaseA, Hoge.CaseB (2, 3)] |> map (match [
+      (#Hoge.CaseA) -> 123,
+      (#Hoge.CaseB (a, b)) -> a + b
+    ])
+  """ ==> [| 123; 5 |]
+
+  do! """
+  open FunnyScript.Test.ScriptTest;
+  [ Hoge.Piyo, Hoge.Fuga 321 ] |> map (match [
+    (#Hoge.Piyo) -> 1919,
+    (#Hoge.Fuga a) -> a
+  ])
+  """ ==> [| 1919; 321 |]
 }
 
 let genericTypeTest = test "generic type test" {

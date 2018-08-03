@@ -58,7 +58,7 @@ let applyCore env (f : obj) (arg : obj) =
     | FunnyClass t ->
       t.Ctor.Apply (arg, env) |> Result.bind force |> Result.map (fun x -> box { Data = x; Type = t })
   | :? Case as c ->
-    c.Pattern |> Pattern.tryMatchWith (fun name -> env |> Env.tryGet name) arg
+    c.Pattern |> Pattern.tryMatchWith arg
     |> function Some _ -> CaseValue (c, arg) |> box |> Ok | _ -> error Unmatched
   | x ->
     x |> CLR.tryApplyIndexer arg |> Option.defaultWith (fun () ->

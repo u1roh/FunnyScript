@@ -40,7 +40,7 @@ and Pattern =
   | Array of Pattern list * Pattern list option
   | Record of list<string * Pattern>
   | Typed of FunnyType
-  | Case of string * Pattern
+  | Case of obj * Pattern
   | Named of string * Pattern
 with
   static member Empty = Tuple[]
@@ -51,7 +51,7 @@ and PatternExpr =
   | XArray of PatternExpr list * PatternExpr list option
   | XRecord of list<string * PatternExpr>
   | XTyped of Expr
-  | XCase of string * PatternExpr
+  | XCase of Expr * PatternExpr
   | XNamed of string * PatternExpr
 with
   static member Empty = XTuple[]
