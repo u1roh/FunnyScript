@@ -474,20 +474,20 @@ let caseTest = test "case test" {
   do! """
     CaseA := #;
     a := CaseA;
-    a |> (#CaseA) -> 123
+    a |> #CaseA -> 123
   """ ==> 123
 
   do! """
     CaseA := #; CaseB := #;
     a := CaseA;
-    a |> (#CaseB) -> 123
+    a |> #CaseB -> 123
   """ ==>! Unmatched
 
   do! """
     Add := # (_, _); Mul := # { width := _; height := _ };
     f := match [
-      (#Add (a, b)) -> a + b,
-      (#Mul { width := x; height := y }) -> x y
+      #Add (a, b) -> a + b,
+      #Mul { width := x; height := y } -> x y
     ];
     [Add (1, 2), Mul{ width := 3; height := 4 }, Add (5, 6)] |> map f
   """ ==> [| 3; 12; 11 |]
@@ -498,18 +498,27 @@ let caseTest = test "case test" {
       CaseB := # (_, _);
     };
     [Hoge.CaseA, Hoge.CaseB (2, 3)] |> map (match [
-      (#Hoge.CaseA) -> 123,
-      (#Hoge.CaseB (a, b)) -> a + b
+      #Hoge.CaseA -> 123,
+      #Hoge.CaseB (a, b) -> a + b
     ])
   """ ==> [| 123; 5 |]
 
   do! """
   open FunnyScript.Test.ScriptTest;
   [ Hoge.Piyo, Hoge.Fuga 321 ] |> map (match [
-    (#Hoge.Piyo) -> 1919,
-    (#Hoge.Fuga a) -> a
+    #Hoge.Piyo -> 1919,
+    #Hoge.Fuga a -> a
   ])
   """ ==> [| 1919; 321 |]
+  
+  do! """
+    [3, 1, 4, 2] |> map (match [
+      #1 -> "hoge",
+      #2 -> "piyo",
+      #3 -> "fuga",
+      #4 -> "nyan"
+    ])
+  """ ==> [| "fuga"; "hoge"; "nyan"; "piyo" |]
 }
 
 let genericTypeTest = test "generic type test" {
