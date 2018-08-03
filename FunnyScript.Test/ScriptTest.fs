@@ -13,6 +13,7 @@ type Hoge =
   static member Piyopiyo (a : int[]) = 1234
   static member Mofumofu (a : Hoge[]) =
     a |> Array.choose (function Fuga i -> Some i | _ -> None) |> Array.sum
+  static member NyanNyan (a : double) = a
 
 
 let (==>) (script : string) expected =
@@ -231,6 +232,7 @@ let clrTest = test "CLR reflection test" {
   do! "System.String.Format (\"int val = {0}\", 987)" ==> "int val = 987"
   do! "open FunnyScript.Test.ScriptTest; Hoge.Piyopiyo [1, 2, 3]" ==> 1234
   do! "open FunnyScript.Test.ScriptTest; Hoge.Mofumofu [Hoge.Piyo, Hoge.Fuga 2, Hoge.Fuga 5]" ==> 2 + 5
+  do! "open FunnyScript.Test.ScriptTest; Hoge.NyanNyan 1" ==> 1.0
 }
 
 let mutableTest = test "mutable test" {

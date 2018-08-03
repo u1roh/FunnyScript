@@ -125,6 +125,14 @@ let rec private tryConvert (t : Type) (arg : obj) =
         mid |> Array.iteri (fun i x -> dst.SetValue (x, i))
         Some (box dst)
     | _ -> None
+  elif t = typeof<double> then
+    match arg with
+    | :? int as arg -> double arg |> box |> Some
+    | _ -> None
+  elif t = typeof<float32> then
+    match arg with
+    | :? int as arg -> float32 arg |> box |> Some
+    | _ -> None
   else None
 
 let private tryInvokeMethod (m : Method) args =
