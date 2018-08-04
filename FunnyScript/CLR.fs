@@ -160,7 +160,21 @@ let createOperatorFuncObj opName =
 
 // ---------------
 
+type FsFunc = {
+    Method : MethodInfo
+    Args : obj list
+  } with
+  interface IFuncObj with
+    member this.Apply (arg, _) =
+      let f = { this with Args = arg :: this.Args }
+      if f.Method.GetParameters().Length = f.Args.Length then
+        try f.Method.Invoke (null, f.Args |> List.rev |> List.toArray) |> box |> Ok
+        with e -> Error (ErrInfo.Create (ExnError e))
+      else f |> box |> Ok
+
 let private ofFunction (m : MethodInfo) =
+  { Method = m; Args = [] } |> box
+  (*
   let m = Method.OfMethod (m, null)
   toFunc1 (fun args ->
     match args with
@@ -169,6 +183,7 @@ let private ofFunction (m : MethodInfo) =
     | args -> tryInvokeMethod m [| args |]
     |> Option.defaultValue (Error (MiscError "function parameter mismatch")))
   |> box
+  *)
 
 let rec private ofModule (t : Type) =
   assert (FSharpType.IsModule t)
