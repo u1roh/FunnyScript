@@ -15,6 +15,8 @@ type Hoge =
     a |> Array.choose (function Fuga i -> Some i | _ -> None) |> Array.sum
   static member NyanNyan (a : double) = a
 
+let wanwan a b = a + b
+
 
 let (==>) (script : string) expected =
   env.Run ("ScriptTest", script)
@@ -233,6 +235,7 @@ let clrTest = test "CLR reflection test" {
   do! "open FunnyScript.Test.ScriptTest; Hoge.Piyopiyo [1, 2, 3]" ==> 1234
   do! "open FunnyScript.Test.ScriptTest; Hoge.Mofumofu [Hoge.Piyo, Hoge.Fuga 2, Hoge.Fuga 5]" ==> 2 + 5
   do! "open FunnyScript.Test.ScriptTest; Hoge.NyanNyan 1" ==> 1.0
+  do! "open FunnyScript.Test.ScriptTest; wanwan (1, 2)" ==> 3
 }
 
 let mutableTest = test "mutable test" {

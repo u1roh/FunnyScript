@@ -4,72 +4,6 @@ open System.Reflection
 open System.Linq.Expressions
 open FSharp.Reflection
 
-let private makeTypeConstructor (t : Type) =
-  let argNum = t.GetGenericArguments().Length
-  FuncObj.create (fun args ->
-    match args with
-    | :? FunnyType as arg when argNum = 1 ->
-      match arg with
-      | ClrType arg -> ok (ClrType (t.MakeGenericType [| arg |]))
-      | _ -> error (MiscError "Not CLR Type")
-    | FunnyArray args when args.Count = argNum ->
-      let args = args |> FunnyArray.map (function
-        | :? FunnyType as t ->  match t with ClrType t -> Ok t | _ -> error (MiscError "Not CLR Type")
-        | a -> error (TypeMismatch (ClrType typeof<FunnyType>, FunnyType.ofObj a)))
-      let errors = args |> Array.choose Result.toErrorOption |> Array.toList
-      if errors.Length > 0 then error (ErrorList errors) else
-        let args = args |> Array.choose Result.toOption
-        ok (ClrType (t.MakeGenericType args))
-    | _ -> error (MiscError (sprintf "Failed to Construct Generic Type of %s" t.FullName)))
-
-let rec private typesToFunnyObjs (types : (string list * System.Type)[]) =
-  let leaves, branches = types |> Array.partition (fst >> List.isEmpty)
-  let leaves = leaves |> Array.map (snd >> fun t ->
-    if t.IsGenericTypeDefinition && not t.IsNested
-      then t.Name.Substring (0, t.Name.IndexOf '`'), box (makeTypeConstructor t)
-      else t.Name, box (ClrType t))
-  branches
-  |> Array.groupBy (fst >> List.head)
-  |> Array.map (fun (name, items) ->
-    let record =
-      items
-      |> Array.map (fun (ns, t) -> ns.Tail, t)
-      |> typesToFunnyObjs
-      |> Map.ofArray
-      |> box
-    name, record)
-  |> Array.append leaves
-
-let rec private mergeRecord (r1 : Record) (r2 : Record) =
-  (r1, r2) ||> Seq.fold (fun acc item ->
-    match acc |> Map.tryFind item.Key, item.Value with
-    | Some (:? Record as r1), (:? Record as r2) -> acc |> Map.add item.Key (mergeRecord r1 r2 |> box)
-    | _ -> acc |> Map.add item.Key item.Value)
-
-let private getNamespace (t : Type) =
-  let ns = if t.Namespace = null then [] else t.Namespace.Split '.' |> Array.toList
-  let rec getNestNames (t : Type) =
-    if t.IsNested
-      then t.DeclaringType.Name :: getNestNames t.DeclaringType
-      else []
-  ns @ (getNestNames t |> List.rev)
-
-let loadAssembly (asm : System.Reflection.Assembly) (env : Env) =
-  asm.GetTypes()
-  |> Array.filter (fun t -> not (FSharpType.IsModule t) && (not t.IsNested || FSharpType.IsModule t.DeclaringType))
-  |> Array.map (fun t -> (getNamespace t), t)
-  |> typesToFunnyObjs
-  |> Array.fold (fun (env : Env) (name, item) ->
-    match env |> Env.tryFind name, item with
-    | Some (Ok (:? Record as r1)), (:? Record as r2) -> env |> Env.add name (mergeRecord r1 r2 |> box |> Ok)
-    | _ -> env |> Env.add name (Ok item)) env
-
-let loadSystemAssembly env =
-  env
-  |> loadAssembly typeof<System.Object>.Assembly
-  |> loadAssembly typeof<System.Timers.Timer>.Assembly
-
-
 type FunnyEvent (self : obj, event : EventInfo) =
   static let rec force (obj : obj) =
     match obj with
@@ -223,3 +157,88 @@ let createOperatorFuncObj opName =
         | op -> op.Invoke (null, [| x; y |]) |> Ok
     with e -> error (ExnError e))
   FuncObj.ofList2 [opfunc true; opfunc false]
+
+// ---------------
+
+let private ofFunction (m : MethodInfo) =
+  let m = Method.OfMethod (m, null)
+  toFunc1 (fun args ->
+    match args with
+    | :? (obj[]) as args -> tryInvokeMethod m args |> Option.orElseWith (fun () -> tryInvokeMethod m [| args |])
+    | null -> tryInvokeMethod m [||]
+    | args -> tryInvokeMethod m [| args |]
+    |> Option.defaultValue (Error (MiscError "function parameter mismatch")))
+  |> box
+
+let rec private ofModule (t : Type) =
+  assert (FSharpType.IsModule t)
+  t.GetMembers() |> Array.choose (fun m ->
+    let obj =
+      match m with
+      | :? Type as t -> if FSharpType.IsModule t then ofModule t else box (ClrType t)
+      | :? PropertyInfo as prop -> ofProperty None prop
+      | :? MethodInfo as m -> ofFunction m
+      | _ -> null
+    if obj = null then None else Some (m.Name, obj))
+  |> Map.ofArray
+  |> box
+
+let private makeTypeConstructor (t : Type) =
+  let argNum = t.GetGenericArguments().Length
+  FuncObj.create (fun args ->
+    match args with
+    | :? FunnyType as arg when argNum = 1 ->
+      match arg with
+      | ClrType arg -> ok (ClrType (t.MakeGenericType [| arg |]))
+      | _ -> error (MiscError "Not CLR Type")
+    | FunnyArray args when args.Count = argNum ->
+      let args = args |> FunnyArray.map (function
+        | :? FunnyType as t ->  match t with ClrType t -> Ok t | _ -> error (MiscError "Not CLR Type")
+        | a -> error (TypeMismatch (ClrType typeof<FunnyType>, FunnyType.ofObj a)))
+      let errors = args |> Array.choose Result.toErrorOption |> Array.toList
+      if errors.Length > 0 then error (ErrorList errors) else
+        let args = args |> Array.choose Result.toOption
+        ok (ClrType (t.MakeGenericType args))
+    | _ -> error (MiscError (sprintf "Failed to Construct Generic Type of %s" t.FullName)))
+
+let rec private typesToFunnyObjs (types : (string list * Type)[]) =
+  let leaves, branches = types |> Array.partition (fst >> List.isEmpty)
+  let leaves = leaves |> Array.map (snd >> fun t ->
+    if FSharpType.IsModule t then
+      t.Name, ofModule t
+    elif t.IsGenericTypeDefinition && not t.IsNested
+      then t.Name.Substring (0, t.Name.IndexOf '`'), box (makeTypeConstructor t)
+      else t.Name, box (ClrType t))
+  branches
+  |> Array.groupBy (fst >> List.head)
+  |> Array.map (fun (name, items) ->
+    let record =
+      items
+      |> Array.map (fun (ns, t) -> ns.Tail, t)
+      |> typesToFunnyObjs
+      |> Map.ofArray
+      |> box
+    name, record)
+  |> Array.append leaves
+
+let rec private mergeRecord (r1 : Record) (r2 : Record) =
+  (r1, r2) ||> Seq.fold (fun acc item ->
+    match acc |> Map.tryFind item.Key, item.Value with
+    | Some (:? Record as r1), (:? Record as r2) -> acc |> Map.add item.Key (mergeRecord r1 r2 |> box)
+    | _ -> acc |> Map.add item.Key item.Value)
+
+let loadAssembly (asm : System.Reflection.Assembly) (env : Env) =
+  asm.GetTypes()
+  |> Array.filter (fun t -> not t.IsNested)
+  |> Array.map (fun t -> (if t.Namespace = null then [] else t.Namespace.Split '.' |> Array.toList), t)
+  |> typesToFunnyObjs
+  |> Array.fold (fun (env : Env) (name, item) ->
+    match env |> Env.tryFind name, item with
+    | Some (Ok (:? Record as r1)), (:? Record as r2) -> env |> Env.add name (mergeRecord r1 r2 |> box |> Ok)
+    | _ -> env |> Env.add name (Ok item)) env
+
+let loadSystemAssembly env =
+  env
+  |> loadAssembly typeof<System.Object>.Assembly
+  |> loadAssembly typeof<System.Timers.Timer>.Assembly
+
