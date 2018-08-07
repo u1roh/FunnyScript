@@ -93,7 +93,7 @@ let private ofProperty self (prop : PropertyInfo) =
     box { new IMutable with
       member __.Value
         with get() = prop.GetValue (Option.toObj self)
-        and  set x = prop.SetValue (Option.toObj self, x) }
+        and  set x = prop.SetValue (Option.toObj self, tryConvert prop.PropertyType x |> Option.toObj) }
 
 let private ofField self (field : FieldInfo) =
   if field.IsInitOnly then
@@ -171,8 +171,13 @@ type FsFunc = {
     member this.Apply (arg, _) =
       let f = { this with Args = arg :: this.Args; ParamN = this.ParamN - 1 }
       if f.ParamN = 0 then
-        try f.Method.Invoke (null, f.Args |> List.rev |> List.toArray) |> box |> Ok
-        with e -> Error (ErrInfo.Create (ExnError e))
+        let args = f.Args |> List.rev |> List.toArray
+        let prms = f.Method.GetParameters()
+        let args = Array.zip prms args |> Array.choose (fun (param, arg) -> arg |> tryConvert param.ParameterType)
+        if args.Length = prms.Length then
+          try f.Method.Invoke (null, args) |> box |> Ok
+          with e -> Error (ErrInfo.Create (ExnError e))
+        else Error (ErrInfo.Create (MiscError "function signature mismatch"))
       else f |> box |> Ok
 
 let private ofFunction (m : MethodInfo) =
