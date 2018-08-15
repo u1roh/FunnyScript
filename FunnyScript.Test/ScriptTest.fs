@@ -263,6 +263,15 @@ let mutableTest = test "mutable test" {
     do timer.Enabled <- true;
     timer.Enabled
     """ ==> true
+  do! """
+  a := mutable 1;
+  b := mutable 2;
+  do {
+    a <- 3;
+    b <- 4;
+  }
+  a + b
+  """ ==> 7
 }
 
 let methodChainTest = test "method chain test" {

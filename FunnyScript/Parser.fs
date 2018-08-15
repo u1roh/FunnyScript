@@ -113,8 +113,9 @@ let pExpr =
       | ((Some name, expr1), expr2) -> Let (name, expr1, expr2)
       | ((_, expr1), expr2)         -> Let (null, expr1, expr2)
   let pDo =
-    str_ws "do" >>. pExpr .>> char_ws ';' .>>. opt pExpr
-    |>> fun (expr1, expr2) -> Let (null, expr1, expr2 |> Option.defaultValue (Obj null))
+    str_ws "do" >>. (between_ws '{' '}' (sepEndBy pExpr (char_ws ';')) <|> (pExpr .>> char_ws ';' |>> fun x -> [x])) .>>. opt pExpr
+    |>> fun (expr1, expr2) ->
+      List.foldBack (fun expr tailExpr -> Let (null, expr, tailExpr)) expr1 (expr2 |> Option.defaultValue (Obj null))
   let pOpen =
     str_ws "open" >>. pExpr .>> char_ws ';' .>>. pExpr
     |>> Open
