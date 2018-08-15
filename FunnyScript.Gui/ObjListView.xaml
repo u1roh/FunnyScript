@@ -10,7 +10,6 @@
     ItemsSource="{Binding Path=Items}"
     SelectedItem="{Binding Path=SelectedItem}"
     FontFamily="Consolas"
-    FontSize="20"
     ScrollViewer.VerticalScrollBarVisibility="Visible">
     <ListBox.ContextMenu>
       <local:InspectionMenu ItemsSource="{Binding Path=InspectionItems}"/>

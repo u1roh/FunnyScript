@@ -10,8 +10,5 @@
   <ae:TextEditor
     Name="editor"
     ShowLineNumbers="True"
-    FontFamily="Consolas"
-    FontSize="20">
-    
-  </ae:TextEditor>
+    FontFamily="Consolas" />
 </UserControl>
