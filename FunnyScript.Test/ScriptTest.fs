@@ -272,6 +272,11 @@ let mutableTest = test "mutable test" {
   }
   a + b
   """ ==> 7
+  do! """
+    a := mutable ();
+    do a <- 1;
+    a
+  """ ==> 1
 }
 
 let methodChainTest = test "method chain test" {

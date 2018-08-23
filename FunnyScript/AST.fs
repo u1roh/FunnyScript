@@ -170,7 +170,8 @@ module FuncObj =
   let ofFun (f : 'a -> 'r) =
     create (function
       | :? 'a as a -> f a |> box |> Ok
-      | x -> error (TypeMismatch (ClrType typeof<'a>, ClrType (x.GetType()))))
+      | null -> error NullReference
+      | x    -> error (TypeMismatch (ClrType typeof<'a>, ClrType (x.GetType()))))
 
   let ofFun2 f = ofFun (f >> ofFun)
   let ofFun3 f = ofFun (f >> ofFun2)
