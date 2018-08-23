@@ -282,11 +282,11 @@ let mutableTest = test "mutable test" {
     do a 0 <- 111;
     a 0
   """ ==> 111
-//  do! """
-//    a := [mutable ()];
-//    do a 0 <- 222;
-//    a 0
-//  """ ==> 222
+  do! """
+    a := [mutable ()];
+    do a 0 <- 222;
+    a 0
+  """ ==> 222
   do! """
     open System.Collections;
     a := ArrayList();

@@ -72,7 +72,7 @@ let rec eval expr env =
   | NewRecord fields ->
     env |> recordEval fields
   | NewArray exprs ->
-    let items = exprs |> Array.map (fun expr -> env |> forceEval expr)
+    let items = exprs |> Array.map (fun expr -> env |> eval expr |> Result.bind Obj.forceLet)
     let err =
       items |> Array.choose (function Error e -> Some e | _ -> None) |> Array.toList
       |> function [] -> None | [e] -> Some e | es -> Some (ErrorList es |> ErrInfo.Create)

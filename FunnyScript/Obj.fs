@@ -60,6 +60,10 @@ let applyCore env (f : obj) (arg : obj) =
   | :? Case as c ->
     c.Pattern |> Pattern.tryMatchWith arg
     |> function Some _ -> CaseValue (c, arg) |> box |> Ok | _ -> error Unmatched
+  | :? Array as a ->
+    match arg with
+    | :? int as i -> Ok (a.GetValue i)
+    | _ -> error (TypeMismatch (ClrType typeof<int>, FunnyType.ofObj arg))
   | x ->
     x |> CLR.tryApplyIndexer arg |> Option.defaultWith (fun () ->
       match x, arg with
