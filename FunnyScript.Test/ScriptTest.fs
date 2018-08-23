@@ -277,6 +277,23 @@ let mutableTest = test "mutable test" {
     do a <- 1;
     a
   """ ==> 1
+  do! """
+    a := array 10 (_ -> mutable ());
+    do a 0 <- 111;
+    a 0
+  """ ==> 111
+//  do! """
+//    a := [mutable ()];
+//    do a 0 <- 222;
+//    a 0
+//  """ ==> 222
+  do! """
+    open System.Collections;
+    a := ArrayList();
+    do a.Add 0;
+    do a 0 <- 333;
+    a 0
+  """ ==> 333
 }
 
 let methodChainTest = test "method chain test" {

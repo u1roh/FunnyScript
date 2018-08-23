@@ -189,7 +189,7 @@ let private stdlib1 =
       ) :> obj)
 
     "array", toFunc2 (fun len f ->
-      let f = applyForce f >> getOrRaise
+      let f = Obj.apply f >> Result.bind Obj.forceLet >> getOrRaise
       match len with
       | :? int as len -> Array.init len f |> box |> Ok
       | _ -> Error (TypeMismatch (ClrType typeof<int>, FunnyType.ofObj len)))

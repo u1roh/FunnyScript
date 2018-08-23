@@ -147,7 +147,14 @@ let tryApplyIndexer (index : obj) (self : obj) =
   let indexer = self.GetType().GetProperty (match self with :? string -> "Chars" | _ -> "Item")
   if indexer = null then None else
     let index = match index with :? (obj[]) as index -> index | _ -> [| index |]
-    Some <| try indexer.GetValue (self, index) |> Ok with e -> error (ExnError e)
+    if indexer.SetMethod = null then
+      Some <| try indexer.GetValue (self, index) |> Ok with e -> error (ExnError e)
+    else
+      { new IMutable with
+          member __.Value
+            with get () = indexer.GetValue (self, index)
+            and  set x  = indexer.SetValue (self, x, index)
+      } |> box |> Ok |> Some
 
 let createOperatorFuncObj opName =
   let opfunc left = FuncObj.create2 (fun x y ->
