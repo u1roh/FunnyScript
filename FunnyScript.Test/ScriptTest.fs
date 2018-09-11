@@ -51,9 +51,9 @@ let testScript = test "scripting test" {
   do! "f := a -> b -> a * b; f 3 4" ==> 12
   do! "f := | b -> @ * b; f 3 4" ==> 12
   do! "f := a -> | a * @; f 3 4" ==> 12
-  do! "if true => 1 else 2" ==> 1
-  do! "a := 5; if a < 6 => 1 else 2" ==> 1
-  do! "fac := n -> if n == 0 => 1 else n * fac (n - 1); fac 4" ==> 24
+  do! "if (true) 1 else 2" ==> 1
+  do! "a := 5; if (a < 6) 1 else 2" ==> 1
+  do! "fac := n -> if (n == 0) 1 else n * fac (n - 1); fac 4" ==> 24
   do! "r := { a := 10; b := 2 + 3; }; r.b" ==> 5
   do! "{ a := 10; b := 2 + 3; }.b" ==> 5
   do! "{ a := x := 3; x + 10; b := -2 - 4 }.a" ==> 13  // 最後のセミコロンは省略可能
@@ -68,15 +68,15 @@ let testScript = test "scripting test" {
   do! "f := a := 100; x -> x + a; f 10" ==> 110
 
   // レコード内の再帰関数
-  do! "r := { fac := n -> if n == 0 => 1 else n * fac (n - 1); }; r.fac 4" ==> 24
+  do! "r := { fac := n -> if (n == 0) 1 else n * fac (n - 1); }; r.fac 4" ==> 24
 
   // Fizz Buzz
   // else if と書かなくても if を並べれば良いところが特長
   do! """
     fizzbuzz := n ->
-      if n % 3 == 0 && n % 5 == 0 => "fizzbuzz"
-      if n % 3 == 0 => "fizz"
-      if n % 5 == 0 => "buzz"
+      if (n % 3 == 0 && n % 5 == 0) "fizzbuzz"
+      if (n % 3 == 0) "fizz"
+      if (n % 5 == 0) "buzz"
       else n.ToString();
     [1, 2, 3, 4, 5] |> map fizzbuzz
   """ ==> [| "1"; "2"; "fizz"; "4"; "buzz" |]
@@ -89,10 +89,10 @@ let testScript = test "scripting test" {
   do! "a := 5; b := 3; a b" ==> 15
 
   // if 式は else が省略できる（省略された場合は Unmatched エラーを返す）
-  do! "if true => 123" ==> 123
-  do! "if false => 123" ==>! Unmatched
-  do! "f := n -> if n % 2 == 0 => \"yes\"; f 4" ==> "yes"
-  do! "f := n -> if n % 2 == 0 => \"yes\"; f 3" ==>! Unmatched
+  do! "if (true) 123" ==> 123
+  do! "if (false) 123" ==>! Unmatched
+  do! "f := n -> if (n % 2 == 0) \"yes\"; f 4" ==> "yes"
+  do! "f := n -> if (n % 2 == 0) \"yes\"; f 3" ==>! Unmatched
 
   // Range
   do! "~[0, 10)~.contains 0" ==> true
@@ -103,10 +103,10 @@ let testScript = test "scripting test" {
   // Yコンビネータによる再帰計算
   do! """
     Y := f -> x -> f (Y f) x; // Yコンビネータ
-    ~[0, 5]~ |> map (Y | n -> if n == 0 => 1 else n (@ (n - 1)))  // ラムダ式で階乗の再帰計算
+    ~[0, 5]~ |> map (Y | n -> if (n == 0) 1 else n (@ (n - 1)))  // ラムダ式で階乗の再帰計算
   """ ==> [| 1; 1; 2; 6; 24; 120 |]
   // 組み込みの Y コンビネータ rec の利用
-  do! "~[0, 4]~ |> map (rec| n -> if n == 0 => 1 else n * @ (n - 1))" ==> [| 1; 1; 2; 6; 24 |]
+  do! "~[0, 4]~ |> map (rec| n -> if (n == 0) 1 else n * @ (n - 1))" ==> [| 1; 1; 2; 6; 24 |]
 }
 
 let typeTest = test "type test" {
@@ -137,9 +137,9 @@ let listTest = test "list test" {
   do! "[1, 2, 3] |> map (x -> 2 * x)" ==> [|2; 4; 6|]
   do! "[1, 2, 3] |> map (| 2@)" ==> [|2; 4; 6|]
   do! "[1, 2, 3] |> collect (| [@, 2@])" ==> [|1; 2; 2; 4; 3; 6|]
-  do! "[1, 2, 3, 4] |> choose (x -> if x % 2 == 0 => () else x)" ==> [|1; 3|]
-  do! "[1, 2, 3, 4] |> choose (| if @ % 2 == 0 => () else @)" ==> [|1; 3|]
-  do! "[1, 2, 3, 4] |> choose (| if @ % 2 == 0 => 3@)" ==> [|6; 12|]  // if の条件から漏れた unmatched は除去される
+  do! "[1, 2, 3, 4] |> choose (x -> if (x % 2 == 0) () else x)" ==> [|1; 3|]
+  do! "[1, 2, 3, 4] |> choose (| if (@ % 2 == 0) () else @)" ==> [|1; 3|]
+  do! "[1, 2, 3, 4] |> choose (| if (@ % 2 == 0) 3@)" ==> [|6; 12|]  // if の条件から漏れた unmatched は除去される
   do! "[1, 2, 3, 4] |> fold 0 `+`" ==> 10
   do! "[1, 2, 3, 4] |> filter (| @ % 2 == 0)" ==> [|2; 4|]
   do! "[2, 4, 6, 8] |> forall (| @ % 2 == 0)" ==> true
@@ -354,7 +354,7 @@ let errorTest = test "error test" {
   """ ==> null
 
   do! """
-    sqrt := x -> if x < 0 => error "x must be positive" else System.Math.Sqrt x;
+    sqrt := x -> if (x < 0) error "x must be positive" else System.Math.Sqrt x;
     sqrt (-1)
   """ ==>! UserError "x must be positive"
 
@@ -370,7 +370,7 @@ let errorTest = test "error test" {
     b |!> e -> "caught!" // エラー処理は無視される
   """ ==> 2
 
-  do! "f := | if @ % 2 == 0 => @; f 3" ==>! Unmatched
+  do! "f := | if (@ % 2 == 0) @; f 3" ==>! Unmatched
 }
 
 let openTest = test "open test" {
@@ -442,21 +442,21 @@ let patternMatchTest = test "pattern match test" {
   do! """
     10 |> match [
       (x, y) -> x + y,
-      x -> if x % 2 == 1 => 2 * x
+      x -> if (x % 2 == 1) 2 * x
     ]
   """ ==>! Unmatched
 
   do! """
     10 |> match [
       (x, y) -> x + y,
-      | if @%2 == 0 => @ / 2
+      | if (@%2 == 0) @ / 2
     ]
   """ ==> 5
 
   do! """
     f := match [
       (x, y) -> x + y,
-      x -> if x % 2 == 1 => 2 * x
+      x -> if (x % 2 == 1) 2 * x
     ];
     f (3, 6)
   """ ==> 9

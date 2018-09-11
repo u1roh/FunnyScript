@@ -123,7 +123,7 @@ let pExpr =
     str_ws "load" >>. pLiteralString .>> char_ws ';' .>>. pExpr
     |>> Load
   let pIf =
-    many1 (str_ws "if" >>. pExpr .>> str_ws "=>" .>>. pExpr) .>>. opt (str_ws "else" >>. pExpr)
+    many1 (str_ws "if" >>. between_ws '(' ')' pExpr .>>. pExpr) .>>. opt (str_ws "else" >>. pExpr)
     |>> fun (ifList, elseExpr) ->
       elseExpr |> Option.defaultValue (Ref "unmatched")
       |> List.foldBack (fun (cond, thenExpr) elseExpr -> If (cond, thenExpr, elseExpr)) ifList
