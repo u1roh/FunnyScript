@@ -229,9 +229,29 @@ let pModule =
   many (pIdentifier .>> str_ws ":=" .>>. pExpr .>> char_ws ';')
 
 let private removeComments (program : string) =
-  program.Split '\n'
-  |> Seq.map (fun (s : string) -> let i = s.IndexOf "//" in if 0 <= i && i < s.Length then s.Substring (0, i) else s)  // コメントの除去
-  |> String.concat "\n"
+  let sb = Text.StringBuilder()
+  let mutable state = 0
+  let mutable start = 0
+  for i = 0 to program.Length - 1 do
+    let ch = program.[i]
+    state <-
+      match state with
+      | 0 -> if ch = '/' then 1 else 0
+      | 1 ->
+        match ch with
+        | '*' -> sb.Append(program.Substring (start, i-1 - start)).Append ' ' |> ignore; 2
+        | '/' -> sb.Append(program.Substring (start, i-1 - start)).Append ' ' |> ignore; 4
+        | _   -> 0
+      | 2 -> if ch = '*' then 3 else 2
+      | 3 ->
+        match ch with
+        | '/' -> start <- i + 1; 0
+        | '*' -> 3
+        | _   -> 2
+      | _ ->  if ch = '\n' then start <- i + 1; 0 else 4
+  if (state = 0 || state = 1) && start < program.Length
+    then sb.Append (program.Substring (start, program.Length - start)) |> ignore
+  sb.ToString()
 
 let parse streamName program =
   removeComments program

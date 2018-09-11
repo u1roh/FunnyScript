@@ -40,6 +40,31 @@ let literalTest = test "literal test" {
   do! "- -3" ==> 3
 }
 
+let commentTest = test "comment test" {
+  do! "100//ほげほげ" ==> 100
+  do! "200/*ぴよぴよ*/" ==> 200
+  do! "/*ぶひぶひ*/300" ==> 300
+  do! "System.Math.Floor/*にゃーん*/1.5" ==> 1.0
+
+  do! """
+  /*
+  ほげほげ
+  ぴよぴよ
+  */
+  123
+  """ ==> 123
+
+  do! """
+  /*
+  // ほげほげ */123
+  """ ==> 123
+
+  do! """
+  // ほげほげ /* ぴよぴよ
+  123
+  """ ==> 123
+}
+
 let testScript = test "scripting test" {
   do! "1 + 2 * (3 + 4)" ==> 15
   do! "1 + 3.14" ==> 1.0 + 3.14
