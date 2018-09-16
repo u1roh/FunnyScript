@@ -12,11 +12,8 @@ type FunnyEvent (self : obj, event : EventInfo) =
     | _ -> Ok obj
   member __.subscribe (handler : IFuncObj) =
     let handler = Action<obj, obj>(fun sender e ->
-      handler.Apply (sender, Env.empty)
+      handler.Apply ([| sender; e |], Env.empty)
       |> Result.bind force
-      |> Result.bind (function
-        | :? IFuncObj as f -> f.Apply (e, Env.empty) |> Result.bind force
-        | x -> error (TypeMismatch (ClrType typeof<IFuncObj>, FunnyType.ofObj x)))
       |> function Error e -> printfn "%A" e | _ -> ())
     let handler =
       let sender = Expression.Parameter typeof<obj>

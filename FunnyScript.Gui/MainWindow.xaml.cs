@@ -52,6 +52,7 @@ namespace FunnyScript.Gui
 			int endpos = text.IndexOf('\n');
 			output.Items.Add(new ObjListView.Item(obj, endpos == -1 ? text : text.Substring(0, endpos)));
 			Console.WriteLine("{0}", text);
+      editor.Save(editor.SourceFilePath);
 		}
 
     private void MenuItem_Open_Click( object sender, RoutedEventArgs e )

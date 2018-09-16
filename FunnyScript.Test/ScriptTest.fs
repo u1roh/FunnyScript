@@ -4,7 +4,16 @@ open FunnyScript
 open System
 open System.Collections.Generic
 
-let env = Script.Env.Default.LoadAssembly (Reflection.Assembly.GetExecutingAssembly())
+type EventSource() =
+  let e = Event<_>()
+  [<CLIEvent>]
+  member __.Event = e.Publish
+  member __.Invoke() = e.Trigger (EventArgs.Empty)
+
+let env =
+  Script.Env.Default
+    .LoadAssembly(Reflection.Assembly.GetExecutingAssembly())
+    .Add("es", EventSource())
   
 type Hoge =
   | Piyo
@@ -626,4 +635,14 @@ let collectionTest = test "collection test" {
   a := a.Add ("buzz", 111);
   a "piyo" + a "buzz"
   """ ==> 432
+}
+
+
+let eventTest = test "event test" {
+  do! """
+  flag := mutable false;
+  subscr := es.Event.subscribe (_ -> flag <- true);
+  do es.Invoke();
+  flag
+  """ ==> true
 }
