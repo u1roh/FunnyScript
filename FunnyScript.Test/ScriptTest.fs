@@ -4,11 +4,15 @@ open FunnyScript
 open System
 open System.Collections.Generic
 
+type TestEventArgs (data : int) =
+  inherit EventArgs ()
+  member __.Data = data
+
 type EventSource() =
-  let e = Event<_>()
+  let e = Event<TestEventArgs>()
   [<CLIEvent>]
   member __.Event = e.Publish
-  member __.Invoke() = e.Trigger (EventArgs.Empty)
+  member __.Invoke x = e.Trigger (TestEventArgs x)
 
 let env =
   Script.Env.Default
@@ -182,6 +186,12 @@ let listTest = test "list test" {
   do! "[2, 4, 6, 7] |> exists (| @ % 2 == 1)" ==> true
   do! "[2, 4, 6, 8] |> forall (| @ % 2 == 1)" ==> false
   do! "[1, 2, 3] + [4, 5]" ==> [|1; 2; 3; 4; 5|]
+
+  do! """
+    n := mutable 0;
+    do [1, 2, 3] |> foreach (i -> n <- n + i);
+    n
+  """ ==> 6
 
   do! "\"hello\" 1" ==> 'e'
   do! "\"hello\"[2]" ==> 'l'
@@ -641,8 +651,17 @@ let collectionTest = test "collection test" {
 let eventTest = test "event test" {
   do! """
   flag := mutable false;
-  subscr := es.Event.subscribe (_ -> flag <- true);
-  do es.Invoke();
+  subscr := es.Event |> foreach (_ -> flag <- true);
+  do es.Invoke 0;
   flag
   """ ==> true
+
+  do! """
+  list := System.Collections.ArrayList();
+  do es.Event
+    |> map ((sender, e) -> 2 e.Data)
+    |> foreach list.Add;
+  do [1, 2, 3] |> foreach es.Invoke;
+  list.ToArray()
+  """ ==> [| 2; 4; 6 |]
 }

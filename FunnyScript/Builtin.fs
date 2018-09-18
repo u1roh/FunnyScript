@@ -11,6 +11,7 @@ let private toFunc2 f = toFunc1 (f >> toFunc1 >> Ok)
 module private FuncObj =
   let forArray f = FuncObj.create (Obj.toFunnyArray >> Result.map (f >> box))
   let forSeq   f = FuncObj.create (Obj.toSeq        >> Result.map (f >> box))
+  let forObservable f = FuncObj.create (Obj.cast<IObservable<obj>> >> Result.map (f >> box))
 
 
 type private NumOperands =
@@ -204,17 +205,24 @@ let private stdlib1 =
       FuncObj.forSeq Seq.length
     ] :> obj
 
-    "foreach", FuncObj.create2 (fun f -> Obj.cast<IEnumerable> >> Result.bind (fun src ->
+    "foreach", FuncObj.create (fun f ->
         let f = applyForce f
-        Seq.cast<obj> src
-        |> Seq.tryPick (f >> function Error e -> Some (Error e) | _ -> None)
-        |> Option.defaultValue (Ok null))) :> obj
+        FuncObj.ofList [
+          FuncObj.create (Obj.cast<IEnumerable> >> Result.bind (fun src ->
+            Seq.cast<obj> src
+            |> Seq.tryPick (f >> function Error e -> Some (Error e) | _ -> None)
+            |> Option.defaultValue (Ok null)))
+          FuncObj.create (Obj.cast<IObservable<obj>> >> Result.map (fun src ->
+            src |> Observable.subscribe (f >> getOrRaise >> ignore) :> obj 
+          ))
+        ] |> ok) :> obj
 
     "map", FuncObj.create (fun f ->
       let f = applyForce f >> getOrRaise
       FuncObj.ofList [
         FuncObj.forArray (FunnyArray.map f)
         FuncObj.forSeq   (Seq.map f)
+        FuncObj.forObservable (Observable.map f)
       ] |> ok) :> obj
 
     "choose", FuncObj.create (fun f ->
