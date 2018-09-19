@@ -232,6 +232,7 @@ let private stdlib1 =
       FuncObj.ofList [
         FuncObj.forArray (FunnyArray.choose f)
         FuncObj.forSeq   (Seq.choose f)
+        FuncObj.forObservable (Observable.choose f)
       ] |> ok) :> obj
 
     "collect", FuncObj.create (fun f ->
@@ -250,6 +251,7 @@ let private stdlib1 =
       FuncObj.ofList [
         FuncObj.forArray (FunnyArray.filter pred)
         FuncObj.forSeq   (Seq.filter pred)
+        FuncObj.forObservable (Observable.filter pred)
       ] |> ok) :> obj
 
     "distinct", FuncObj.ofList [

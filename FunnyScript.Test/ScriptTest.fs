@@ -664,4 +664,22 @@ let eventTest = test "event test" {
   do [1, 2, 3] |> foreach es.Invoke;
   list.ToArray()
   """ ==> [| 2; 4; 6 |]
+
+  do! """
+  list := System.Collections.ArrayList();
+  do es.Event
+    |> choose ((sender, e) -> if (e.Data % 2 == 0) () else e.Data)
+    |> foreach list.Add;
+  do [1, 2, 3, 4] |> foreach es.Invoke;
+  list.ToArray()
+  """ ==> [| 1; 3 |]
+
+  do! """
+  list := System.Collections.ArrayList();
+  do es.Event
+    |> filter ((sender, e) -> e.Data % 2 == 0)
+    |> foreach ((sender, e) -> list.Add e.Data);
+  do [1, 2, 3, 4] |> foreach es.Invoke;
+  list.ToArray()
+  """ ==> [| 2; 4 |]
 }
