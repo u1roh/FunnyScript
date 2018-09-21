@@ -145,6 +145,7 @@ let private stdlib1 =
 
     "class", FuncObj.create2 FunnyClass.create |> box
     "mutable", FuncObj.create (toMutable >> box >> Ok) :> obj
+    "fix", FuncObj.create Obj.force :> obj
     "error", FuncObj.create (fun x -> error (UserError x)) :> obj
 
     "eval",

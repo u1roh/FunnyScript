@@ -338,6 +338,24 @@ let mutableTest = test "mutable test" {
     do a 0 <- 333;
     a 0
   """ ==> 333
+  do! """
+    a := mutable 0;
+    b := a;
+    do b <- 1;
+    (fix a, fix b)
+  """ ==> [| 1; 1 |]
+  do! """
+    a := mutable 0;
+    b := a;
+    do a <- 1;
+    (fix a, fix b)
+  """ ==> [| 1; 1 |]
+  do! """
+    a := mutable 0;
+    b := fix a;
+    do a <- 1;
+    (fix a, b)
+  """ ==> [| 1; 0 |]
 }
 
 let methodChainTest = test "method chain test" {
