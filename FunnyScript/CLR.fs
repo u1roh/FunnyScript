@@ -59,7 +59,7 @@ let private ofProperty self (prop : PropertyInfo) =
   if prop.SetMethod = null then
     prop.GetValue (Option.toObj self)
   else
-    box { new IMutable with
+    box { new Mutable() with
       member __.Value
         with get() = prop.GetValue (Option.toObj self)
         and  set x = prop.SetValue (Option.toObj self, tryConvert prop.PropertyType x |> Option.toObj) }
@@ -68,7 +68,7 @@ let private ofField self (field : FieldInfo) =
   if field.IsInitOnly then
     field.GetValue (Option.toObj self)
   else
-    box { new IMutable with
+    box { new Mutable() with
       member __.Value
         with get() = field.GetValue (Option.toObj self)
         and  set x = field.SetValue (Option.toObj self, x) }
@@ -91,7 +91,7 @@ type FunnyEvent (self : obj, event : EventInfo) =
   static let rec force (obj : obj) =
     match obj with
     | :? Lazy<Result> as x -> x.Force() |> Result.bind force
-    | :? IMutable as x -> force x.Value
+    | :? Mutable as x -> force x.Value
     | _ -> Ok obj
   member __.subscribe (handler : IFuncObj) =
     let handler = Action<obj, obj>(fun sender e ->
@@ -160,7 +160,7 @@ let tryApplyIndexer (index : obj) (self : obj) =
     if indexer.SetMethod = null then
       Some <| try indexer.GetValue (self, index) |> Ok with e -> error (ExnError e)
     else
-      { new IMutable with
+      { new Mutable() with
           member __.Value
             with get () = indexer.GetValue (self, index)
             and  set x  = indexer.SetValue (self, x, index)

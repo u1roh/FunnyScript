@@ -71,7 +71,7 @@ module private Cast =
     | :? float as x -> int x |> box
     | :? bool  as x -> box (if x then 1 else 0)
     | :? string as x -> let ret, x = Int32.TryParse x in if ret then box x else null
-    | :? IMutable as x -> toInt x.Value
+    | :? Mutable as x -> toInt x.Value
     | _ -> null
 
   let rec toFloat (x : obj) =
@@ -80,7 +80,7 @@ module private Cast =
     | :? float32 as x -> float x |> box
     | :? int as x -> float x |> box
     | :? string as x -> let ret, x = Double.TryParse x in if ret then box x else null
-    | :? IMutable as x -> toFloat x.Value
+    | :? Mutable as x -> toFloat x.Value
     | _ -> null
   
 let private asArray x =

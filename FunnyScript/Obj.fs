@@ -5,7 +5,7 @@ open System.Collections
 let rec force (obj : obj) =
   match obj with
   | :? Lazy<Result> as x -> x.Force() |> Result.bind force
-  | :? IMutable as x -> force x.Value
+  | :? Mutable as x -> force x.Value
   | _ -> Ok obj
 
 // mutable はそのままキープ
@@ -17,7 +17,7 @@ let rec forceLet (obj : obj) =
 let rec forceMutable (obj : obj) =
   match obj with
   | :? Lazy<Result> as x -> x.Force() |> Result.bind forceMutable
-  | :? IMutable as x -> Ok x
+  | :? Mutable as x -> Ok x
   | _ -> error NotMutable
     
 let cast<'a> (obj : obj) =

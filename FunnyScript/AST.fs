@@ -237,4 +237,4 @@ module FunnyClass =
 
 let toMutable obj =
   let mutable obj = obj
-  { new IMutable with member __.Value with get() = obj and set x = obj <- x }
+  { new Mutable() with member __.Value with get() = obj and set x = obj <- x }

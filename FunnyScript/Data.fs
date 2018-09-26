@@ -26,8 +26,9 @@ type IntInterval = { min : int; max : int } with
     member this.CopyTo (dst, pos) = for i = this.min to this.max do dst.SetValue (i, pos + i - this.min)
 
 
-type IMutable =
+type [<AbstractClass>] Mutable() =
   abstract Value : obj with get, set
+  override this.ToString() = sprintf "mutable %A" this.Value
 
 type Record = Map<string, obj>
 
