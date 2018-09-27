@@ -296,7 +296,10 @@ let private stdlib1 =
 
 let private stdlib2 =
   """
-  rec := f -> x -> f (rec f) x; // Yコンビネータ
+  rec := // Yコンビネータ
+    Y := mutable ();
+    do Y <- f -> x -> f (Y f) x;
+    fix Y;
   `∋` := set -> elm -> elm ∈ set;
   `in` := `∈`;
   Set := Microsoft.FSharp.Collections.FSharpSet System.Object;

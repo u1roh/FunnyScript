@@ -91,7 +91,8 @@ let testScript = test "scripting test" {
   do! "f := a -> | a * @; f 3 4" ==> 12
   do! "if (true) 1 else 2" ==> 1
   do! "a := 5; if (a < 6) 1 else 2" ==> 1
-  do! "fac := n -> if (n == 0) 1 else n * fac (n - 1); fac 4" ==> 24
+  do! "fac := rec| n -> if (n == 0) 1 else n * @ (n - 1); fac 4" ==> 24
+  do! "fac := rec f -> n -> if (n == 0) 1 else n * f (n - 1); fac 4" ==> 24
   do! "r := { a := 10; b := 2 + 3; }; r.b" ==> 5
   do! "{ a := 10; b := 2 + 3; }.b" ==> 5
   do! "{ a := x := 3; x + 10; b := -2 - 4 }.a" ==> 13  // 最後のセミコロンは省略可能
@@ -106,7 +107,7 @@ let testScript = test "scripting test" {
   do! "f := a := 100; x -> x + a; f 10" ==> 110
 
   // レコード内の再帰関数
-  do! "r := { fac := n -> if (n == 0) 1 else n * fac (n - 1); }; r.fac 4" ==> 24
+  do! "r := { fac := rec| n -> if (n == 0) 1 else n * @ (n - 1); }; r.fac 5" ==> 120
 
   // Fizz Buzz
   // else if と書かなくても if を並べれば良いところが特長
@@ -138,11 +139,6 @@ let testScript = test "scripting test" {
   do! "~[0, 10)~.max" ==> 9
   do! "~(3, 5]~ |> map (`+` 1)" ==> [| 5; 6 |]
 
-  // Yコンビネータによる再帰計算
-  do! """
-    Y := f -> x -> f (Y f) x; // Yコンビネータ
-    ~[0, 5]~ |> map (Y | n -> if (n == 0) 1 else n (@ (n - 1)))  // ラムダ式で階乗の再帰計算
-  """ ==> [| 1; 1; 2; 6; 24; 120 |]
   // 組み込みの Y コンビネータ rec の利用
   do! "~[0, 4]~ |> map (rec| n -> if (n == 0) 1 else n * @ (n - 1))" ==> [| 1; 1; 2; 6; 24 |]
 }

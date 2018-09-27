@@ -26,6 +26,7 @@
     </Keywords>
 
     <Keywords foreground="Teal">
+      <Word>rec</Word>
       <Word>map</Word>
       <Word>class</Word>
       <Word>mutable</Word>

@@ -54,11 +54,6 @@ let testAST = test "FunnyScript AST test" {
       Apply (Ref "hoge", Obj (box 22)))
     |> eval |> assertEquals (Ok (box 122))
   do!
-    let body = If (binaryOp ("==", Ref "n", Obj (box 0)), Obj (box 1), binaryOp ("*", Ref "n", Apply (Ref "fac", binaryOp ("-", Ref "n", Obj(box 1)))))
-    Let ("fac", FuncDef ({ Args = XNamed ("n", XAny); Body = body }),
-      Apply (Ref "fac", Obj (box 4)))
-    |> eval |> assertEquals (Ok (box 24))
-  do!
     Let ("a", Obj [| box 123; box 321; box 456 |], Apply (Ref "a", Obj (box 1)))
     |> eval |> assertEquals (Ok (box 321))
 }

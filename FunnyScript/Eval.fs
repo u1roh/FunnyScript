@@ -25,10 +25,6 @@ module internal Env =
     Seq.append (t |> Seq.unfold (fun t -> if t = null then None else Some (t, t.BaseType))) (t.GetInterfaces())
     |> Seq.tryPick (fun t -> env |> Env.findExtMember t name)
 
-type private IUserFuncObj =
-  inherit IFuncObj
-  abstract InitSelfName : string -> unit
-
 let private findExtMember (env : Env) (o : obj) name =
   env |> Env.findExtMember o name
   |> function
@@ -52,7 +48,11 @@ let rec eval expr env =
       env |> eval succ)
     else
       env |> letEval name value |> snd |> eval succ
-  | FuncDef def -> def.Args |> evalPattern env |> Result.map (fun arg -> createUserFuncObj arg def.Body env |> box)
+  | FuncDef def -> def.Args |> evalPattern env |> Result.map (fun argPattern ->
+    { new IFuncObj with
+      member __.Apply (arg, _) =
+        lazy (env |> Env.matchWith argPattern arg |> Result.bind (eval def.Body)) |> box |> Ok
+    } |> box)
   | Apply (f, arg) ->
     env |> forceEval f   |> Result.bind (fun f ->
     env |> forceEval arg |> Result.bind (Obj.applyCore env f))
@@ -116,7 +116,6 @@ and forceEval expr env : Result =
 and letEval name expr env =
   let value = env |> eval expr |> Result.bind Obj.forceLet
   let env = env |> Env.add name value
-  match value with Ok (:? IUserFuncObj as f) -> f.InitSelfName name | _ -> ()  // to enable recursive call
   value, env
 
 and recordEval fields env =
@@ -147,16 +146,3 @@ and private evalPattern env patexpr =
       | Error e -> raiseErrInfo e
     | XNamed (name, pattern) -> Named (name, execute pattern)
   try execute patexpr |> Ok with :? ErrInfoException as e -> Error e.ErrInfo
-
-
-and private createUserFuncObj argPattern body env =
-  let mutable env = env
-  let mutable named = false
-  { new IUserFuncObj with
-    member __.Apply (arg, _) =
-      lazy (env |> Env.matchWith argPattern arg |> Result.bind (eval body)) |> box |> Ok
-    member self.InitSelfName name = 
-      if not named then
-        env <- env |> Env.add name (Ok (box self)) // to enable recursive call
-        named <- true
-  }
