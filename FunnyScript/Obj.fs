@@ -38,6 +38,7 @@ let toSeq (obj : obj) =
 let applyCore env (f : obj) (arg : obj) =
   let err() = error (NotApplyable (f, arg))
   match f with
+  | null -> Error (ErrInfo.Create NullReference)
   | :? IFuncObj as f -> f.Apply (arg, env)
   | :? int as a ->
     match arg with
