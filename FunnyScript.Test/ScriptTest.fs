@@ -429,6 +429,29 @@ let errorTest = test "error test" {
   """ ==> 2
 
   do! "f := | if (@ % 2 == 0) @; f 3" ==>! Unmatched
+
+  do! """
+    a := if (1 == 2) 3;
+    a |!> e ->
+      if (e == Err.Unmatched) "ミスマッチ" else "不明なエラー"
+  """ ==> "ミスマッチ"
+
+  do! """
+  a := () 1;  // NullReference 発生
+  a |!> match [
+    #Err.Unmatched -> "ミスマッチ",
+    #Err.NullReference -> "ぬるぽ",
+    _ -> "不明なエラー"
+  ]
+  """ ==> "ぬるぽ"
+
+  do! """
+    b :=
+      a := 0;
+      do a <- 1;
+      a;
+    b |!> #Err.NotMutable -> 123
+  """ ==> 123
 }
 
 let openTest = test "open test" {

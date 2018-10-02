@@ -143,6 +143,8 @@ let private stdlib1 =
     "~-", FuncObj.ofList [FuncObj.ofFun (fun (x : int) -> -x); FuncObj.ofFun (fun (x : float) -> -x)] :> obj
     //"::", toFunc2 (fun a ls -> match ls with List ls -> FunnyList.cons a ls |> AST.List |> Ok | _ -> Error (TypeMismatch (ListType, FunnyType.ofObj ls)))
 
+    "Err", ClrType typeof<Err> :> obj
+
     "class", FuncObj.create2 FunnyClass.create |> box
     "mutable", FuncObj.create (toMutable >> box >> Ok) :> obj
     "fix", FuncObj.create Obj.force :> obj
