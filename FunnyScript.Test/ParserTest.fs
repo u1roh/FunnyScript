@@ -1,49 +1,37 @@
 ﻿module FunnyScript.Test.ParserTest
 
-open Persimmon
-open Persimmon.Syntax.UseTestNameByReflection
-
+open NUnit.Framework
 open FParsec.CharParsers
 open FunnyScript
 
-let ``string literal`` () =
-  let test (snipet, expected) = test {
-    let replace (str: string) =
-      str.Replace("`", "\"").Replace("$", "\\")
-    let expected =
-      match expected with
-      | Obj (:? string as str) -> Obj (replace str)
-      | other -> other
-    let result = snipet |> replace |> Parser.parse "ParserTest"
-    do!
-      match result with
-      | Ok expr ->
-        let rec strip x = match x with Trace (x, _) -> strip x | _ -> x
-        strip expr |> assertEquals expected
-      | Error err ->
-          fail (sprintf "%A" err)
-  }
-  parameterize {
-    // テストの読みやすさと書きやすさのために、ダブルクォートとバックスラッシュを置き換え
-    // 「"」 -> `
-    // 「\」 -> $
-    source [
-      ("``", Obj "")
-      ("`abc`", Obj "abc")
-      ("`abc$n`", Obj "abc\n")
-      ("`$$`", Obj "$")
-      ("`$`abc$``", Obj "`abc`")
-      ("`$t`", Obj "\t")
-    ]
-    run test
-  }
+// テストの読みやすさと書きやすさのために、ダブルクォートとバックスラッシュを置き換え
+// 「"」 -> `
+// 「\」 -> $
+[<Test>]
+[<TestCase("``", "")>]
+[<TestCase("`abc`", "abc")>]
+[<TestCase("`abc$n`", "abc\n")>]
+[<TestCase("`$$`", "$")>]
+[<TestCase("`$`abc$``", "`abc`")>]
+[<TestCase("`$t`", "\t")>]
+let ``string literal`` (snipet, expected) =
+  let replace (str: string) =
+    str.Replace("`", "\"").Replace("$", "\\")
+  let expected = replace expected
+  let result = snipet |> replace |> Parser.parse "ParserTest"
+  match result with
+  | Ok expr ->
+    let rec strip x = match x with Trace (x, _) -> strip x | _ -> x
+    Assert.AreEqual(Obj expected, strip expr)
+  | Error err ->
+    Assert.Fail (sprintf "%A" err)
 
-let identifierTest = test {
+[<Test>]
+let identifierTest () =
   let parse id = id |> runParserOnString Parser.pIdentifier () "" |> function Success (r, _, _) -> true | _ -> false
-  do! parse "hoge" |> assertPred
-  do! parse "piyo_123" |> assertPred
-  do! parse "ひらがな" |> assertPred
-  do! parse "Σ" |> assertPred
-  do! parse "13abc" |> not |> assertPred
-  do! parse "do" |> not |> assertPred
-}
+  parse "hoge" |> Assert.True
+  parse "piyo_123" |> Assert.True
+  parse "ひらがな" |> Assert.True
+  parse "Σ" |> Assert.True
+  parse "13abc" |> not |> Assert.True
+  parse "do" |> not |> Assert.True
