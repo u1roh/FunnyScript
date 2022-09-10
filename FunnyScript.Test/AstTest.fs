@@ -1,6 +1,6 @@
 ﻿module FunnyScript.Test.AstTest
-open Persimmon
 open FunnyScript
+open NUnit.Framework
 
 let invoke arg f = Apply (f, arg)
 let binaryOp (op, x1, x2) = Ref op |> invoke x1 |> invoke x2
@@ -26,34 +26,36 @@ let refMember =
 // ------------------------
 
 
-let testAST = test "FunnyScript AST test" {
-  let env = Script.Env.Default;
-  let eval x = env.Eval x
-  do!
-    binaryOp ("+", Obj (box 1), Obj (box 2))
-    |> eval |> assertEquals (Ok (box 3))
-  do!
-    Let ("a", Obj (box 123),
-      Let ("b", Obj (box 321),
-        binaryOp ("+", Ref "a", Ref "b")))
-    |> eval |> assertEquals (Ok (box 444))
-  do!
-    a3
-    |> eval |> assertEquals (Ok (box 13))
-  do!
-    If (Obj (box true),  Obj (box 1), Obj (box 0))
-    |> eval |> assertEquals (Ok (box 1))
-  do!
-    If (Obj (box false), Obj (box 1), Obj (box 0))
-    |> eval |> assertEquals (Ok (box 0))
-  do!
-    If (binaryOp ("==", Obj (box 3), a1), Obj "equal", Obj "not equal")
-    |> eval |> assertEquals (Ok (box "equal"))
-  do!
-    Let ("hoge", FuncDef ({ Args = XNamed ("a", XAny); Body = binaryOp ("+", Obj (box 100), Ref "a") }),
-      Apply (Ref "hoge", Obj (box 22)))
-    |> eval |> assertEquals (Ok (box 122))
-  do!
-    Let ("a", Obj [| box 123; box 321; box 456 |], Apply (Ref "a", Obj (box 1)))
-    |> eval |> assertEquals (Ok (box 321))
-}
+[<Test>]
+let testAST () =
+  let assertEquals expected actual =
+    match Script.Env.Default.Eval actual with
+    | Ok actual -> Assert.AreEqual(box expected, actual)
+    | Error e -> e.ToString() |> Assert.Fail
+
+  binaryOp ("+", Obj (box 1), Obj (box 2))
+  |> assertEquals 3
+
+  Let ("a", Obj (box 123),
+    Let ("b", Obj (box 321),
+      binaryOp ("+", Ref "a", Ref "b")))
+  |> assertEquals 444
+
+  a3
+  |> assertEquals 13
+
+  If (Obj (box true),  Obj (box 1), Obj (box 0))
+  |> assertEquals 1
+
+  If (Obj (box false), Obj (box 1), Obj (box 0))
+  |> assertEquals 0
+
+  If (binaryOp ("==", Obj (box 3), a1), Obj "equal", Obj "not equal")
+  |> assertEquals "equal"
+
+  Let ("hoge", FuncDef ({ Args = XNamed ("a", XAny); Body = binaryOp ("+", Obj (box 100), Ref "a") }),
+    Apply (Ref "hoge", Obj (box 22)))
+  |> assertEquals 122
+
+  Let ("a", Obj [| box 123; box 321; box 456 |], Apply (Ref "a", Obj (box 1)))
+  |> assertEquals 321

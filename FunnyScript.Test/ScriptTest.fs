@@ -1,5 +1,4 @@
 ﻿module FunnyScript.Test.ScriptTest
-open Persimmon
 open FunnyScript
 open System
 open System.Collections.Generic
